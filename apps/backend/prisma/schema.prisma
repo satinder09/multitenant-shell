@@ -1,0 +1,46 @@
+generator masterClient {
+  provider = "prisma-client-js"
+  output   = "../generated/master-prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id             String   @id @default(cuid())
+  name           String
+  subdomain      String   @unique
+  dbName         String   @unique
+  encryptedDbUrl String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  permissions TenantUserPermission[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  permissions TenantUserPermission[]
+}
+
+model TenantUserPermission {
+  userId   String
+  tenantId String
+  
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, tenantId])
+}

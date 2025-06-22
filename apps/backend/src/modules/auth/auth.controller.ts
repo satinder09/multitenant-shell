@@ -1,0 +1,69 @@
+// apps/backend/src/modules/auth/auth.controller.ts
+
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Req,
+  Res,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { Request, Response } from 'express';
+import { TenantContext } from '../prisma-tenant/tenant-context';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { LoginResponse } from './interfaces/login-response.interface';
+import { JwtAuthGuard } from './jwt-auth.guard';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  /** Issue a new JWT (in HttpOnly cookie) */
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() dto: LoginDto,
+    @TenantContext() tenant: { id: string; databaseUrl: string } | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LoginResponse> {
+    const { accessToken } = await this.authService.login(dto, tenant?.id);
+
+    res.cookie('Authentication', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60, // 1h in ms
+    });
+
+    return { accessToken };
+  }
+
+  /** Return the current user (validated from the cookie) */
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  me(@Req() req: Request) {
+    const user = req.user;
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return user;
+  }
+
+  /** Clear the JWT cookie */
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('Authentication', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    return { success: true };
+  }
+}
