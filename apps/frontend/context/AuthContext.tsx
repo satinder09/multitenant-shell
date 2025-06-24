@@ -20,6 +20,13 @@ interface UserProfile {
   role?: string;
   isSuperAdmin?: boolean;
   tenantId?: string;
+  // Impersonation fields
+  accessType?: 'secure_login' | 'impersonation' | 'direct_access';
+  impersonatedUserId?: string;
+  impersonatedUserEmail?: string;
+  impersonatedUserName?: string;
+  impersonationSessionId?: string;
+  originalUserId?: string;
   // add other user fields here
 }
 
@@ -74,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    setIsFetchingInitialUser(true);
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
@@ -83,7 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // Clear user state and reset loading state
       setUser(null);
+      setIsFetchingInitialUser(false);
       router.push('/login');
     }
   };

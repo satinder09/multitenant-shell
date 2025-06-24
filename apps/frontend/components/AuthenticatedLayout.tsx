@@ -3,6 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { ImpersonationBanner } from './ImpersonationBanner';
 
 export default function AuthenticatedLayout({
   children,
@@ -23,6 +24,7 @@ export default function AuthenticatedLayout({
       <Sidebar />
       <div className="flex flex-col flex-1">
         <Header />
+        <ImpersonationBanner />
         <main className="flex-1 p-6 overflow-y-auto">{children}</main>
       </div>
     </div>

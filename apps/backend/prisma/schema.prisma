@@ -19,6 +19,8 @@ model Tenant {
   updatedAt      DateTime @updatedAt
 
   permissions TenantUserPermission[]
+  impersonationSessions ImpersonationSession[]
+  accessLogs TenantAccessLog[]
 }
 
 model User {
@@ -31,6 +33,8 @@ model User {
   updatedAt    DateTime @updatedAt
 
   permissions TenantUserPermission[]
+  initiatedImpersonations ImpersonationSession[] @relation("OriginalUser")
+  accessLogs TenantAccessLog[]
 }
 
 model TenantUserPermission {
@@ -43,4 +47,67 @@ model TenantUserPermission {
   createdAt DateTime @default(now())
 
   @@id([userId, tenantId])
+}
+
+model ImpersonationSession {
+  id                    String   @id @default(cuid())
+  sessionId             String   @unique
+  originalUserId        String
+  originalTenantId      String?
+  impersonatedUserId    String
+  impersonatedTenantId  String
+  startedAt             DateTime @default(now())
+  expiresAt             DateTime
+  endedAt               DateTime?
+  reason                String
+  status                ImpersonationStatus @default(ACTIVE)
+  
+  originalUser          User     @relation("OriginalUser", fields: [originalUserId], references: [id], onDelete: Cascade)
+  impersonatedTenant    Tenant   @relation(fields: [impersonatedTenantId], references: [id], onDelete: Cascade)
+  
+  auditLogs             ImpersonationAuditLog[]
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model ImpersonationAuditLog {
+  id                    String   @id @default(cuid())
+  impersonationSessionId String
+  action                String
+  details               Json?
+  timestamp             DateTime @default(now())
+  
+  impersonationSession  ImpersonationSession @relation(fields: [impersonationSessionId], references: [id], onDelete: Cascade)
+}
+
+model TenantAccessLog {
+  id          String   @id @default(cuid())
+  userId      String
+  tenantId    String
+  accessType  AccessType
+  reason      String?
+  startedAt   DateTime @default(now())
+  expiresAt   DateTime
+  endedAt     DateTime?
+  ipAddress   String?
+  userAgent   String?
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+}
+
+enum ImpersonationStatus {
+  ACTIVE
+  ENDED
+  EXPIRED
+  REVOKED
+}
+
+enum AccessType {
+  SECURE_LOGIN
+  IMPERSONATION
+  DIRECT_ACCESS
 }

@@ -4,8 +4,11 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 
 import { AuthController } from './auth.controller';
+import { TenantAccessController } from './tenant-access.controller';
 import { AuthService }    from './auth.service';
 import { JwtStrategy }    from './jwt.strategy';
+import { MasterPrismaModule } from '../master-prisma/master-prisma.module';
+import { PrismaTenantModule } from '../prisma-tenant/prisma-tenant.module';
 
 @Module({
   imports: [
@@ -22,8 +25,10 @@ import { JwtStrategy }    from './jwt.strategy';
       }),
       inject: [ConfigService],
     }),
+    MasterPrismaModule,
+    PrismaTenantModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, TenantAccessController],
   providers: [
     AuthService,
     JwtStrategy,        // <-- register the JWT strategy provider

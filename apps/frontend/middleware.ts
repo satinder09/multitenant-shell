@@ -8,11 +8,41 @@ interface JwtPayload {
 
 // Function to get the root domain from the hostname
 function getRootDomain(hostname: string): string {
-  if (hostname.includes('localhost')) {
-    return 'localhost';
+  // Remove port if present
+  const hostWithoutPort = hostname.split(':')[0];
+  
+  // Define known root domains
+  const rootDomains = ['localhost', 'lvh.me', '127.0.0.1'];
+  
+  // Check if it's a root domain
+  if (rootDomains.includes(hostWithoutPort)) {
+    return hostWithoutPort;
   }
-  // This can be made more robust for production domains
-  return hostname.split('.').slice(-2).join('.');
+  
+  // For subdomain cases like tenant1.localhost or tenant1.lvh.me
+  const parts = hostWithoutPort.split('.');
+  if (parts.length >= 2) {
+    // Return the root domain (last two parts for most cases)
+    return parts.slice(-2).join('.');
+  }
+  
+  // Fallback
+  return hostWithoutPort;
+}
+
+// Function to check if current hostname is a tenant domain
+function checkIsTenantDomain(hostname: string): boolean {
+  const hostWithoutPort = hostname.split(':')[0];
+  const rootDomains = ['localhost', 'lvh.me', '127.0.0.1'];
+  
+  // If it's exactly a root domain, it's not a tenant domain
+  if (rootDomains.includes(hostWithoutPort)) {
+    return false;
+  }
+  
+  // If it has a subdomain (e.g., tenant1.localhost), it's a tenant domain
+  const parts = hostWithoutPort.split('.');
+  return parts.length > 1;
 }
 
 export async function middleware(request: NextRequest) {
@@ -26,12 +56,18 @@ export async function middleware(request: NextRequest) {
 
   const cookie = request.cookies.get('Authentication');
   const rootDomain = getRootDomain(hostname);
-  const isTenantDomain = hostname !== `${rootDomain}:3000` && hostname !== rootDomain;
+  const isTenantDomain = checkIsTenantDomain(hostname);
 
   // If there's no auth cookie, redirect to login for any protected path
   if (!cookie && pathname !== '/login') {
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // If accessing login page, allow it regardless of auth status
+  // This prevents redirect loops during logout
+  if (pathname === '/login') {
+    return NextResponse.next();
   }
 
   if (cookie) {
@@ -60,12 +96,6 @@ export async function middleware(request: NextRequest) {
           response.cookies.delete('Authentication');
           return response;
         }
-      }
-
-      // If already on the login page with a valid cookie, redirect to dashboard
-      if (pathname === '/login') {
-        const dashboardUrl = new URL('/', request.url);
-        return NextResponse.redirect(dashboardUrl);
       }
       
     } catch (error) {

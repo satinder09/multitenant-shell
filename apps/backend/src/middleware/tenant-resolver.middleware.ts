@@ -28,15 +28,15 @@ export class TenantResolverMiddleware implements NestMiddleware {
       `Using host header: "${rawHost}" → parsed: "${hostWithoutPort}"`,
     );
 
-    const [subdomain] = hostWithoutPort.split('.');
-    this.logger.debug(`Detected subdomain: "${subdomain}"`);
-
-    // Add root domains that should bypass tenant resolution
-    const rootDomains = ['localhost', '']; // Add your production domain here
-    if (rootDomains.includes(subdomain)) {
+    // Check if this is a root domain (master instance)
+    if (this.isRootDomain(hostWithoutPort)) {
       this.logger.debug('Root domain detected, skipping tenant resolution.');
       return next();
     }
+
+    // Extract subdomain for tenant resolution
+    const subdomain = this.extractSubdomain(hostWithoutPort);
+    this.logger.debug(`Detected subdomain: "${subdomain}"`);
 
     try {
       const { id, databaseUrl } =
@@ -50,5 +50,44 @@ export class TenantResolverMiddleware implements NestMiddleware {
       );
       throw new UnauthorizedException(`Invalid tenant: ${subdomain}`);
     }
+  }
+
+  private isRootDomain(hostname: string): boolean {
+    // Define root domains that should bypass tenant resolution
+    const rootDomains = [
+      'localhost',
+      'lvh.me',
+      '127.0.0.1',
+      '', // Empty string for cases where hostname is just the domain
+    ];
+    
+    // Check if the hostname exactly matches a root domain
+    if (rootDomains.includes(hostname)) {
+      return true;
+    }
+    
+    // Check if it's a root domain with port (e.g., localhost:3000, lvh.me:3000)
+    const [domain, port] = hostname.split(':');
+    if (rootDomains.includes(domain)) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  private extractSubdomain(hostname: string): string {
+    // Remove port if present
+    const hostWithoutPort = hostname.split(':')[0];
+    
+    // Split by dots and get the first part as subdomain
+    const parts = hostWithoutPort.split('.');
+    
+    // For localhost:3000 or lvh.me:3000, there's no subdomain
+    if (parts.length <= 1) {
+      throw new Error('No subdomain found in hostname');
+    }
+    
+    // For tenant1.localhost or tenant1.lvh.me, the first part is the subdomain
+    return parts[0];
   }
 }

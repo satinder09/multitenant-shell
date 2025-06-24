@@ -19,11 +19,11 @@ export function ProtectedRoute({
   children, 
   requireAuth = true, 
 }: ProtectedRouteProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
 
+  // Check if auth check is complete (user is either null or a valid user object)
   const isAuthCheckComplete = user !== undefined;
-  const isAuthenticated = user !== null && user !== undefined;
 
   useEffect(() => {
     if (isAuthCheckComplete) {
@@ -37,6 +37,7 @@ export function ProtectedRoute({
     }
   }, [isAuthCheckComplete, isAuthenticated, requireAuth, router]);
 
+  // Show loading spinner only if auth check is not complete
   if (!isAuthCheckComplete) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -45,6 +46,7 @@ export function ProtectedRoute({
     );
   }
 
+  // Render children if conditions are met
   if ((requireAuth && isAuthenticated) || (!requireAuth && !isAuthenticated)) {
     return <>{children}</>;
   }
