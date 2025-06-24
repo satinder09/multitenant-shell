@@ -22,6 +22,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     name: string;
     isSuperAdmin?: boolean;
     tenantContext?: string;
+    accessType?: string;
+    impersonatedUserId?: string;
+    impersonatedUserEmail?: string;
+    impersonatedUserName?: string;
+    expiresAt?: string;
+    impersonationSessionId?: string;
   }) {
     // This is the user object that will be attached to the request
     const user = {
@@ -30,6 +36,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       name: payload.name,
       isSuperAdmin: payload.isSuperAdmin,
       tenantId: payload.tenantContext, // Pass tenant context as tenantId
+      accessType: payload.accessType,
+      impersonatedUserId: payload.impersonatedUserId,
+      impersonatedUserEmail: payload.impersonatedUserEmail,
+      impersonatedUserName: payload.impersonatedUserName,
+      expiresAt: payload.expiresAt,
+      impersonationSessionId: payload.impersonationSessionId,
     };
 
     return user;

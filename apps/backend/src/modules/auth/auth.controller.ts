@@ -59,11 +59,29 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
+    // Log for debugging
+    console.log('Clearing Authentication cookie for .lvh.me, lvh.me, /');
     res.clearCookie('Authentication', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      domain: '.lvh.me',
+      path: '/',
     });
+    res.clearCookie('Authentication', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      domain: 'lvh.me',
+      path: '/',
+    });
+    res.clearCookie('Authentication', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+    res.clearCookie('Authentication');
     return { success: true };
   }
 }

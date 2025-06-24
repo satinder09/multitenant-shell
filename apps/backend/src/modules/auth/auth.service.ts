@@ -36,43 +36,35 @@ export class AuthService {
     dto: Omit<LoginDto, 'tenantId'>,
     tenantId?: string,
   ): Promise<LoginResponse> {
-    const user = await this.validateMasterUser(dto.email, dto.password);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const payload: { [key: string]: any } = {
-      sub: user.id,
-      isSuperAdmin: user.isSuperAdmin,
-      email: user.email,
-      name: user.name,
-    };
-
-    // If logging in via a tenant subdomain, check permissions
     if (tenantId) {
-      if (!user.isSuperAdmin) {
-        const permission =
-          await this.masterPrisma.tenantUserPermission.findUnique({
-            where: {
-              userId_tenantId: {
-                userId: user.id,
-                tenantId: tenantId,
-              },
-            },
-          });
-
-        if (!permission) {
-          throw new ForbiddenException(
-            'You do not have permission to access this tenant.',
-          );
-        }
+      // Only check tenant DB for credentials
+      const user = await this.tenantPrisma.db.user.findUnique({ where: { email: dto.email } });
+      if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+        throw new UnauthorizedException('Invalid credentials');
       }
-      // If user is super admin or has explicit permission, add tenant context
-      payload.tenantContext = tenantId;
+      const payload: { [key: string]: any } = {
+        sub: user.id,
+        email: user.email,
+        name: user.name,
+        tenantContext: tenantId,
+      };
+      const accessToken = this.jwt.sign(payload);
+      return { accessToken };
+    } else {
+      // Only check master DB for credentials
+      const user = await this.validateMasterUser(dto.email, dto.password);
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      const payload: { [key: string]: any } = {
+        sub: user.id,
+        isSuperAdmin: user.isSuperAdmin,
+        email: user.email,
+        name: user.name,
+      };
+      const accessToken = this.jwt.sign(payload);
+      return { accessToken };
     }
-
-    const accessToken = this.jwt.sign(payload);
-    return { accessToken };
   }
 
   // Get tenant access options for user
@@ -375,5 +367,10 @@ export class AuthService {
         details
       }
     });
+  }
+
+  // Decode a JWT token without verifying (for internal use only)
+  decodeToken(token: string): any {
+    return this.jwt.decode(token);
   }
 }

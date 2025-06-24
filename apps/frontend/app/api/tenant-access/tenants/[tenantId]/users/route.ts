@@ -5,7 +5,7 @@ export async function GET(
   { params }: { params: { tenantId: string } }
 ) {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000';
     const authToken = request.cookies.get('Authentication')?.value;
     const { tenantId } = params;
 

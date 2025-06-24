@@ -132,7 +132,7 @@ export function ImpersonationModal({ tenant, open, onOpenChange }: Impersonation
               </SelectTrigger>
               <SelectContent>
                 {loadingUsers ? (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="loading" disabled>
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading users...

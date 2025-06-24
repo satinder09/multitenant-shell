@@ -32,7 +32,7 @@ async function bootstrap() {
 
   const port = parseInt(config.get<string>('PORT') || '4000', 10);
   await app.listen(port);
-  console.log(`🚀 Backend listening on http://localhost:${port}`);
+  console.log(`🚀 Backend listening on http://lvh.me:${port}`);
 }
 
 bootstrap();

@@ -115,17 +115,21 @@ export class TenantAccessController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ redirectUrl: string }> {
     const user = req.user as any;
-    
-    const { redirectUrl } = await this.authService.endImpersonation(
-      user.impersonationSessionId,
-      req.ip,
-      req.get('User-Agent')
-    );
 
-    // Clear the impersonation cookie
-    res.clearCookie('Authentication');
-
-    return { redirectUrl };
+    if (user.impersonationSessionId) {
+      // End impersonation session in DB
+      const { redirectUrl } = await this.authService.endImpersonation(
+        user.impersonationSessionId,
+        req.ip,
+        req.get('User-Agent')
+      );
+      res.clearCookie('Authentication');
+      return { redirectUrl };
+    } else {
+      // Secure login: just clear cookie and redirect to master
+      res.clearCookie('Authentication');
+      return { redirectUrl: 'http://lvh.me:3000' };
+    }
   }
 
   // Get tenant users for impersonation
