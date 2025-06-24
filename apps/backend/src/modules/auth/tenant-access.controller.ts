@@ -58,12 +58,13 @@ export class TenantAccessController {
       req.get('User-Agent')
     );
 
-    // Set cookie for tenant session
+    // Set cookie for tenant session (cross-subdomain, local dev)
     res.cookie('Authentication', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: false, // For local dev; set to true in production with HTTPS
+      sameSite: 'lax', // More permissive for cross-subdomain
       maxAge: dto.duration * 60 * 1000,
+      domain: '.lvh.me',
     });
 
     return { redirectUrl };
@@ -94,12 +95,13 @@ export class TenantAccessController {
       req.get('User-Agent')
     );
 
-    // Set cookie for impersonation session
+    // Set cookie for impersonation session (cross-subdomain, local dev)
     res.cookie('Authentication', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: false, // For local dev; set to true in production with HTTPS
+      sameSite: 'lax', // More permissive for cross-subdomain
       maxAge: dto.duration * 60 * 1000,
+      domain: '.lvh.me',
     });
 
     return { redirectUrl };

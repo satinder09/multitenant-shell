@@ -16,7 +16,17 @@ async function bootstrap() {
   app.use(passport.initialize());
 
   app.enableCors({
-    origin: config.get<string>('FRONTEND_URL') || 'http://localhost:3000',
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (
+        !origin ||
+        origin === 'http://lvh.me:3000' ||
+        /^http:\/\/[a-zA-Z0-9-]+\.lvh\.me:3000$/.test(origin)
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   });
 

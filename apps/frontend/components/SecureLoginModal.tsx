@@ -23,7 +23,8 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
   const handleSecureLogin = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/tenant-access/secure-login', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000';
+      const response = await fetch(`${backendUrl}/tenant-access/secure-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
