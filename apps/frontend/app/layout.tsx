@@ -7,8 +7,6 @@ import './globals.css';
 import { ReactNode } from 'react';
 import { ThemeProvider } from '@/context/theme-provider';
 import { AuthProvider } from '@/context/AuthContext';
-import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { DialogOverlay } from '@/utils/ui/dialogUtils';
 import { AppSheetOverlay } from '@/utils/ui/sheetUtils';

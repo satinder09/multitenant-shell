@@ -22,9 +22,9 @@ class RateLimiter {
     return true; 
   }
 
-  recordFailure(key: string, maxAttempts: number = 5, windowMs: number = 15 * 60 * 1000) {
+  recordFailure(key: string, windowMs: number = 15 * 60 * 1000) {
     const now = Date.now();
-    let record = this.attempts.get(key);
+    const record = this.attempts.get(key);
 
     if (!record || now > record.resetTime) {
       this.attempts.set(key, { count: 1, resetTime: now + windowMs });

@@ -63,13 +63,6 @@ export default function MultiSelect({
     }
   }
 
-  const groupedOptions = options.reduce<Record<string, Option[]>>((acc, option) => {
-    const group = option.group ?? 'Ungrouped'
-    if (!acc[group]) acc[group] = []
-    acc[group].push(option)
-    return acc
-  }, {})
-
   const selectedLabels = options
     .filter((opt) => selected.includes(opt.value))
     .map((opt) => opt.label)

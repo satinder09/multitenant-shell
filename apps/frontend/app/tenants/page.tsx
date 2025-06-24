@@ -17,7 +17,6 @@ import {
 import { DataTable } from '@/components/ui-kit/DataTable';
 import { toastNotify } from '@/utils/ui/toastNotify';
 import { Spinner } from '@/components/ui/spinner';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
 import { confirm } from '@/utils/ui/dialogUtils';
 import { AlertTriangle } from 'lucide-react';
@@ -81,9 +80,9 @@ export default function TenantsPage() {
         }
         const data = await res.json();
         setTenants(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // NOTE: We don't show a toast here because the AuthProvider handles global errors.
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setIsLoading(false);
       }
@@ -102,11 +101,11 @@ export default function TenantsPage() {
       setTenants(tenants.map(t => 
         t.id === id ? { ...t, isActive: updatedTenant.isActive } : t
       ));
-    } catch (err: any) {
+    } catch (err: unknown) {
       toastNotify({
         variant: 'error',
         title: 'Update failed',
-        description: err.message,
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     } finally {
       setUpdatingTenantId(null);
@@ -128,8 +127,8 @@ export default function TenantsPage() {
         setCreateDialogOpen(false); // Close dialog on success
         // Ideally, we would re-fetch or optimistically update here
         window.location.reload(); 
-      } catch (err: any) {
-        setCreateError(err.message || 'An unexpected error occurred.');
+      } catch (err: unknown) {
+        setCreateError(err instanceof Error ? err.message : 'An unexpected error occurred.');
       }
     });
   };
@@ -157,20 +156,20 @@ export default function TenantsPage() {
     { 
       accessorKey: 'isActive', 
       header: 'Status',
-      cell: ({ row }: any) => {
-        const isActive = row.getValue('isActive');
+      cell: ({ row }: { row: { getValue: (key: string) => unknown; original: Tenant } }) => {
+        const isActive = row.getValue('isActive') as boolean;
         return <StatusBadge isActive={isActive} />;
       },
     },
     {
       accessorKey: 'createdAt',
       header: 'Created At',
-      cell: ({ row }: any) => new Date(row.getValue('createdAt')).toLocaleDateString(),
+      cell: ({ row }: { row: { getValue: (key: string) => unknown; original: Tenant } }) => new Date(row.getValue('createdAt') as string).toLocaleDateString(),
     },
     {
       id: 'actions',
       header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }: any) => {
+      cell: ({ row }: { row: { getValue: (key: string) => unknown; original: Tenant } }) => {
         const tenant = row.original;
         const isUpdating = updatingTenantId === tenant.id;
 

@@ -5,16 +5,15 @@ export interface LoginDto {
   password: string;
 }
 
+export interface LoginResponse {
+  accessToken: string;
+}
+
 export interface ApiError {
   message: string;
   status?: number;
   code?: string;
 }
-
-// Create a timeout promise
-const timeout = (ms: number) => new Promise((_, reject) => 
-  setTimeout(() => reject(new Error('Request timeout')), ms)
-);
 
 // Enhanced fetch with timeout and better error handling
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 10000) {
@@ -37,34 +36,18 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
-export async function login(dto: LoginDto): Promise<any> {
+export async function login(dto: LoginDto): Promise<LoginResponse> {
   const res = await fetchWithTimeout('/api/auth/login', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest', // CSRF protection
-    },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dto),
-  }, 15000);
+  });
 
-  // If the response is not OK, parse the error and throw it.
   if (!res.ok) {
-    let errorData: ApiError = { message: 'An unknown error occurred.' };
-    try {
-      // Try to parse the specific error message from the API
-      errorData = await res.json();
-    } catch (e) {
-      // If the body isn't JSON, use the status text as a fallback
-      errorData.message = res.statusText;
-    }
-    // Throw an actual Error object with the message from the API
-    const errorToThrow = new Error(errorData.message || 'Login failed');
-    console.error('[api.ts] Throwing login error:', errorToThrow);
-    throw errorToThrow;
+    const error = await res.json();
+    throw new Error(error.message || 'Login failed');
   }
 
-  // If the response is OK, return the JSON data.
   return res.json();
 }
 

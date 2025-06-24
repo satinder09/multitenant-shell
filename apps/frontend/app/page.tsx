@@ -19,7 +19,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{user?.name || 'User'}</div>
             <p className="text-xs text-muted-foreground">
-              Here's what's happening today.
+              Here&apos;s what&apos;s happening today.
             </p>
           </CardContent>
         </Card>

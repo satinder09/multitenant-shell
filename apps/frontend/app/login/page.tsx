@@ -93,18 +93,14 @@ function LoginForm() {
       await login({ email: sanitizedEmail, password: sanitizedPassword });
       rateLimiter.reset('login');
       router.push('/');
-    } catch (err: any) {
+    } catch (err: unknown) {
       rateLimiter.recordFailure('login');
       const remainingAttempts = rateLimiter.getRemainingAttempts('login');
-
-      if (remainingAttempts === 0) {
-        const lockoutEnd = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-        setIsLocked(true);
-        setLockoutTime(lockoutEnd);
-        localStorage.setItem('loginLockout', lockoutEnd.toISOString());
+      
+      if (remainingAttempts <= 0) {
         setError('Too many failed attempts. Please try again in 15 minutes.');
       } else {
-        setError(err.message || 'Invalid email or password');
+        setError(err instanceof Error ? err.message : 'Invalid email or password');
       }
     } finally {
       setIsLoading(false);

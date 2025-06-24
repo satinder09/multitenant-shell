@@ -12,7 +12,7 @@ import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { User } from '@prisma/client';
+import { User } from '../../../generated/master-prisma';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 
 @UseGuards(JwtAuthGuard)
