@@ -21,9 +21,17 @@ export class TenantResolverMiddleware implements NestMiddleware {
     res: Response,
     next: NextFunction,
   ) {
+    console.log(`[TenantResolver] MIDDLEWARE CALLED for ${req.method} ${req.url}`);
+    console.log(`[TenantResolver] Headers:`, {
+      host: req.headers.host,
+      'x-forwarded-host': req.headers['x-forwarded-host'],
+      'x-forwarded-for': req.headers['x-forwarded-for']
+    });
+    
     const rawHost =
       (req.headers['x-forwarded-host'] as string) || (req.headers.host ?? '');
     const hostWithoutPort = rawHost.split(':')[0];
+    console.log(`[TenantResolver] Raw host: "${rawHost}" → parsed: "${hostWithoutPort}"`);
     this.logger.debug(
       `Using host header: "${rawHost}" → parsed: "${hostWithoutPort}"`,
     );
@@ -41,13 +49,15 @@ export class TenantResolverMiddleware implements NestMiddleware {
     try {
       const { id, databaseUrl } =
         await this.tenantService.findBySubdomain(subdomain);
-      this.logger.debug(`Tenant found: id=${id}`);
+      this.logger.debug(`Tenant found: id=${id}, databaseUrl=${databaseUrl}`);
+      console.log(`[TenantResolver] Setting req.tenant = { id: ${id}, databaseUrl: ${databaseUrl} }`);
       req.tenant = { id, databaseUrl };
       next();
     } catch (error: any) {
       this.logger.error(
         `Tenant resolution failed for "${subdomain}": ${error.message}`,
       );
+      console.log(`[TenantResolver] ERROR: Failed to resolve tenant for subdomain "${subdomain}": ${error.message}`);
       throw new UnauthorizedException(`Invalid tenant: ${subdomain}`);
     }
   }

@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json',
-        'Host': req.headers.get('host') || '',
+        'x-forwarded-host': req.headers.get('host') || '',
         'Cache-Control': 'no-cache',
       },
     });
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json',
-        'Host': req.headers.get('host') || '',
+        'x-forwarded-host': req.headers.get('host') || '',
         'Cache-Control': 'no-cache',
       },
       body: JSON.stringify(body),

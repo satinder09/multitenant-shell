@@ -1,19 +1,63 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Inject, Scope } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
 import { TenantPrismaService } from '../prisma-tenant/tenant-prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class RbacService {
-  constructor(private readonly tenantPrisma: TenantPrismaService) {}
+  constructor(
+    private readonly tenantPrisma: TenantPrismaService,
+    @Inject(REQUEST) private readonly request: Request
+  ) {}
 
   private checkTenantContext() {
+    console.log('[RBAC] checkTenantContext called');
+    
     try {
       // This will throw an error if no tenant context is available
-      this.tenantPrisma.db;
+      const db = this.tenantPrisma.db;
+      console.log('[RBAC] Tenant context is available, proceeding');
+      return; // Tenant context is available, all good
     } catch (error) {
+      console.log('[RBAC] No tenant context available, checking user privileges');
+      
+      // No tenant context available, check if user has super admin privileges
+      const user = (this.request as any).user;
+      const tenant = (this.request as any).tenant;
+      
+      console.log('[RBAC] User:', user ? { email: user.email, isSuperAdmin: user.isSuperAdmin, accessType: user.accessType } : 'null');
+      console.log('[RBAC] Tenant:', tenant ? { id: tenant.id } : 'null');
+      
+      if (user && user.isSuperAdmin && tenant) {
+        // Super admin accessing from a tenant subdomain
+        // The middleware has detected the tenant context, but the JWT doesn't have tenantContext
+        // This is allowed for super admins - they can access any tenant's resources
+        console.log(`[RBAC] Super admin ${user.email} accessing tenant ${tenant.id} resources - ALLOWING ACCESS`);
+        return; // Allow super admin access
+      }
+      
+      if (user && (user.accessType === 'secure_login' || user.accessType === 'impersonation')) {
+        // User is in a secure login or impersonation session but tenant context is missing
+        console.log('[RBAC] Secure login or impersonation session but no tenant context');
+        throw new BadRequestException(
+          'Secure login or impersonation session detected but tenant context is missing. Please try logging in again.'
+        );
+      }
+      
+      if (user && user.isSuperAdmin && !tenant) {
+        // Super admin on platform domain trying to access tenant resources
+        console.log('[RBAC] Super admin on platform domain');
+        throw new BadRequestException(
+          'Super admin detected. Please use "Secure Login" or "Impersonation" from the platform tenant management, or access the tenant directly from its subdomain.'
+        );
+      }
+      
+      // Regular user without tenant context
+      console.log('[RBAC] Regular user without tenant context');
       throw new BadRequestException(
         'RBAC operations require a tenant context. Please access this endpoint from a tenant subdomain (e.g., tenant1.localhost:3000) rather than the root domain.'
       );

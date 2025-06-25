@@ -2,7 +2,7 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
-import LayoutWrapper from './LayoutWrapper';
+import ContextAwareLayout from './ContextAwareLayout';
 
 export default function ConditionalLayoutWrapper({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -17,6 +17,6 @@ export default function ConditionalLayoutWrapper({ children }: { children: React
     return <>{children}</>;
   }
   
-  // For authenticated pages, use the layout wrapper
-  return <LayoutWrapper>{children}</LayoutWrapper>;
+  // For authenticated pages, use the context-aware layout
+  return <ContextAwareLayout>{children}</ContextAwareLayout>;
 } 

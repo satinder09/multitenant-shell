@@ -57,6 +57,7 @@ export class RbacController {
 
   @Get('permissions')
   async findAllPermissions() {
+    console.log('[RbacController] GET permissions endpoint called');
     return this.rbacService.findAllPermissions();
   }
 
