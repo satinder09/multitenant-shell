@@ -10,7 +10,7 @@
     font-family: var(--font-sans), system-ui, sans-serif;
     scroll-behavior: smooth;
 
-    --background: 0 0% 100%;
+    --background: 0 0% 98%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -71,7 +71,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-white text-gray-900 font-sans;
   }
 
   * {

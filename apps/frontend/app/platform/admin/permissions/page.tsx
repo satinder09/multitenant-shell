@@ -235,7 +235,7 @@ export default function PlatformPermissionsPage() {
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center"><Spinner size="lg" /></div>;
   }
-  
+
   if (error) {
     return <div className="min-h-screen flex items-center justify-center text-destructive">{error}</div>;
   }
@@ -323,14 +323,14 @@ export default function PlatformPermissionsPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardHeader>
+      <Card>
+        <CardHeader>
               <CardTitle>All Permissions ({permissions.length})</CardTitle>
               <CardDescription>
                 System permissions available for role assignment
               </CardDescription>
-            </CardHeader>
-            <CardContent>
+        </CardHeader>
+        <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -355,7 +355,7 @@ export default function PlatformPermissionsPage() {
                             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                               <Key className="h-5 w-5 text-primary" />
                             </div>
-                            <div>
+                <div>
                               <div className="font-medium font-mono text-sm">{permission.name}</div>
                               <div className="text-sm text-muted-foreground">
                                 ID: {permission.id.slice(0, 8)}...
@@ -382,7 +382,7 @@ export default function PlatformPermissionsPage() {
                         <td className="py-4 px-4">
                           <div className="text-sm text-muted-foreground">
                             Recently created
-                          </div>
+                </div>
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2 justify-end">
@@ -409,15 +409,15 @@ export default function PlatformPermissionsPage() {
                               )}
                               Delete
                             </Button>
-                          </div>
+                </div>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
+        </CardContent>
+      </Card>
         )}
       </div>
 

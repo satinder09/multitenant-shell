@@ -156,7 +156,7 @@ export default function AdminPermissionsPage() {
 
     confirm({
       title: 'Delete Permission',
-      message: `Are you sure you want to delete "${permissionName}"? ${message}`,
+      description: `Are you sure you want to delete "${permissionName}"? ${message}`,
       onConfirm: async () => {
         try {
           const response = await fetch(`/api/rbac/permissions/${permissionId}`, {

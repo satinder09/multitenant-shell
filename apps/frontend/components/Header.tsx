@@ -4,43 +4,48 @@ import { UserNav } from './UserNav'
 import ThemeToggle from './ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Bell, Github } from 'lucide-react'
+import { Search, Bell } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { usePlatform } from '@/context/PlatformContext'
 
 export default function Header() {
+  const { isPlatform } = usePlatform()
+  
   return (
-    <header className="h-16 bg-background border-b border-border flex items-center justify-between px-6">
-      {/* Left Section - Breadcrumb/Title */}
+    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+      {/* Left Section - Document Title */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Tenant Portal</span>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-900 font-medium">
+            {isPlatform ? 'Platform Admin' : 'Documents'}
+          </span>
         </div>
       </div>
 
       {/* Right Section - Actions and User */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {/* Search */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="Search"
-            className="w-64 pl-10 h-9 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-ring"
+            className="w-80 pl-10 h-9 bg-white border border-gray-200 rounded-md focus:border-gray-300 focus:ring-1 focus:ring-gray-300 text-sm"
           />
         </div>
 
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Notifications */}
-        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 relative">
-          <Bell className="h-4 w-4" />
+        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 relative hover:bg-gray-50">
+          <Bell className="h-4 w-4 text-gray-600" />
           <Badge 
             variant="destructive" 
-            className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
+            className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center bg-red-500"
           >
             2
           </Badge>
         </Button>
-
-        {/* Theme Toggle */}
-        <ThemeToggle />
 
         {/* User Nav */}
         <UserNav />
