@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Shield, UserCheck, Building2, Clock } from 'lucide-react';
-import { SecureLoginModal } from './SecureLoginModal';
-import { ImpersonationModal } from './ImpersonationModal';
+import { SecureLoginModal } from '../app/platform/tenants/components/SecureLoginModal';
+import { ImpersonationModal } from '../app/platform/tenants/components/ImpersonationModal';
 
 export interface TenantAccessOption {
   tenantId: string;
