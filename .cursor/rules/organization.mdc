@@ -1,0 +1,30 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Code Organization
+
+## File Structure
+- Group related functionality in modules/controllers
+- Use consistent naming conventions across the project
+- Separate concerns (auth, business logic, UI)
+- Keep components focused and single-purpose
+
+## Component Hierarchy & Usage
+- Priority 1: Use existing `@/components/ui-kit/` components for complex patterns
+- Priority 2: Use existing `@/components/ui/` components for basic elements
+- Priority 3: Use `@/utils/ui/` utilities for common operations
+- Priority 4: Extend existing components with props/interfaces
+- Priority 5: Create new components only if no suitable existing ones
+- Always check component library before implementing new UI patterns
+- Follow established component patterns for consistency
+- Use TypeScript interfaces from existing components when possible
+- Document component usage and dependencies clearly
+
+## Code Quality
+- Write self-documenting code with clear variable names
+- Add proper comments for complex logic
+- Use consistent formatting and style
+- Implement proper error handling throughout
+

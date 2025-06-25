@@ -8,6 +8,7 @@ import { TenantModule }         from './modules/tenant/tenant.module';
 import { PrismaTenantModule }   from './modules/prisma-tenant/prisma-tenant.module';
 import { AuthModule }           from './modules/auth/auth.module';
 import { RbacModule }           from './modules/rbac/rbac.module';
+import { PlatformAdminModule }  from './modules/platform-admin/platform-admin.module';
 import { EvictionScheduler }    from './modules/prisma-tenant/eviction-scheduler.service';
 import { TenantResolverMiddleware } from './middleware/tenant-resolver.middleware';
 
@@ -20,6 +21,7 @@ import { TenantResolverMiddleware } from './middleware/tenant-resolver.middlewar
     PrismaTenantModule.forRoot(),
     AuthModule,  // <-- make sure AuthModule is here
     RbacModule,  // <-- add RBAC module
+    PlatformAdminModule, // <-- add Platform Admin module
     // ...your other feature modules
   ],
   providers: [EvictionScheduler],

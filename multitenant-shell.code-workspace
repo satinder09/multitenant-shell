@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "multitenant-shell",
+			"path": "."
+		},
+		{
+			"name": ".cursor",
+			"path": "../.cursor"
+		}
+	],
+	"settings": {}
+}

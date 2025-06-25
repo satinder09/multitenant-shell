@@ -58,6 +58,11 @@ export function AdvancedDataTable<TData>({ data: initialData, columns, allowDrag
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [columnSearch, setColumnSearch] = React.useState("")
 
+  // Sync internal data state with prop changes
+  React.useEffect(() => {
+    setData(initialData)
+  }, [initialData])
+
   const sensors = useSensors(
     useSensor(MouseSensor),
     useSensor(TouchSensor),

@@ -1,0 +1,26 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Development Workflow
+
+## Before Making Changes
+- Understand the current architecture and data flow
+- Check existing implementations to avoid conflicts
+- Plan the changes with proper error handling
+- Consider security implications of any changes
+
+## During Development
+- Test incrementally - don't make too many changes at once
+- Use proper logging to track execution flow
+- Handle edge cases and error conditions
+- Maintain type safety throughout the codebase
+
+## After Making Changes
+- Test the complete flow end-to-end
+- Check for linting errors and fix them
+- Verify build process works correctly
+- Test error scenarios and edge cases
+- Update documentation if needed
+

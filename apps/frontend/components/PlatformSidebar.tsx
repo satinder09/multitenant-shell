@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Building2, Shield, Key, Settings, MoreHorizontal } from 'lucide-react';
+import { Home, Building2, Shield, Key, Users, Settings, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -103,6 +103,12 @@ export default function PlatformSidebar() {
         </SidebarSection>
 
         <SidebarSection title="Administration">
+          <SidebarLink 
+            icon={<Users />} 
+            text="Users" 
+            href="/platform/admin/users"
+            isActive={isActive('/platform/admin/users')}
+          />
           <SidebarLink 
             icon={<Shield />} 
             text="Roles" 
