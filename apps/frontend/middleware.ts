@@ -49,6 +49,22 @@ export async function middleware(request: NextRequest) {
           response.cookies.delete('Authentication');
           return response;
         }
+        
+        // If user has tenant context, rewrite tenant routes to the tenant group
+        if (pathname === '/' || pathname.startsWith('/page1') || pathname.startsWith('/page2') || pathname.startsWith('/admin')) {
+          console.log(`[Middleware] Rewriting tenant route from ${pathname} to /(tenant)${pathname}`);
+          const url = request.nextUrl.clone();
+          url.pathname = `/(tenant)${pathname}`;
+          return NextResponse.rewrite(url);
+        }
+        
+        // Block access to platform routes from tenant subdomains
+        if (pathname.startsWith('/platform')) {
+          console.log(`[Middleware] Blocking platform route ${pathname} from tenant subdomain`);
+          const url = request.nextUrl.clone();
+          url.pathname = '/';
+          return NextResponse.redirect(url);
+        }
       } 
       // SCENARIO 2: Logged into a PLATFORM/MASTER session.
       else {

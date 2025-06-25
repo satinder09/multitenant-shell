@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ComboBoxTags from '@/components/ui-kit/ComboBoxTags';
 import { Plus, Edit, Trash2, Shield } from 'lucide-react';
 import { toastNotify } from '@/utils/ui/toastNotify';
 import { confirm, DialogOverlay } from '@/utils/ui/dialogUtils';
@@ -251,143 +251,160 @@ export default function AdminRolesPage() {
   const safePermissions = Array.isArray(permissions) ? permissions : [];
 
   if (isPlatform) {
-    return <div className="text-red-500 p-4">This page is only available in a tenant context.</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Tenant Context Required</h3>
+          <p className="text-muted-foreground max-w-md">
+            This page is only available in a tenant context. Please access it from a tenant subdomain.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  if (loading) {
+  if (isRootDomain) {
     return (
-      <div className="container mx-auto py-10">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading roles...</div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Tenant Access Required</h3>
+          <p className="text-muted-foreground max-w-md">
+            Role management requires tenant context. Please access from a tenant subdomain (e.g., tenant1.localhost:3000).
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-10">
-      {isRootDomain && (
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">
-                Tenant Context Required
-              </h3>
-              <div className="mt-2 text-sm text-yellow-700">
-                <p>
-                  Role and permission management is only available within a specific tenant context. 
-                  To manage roles and permissions, please access this page from a tenant subdomain 
-                  (e.g., <code className="bg-yellow-100 px-1 rounded">tenant1.localhost:3000</code>).
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Role Management</h1>
-          <p className="text-muted-foreground">Manage roles and their permissions</p>
+          <h1 className="text-3xl font-bold tracking-tight">Roles</h1>
+          <p className="text-muted-foreground">
+            Manage roles and assign permissions to control user access.
+          </p>
         </div>
-        <Button onClick={openCreateDialog} disabled={isRootDomain}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-2 h-4 w-4" />
           Create Role
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {(Array.isArray(roles) ? roles : []).length === 0 ? (
-          <div className="col-span-full text-center py-12">
-            <Shield className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground mb-2">
-              {isRootDomain ? 'No Roles Available' : 'No Roles Found'}
-            </h3>
-            <p className="text-muted-foreground">
-              {isRootDomain 
-                ? 'Roles are only available within a tenant context. Please access this page from a tenant subdomain.'
-                : 'No roles have been created yet. Create your first role to get started.'
-              }
-            </p>
+      {/* Content */}
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading roles...</p>
           </div>
-        ) : (
-          (Array.isArray(roles) ? roles : []).map((role) => (
-            <Card key={role.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="w-5 h-5" />
-                      {role.name}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {role.userRoles.length} users assigned
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(role)}
-                      disabled={isRootDomain}
+        </div>
+      ) : roles.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Shield className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No roles found</h3>
+            <p className="text-muted-foreground text-center mb-6 max-w-sm">
+              Get started by creating your first role to organize user permissions effectively.
+            </p>
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create First Role
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Role Management</CardTitle>
+            <CardDescription>
+              Manage roles and their permission assignments for your tenant.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Role</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Permissions</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Users</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Created</th>
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roles.map((role, index) => (
+                    <tr 
+                      key={role.id} 
+                      className={`border-b border-border hover:bg-muted/50 transition-colors ${
+                        index % 2 === 0 ? 'bg-muted/20' : 'bg-background'
+                      }`}
                     >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteRole(role.id, role.name)}
-                      disabled={isRootDomain}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-sm font-medium">Permissions</Label>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {role.rolePermissions.map((rp) => (
-                        <Badge key={rp.permission.id} variant="secondary">
-                          {rp.permission.name}
-                        </Badge>
-                      ))}
-                      {role.rolePermissions.length === 0 && (
-                        <span className="text-sm text-muted-foreground">No permissions</span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Assigned Users</Label>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {role.userRoles.slice(0, 3).map((ur) => (
-                        <Badge key={ur.user.id} variant="outline">
-                          {ur.user.name || ur.user.email}
-                        </Badge>
-                      ))}
-                      {role.userRoles.length > 3 && (
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                            <Shield className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="font-medium">{role.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {role.rolePermissions.slice(0, 3).map((rp) => (
+                            <Badge key={rp.permission.id} variant="secondary" className="text-xs">
+                              {rp.permission.name}
+                            </Badge>
+                          ))}
+                          {role.rolePermissions.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{role.rolePermissions.length - 3} more
+                            </Badge>
+                          )}
+                          {role.rolePermissions.length === 0 && (
+                            <span className="text-sm text-muted-foreground">No permissions</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
                         <Badge variant="outline">
-                          +{role.userRoles.length - 3} more
+                          {role.userRoles.length} users
                         </Badge>
-                      )}
-                      {role.userRoles.length === 0 && (
-                        <span className="text-sm text-muted-foreground">No users assigned</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-muted-foreground">
+                        Recently created
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(role)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteRole(role.id, role.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
 
       {/* Create Role Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -410,48 +427,21 @@ export default function AdminRolesPage() {
             </div>
             <div>
               <Label>Permissions</Label>
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  if (value && !formData.permissionIds.includes(value)) {
-                    setFormData({
-                      ...formData,
-                      permissionIds: [...formData.permissionIds, value],
-                    });
-                  }
+              <ComboBoxTags
+                placeholder="Select permissions..."
+                options={safePermissions.map(permission => ({
+                  value: permission.id,
+                  label: permission.name,
+                  description: `Permission: ${permission.name}`
+                }))}
+                selected={formData.permissionIds}
+                onChange={(selectedIds) => {
+                  setFormData({
+                    ...formData,
+                    permissionIds: selectedIds,
+                  });
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select permissions" />
-                </SelectTrigger>
-                <SelectContent>
-                  {safePermissions.map((permission) => (
-                    <SelectItem key={permission.id} value={permission.id}>
-                      {permission.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {formData.permissionIds.map((permissionId) => {
-                  const permission = safePermissions.find(p => p.id === permissionId);
-                  return (
-                    <Badge
-                      key={permissionId}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          permissionIds: formData.permissionIds.filter(id => id !== permissionId),
-                        });
-                      }}
-                    >
-                      {permission?.name} ×
-                    </Badge>
-                  );
-                })}
-              </div>
+              />
             </div>
           </div>
           <DialogFooter>
@@ -486,48 +476,21 @@ export default function AdminRolesPage() {
             </div>
             <div>
               <Label>Permissions</Label>
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  if (value && !formData.permissionIds.includes(value)) {
-                    setFormData({
-                      ...formData,
-                      permissionIds: [...formData.permissionIds, value],
-                    });
-                  }
+              <ComboBoxTags
+                placeholder="Select permissions..."
+                options={safePermissions.map(permission => ({
+                  value: permission.id,
+                  label: permission.name,
+                  description: `Permission: ${permission.name}`
+                }))}
+                selected={formData.permissionIds}
+                onChange={(selectedIds) => {
+                  setFormData({
+                    ...formData,
+                    permissionIds: selectedIds,
+                  });
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select permissions" />
-                </SelectTrigger>
-                <SelectContent>
-                  {safePermissions.map((permission) => (
-                    <SelectItem key={permission.id} value={permission.id}>
-                      {permission.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {formData.permissionIds.map((permissionId) => {
-                  const permission = safePermissions.find(p => p.id === permissionId);
-                  return (
-                    <Badge
-                      key={permissionId}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          permissionIds: formData.permissionIds.filter(id => id !== permissionId),
-                        });
-                      }}
-                    >
-                      {permission?.name} ×
-                    </Badge>
-                  );
-                })}
-              </div>
+              />
             </div>
           </div>
           <DialogFooter>

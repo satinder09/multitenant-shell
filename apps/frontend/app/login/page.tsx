@@ -5,6 +5,7 @@
 import { FormEvent, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { usePlatform } from '@/context/PlatformContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ import { rateLimiter, validateEmail, sanitizeInput } from '@/lib/security';
 function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
+  const { isPlatform, tenantSubdomain } = usePlatform();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -92,6 +94,8 @@ function LoginForm() {
     try {
       await login({ email: sanitizedEmail, password: sanitizedPassword });
       rateLimiter.reset('login');
+      
+      // Redirect to root - middleware will handle the appropriate routing
       router.push('/');
     } catch (err: unknown) {
       rateLimiter.recordFailure('login');
