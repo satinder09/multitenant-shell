@@ -108,11 +108,13 @@ export default function MultiSelect({
             id={id}
             disabled={disabled}
           >
-            {selectedLabels.length > 0 ? (
-  maxDisplayCount && selectedLabels.length > maxDisplayCount
-    ? `${selectedLabels.length} selected`
-    : selectedLabels.join(', ')
-) : placeholder}
+            <span className="truncate">
+              {selectedLabels.length > 0 ? (
+                maxDisplayCount && selectedLabels.length > maxDisplayCount
+                  ? `${selectedLabels.length} selected`
+                  : selectedLabels.join(', ')
+              ) : placeholder}
+            </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -122,7 +124,7 @@ export default function MultiSelect({
           side="bottom"
           sideOffset={4}
           forceMount
-          className="min-w-[var(--radix-popover-trigger-width)] p-0 border border-border rounded-md shadow-md bg-popover"
+          className="w-[var(--radix-popover-trigger-width)] max-w-md p-0 border border-border rounded-md shadow-md bg-popover"
         >
           <Command>
             <CommandInput

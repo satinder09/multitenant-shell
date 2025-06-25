@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
-  const backend = process.env.NEXT_PUBLIC_API_BASE_URL!;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   const originalHost = req.headers.get('host') || '';
   const cookie = req.headers.get('cookie') || '';
 
-  const resp = await fetch(`${backend}/auth/logout`, {
+  const resp = await fetch(`${backendUrl}/auth/logout`, {
     method: 'POST',
     headers: {
       'x-forwarded-host': originalHost,

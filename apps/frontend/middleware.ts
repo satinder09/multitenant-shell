@@ -1,49 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { decodeJwt } from 'jose';
+import { isPlatformHost, getTenantSubdomain } from './lib/contextUtils';
 
 interface JwtPayload {
   tenantId?: string;
   isSuperAdmin?: boolean;
 }
 
-// Function to get the root domain from the hostname
-function getRootDomain(hostname: string): string {
-  // Remove port if present
-  const hostWithoutPort = hostname.split(':')[0];
-  
-  // Define known root domains
-  const rootDomains = ['localhost', 'lvh.me', '127.0.0.1'];
-  
-  // Check if it's a root domain
-  if (rootDomains.includes(hostWithoutPort)) {
-    return hostWithoutPort;
-  }
-  
-  // For subdomain cases like tenant1.localhost or tenant1.lvh.me
-  const parts = hostWithoutPort.split('.');
-  if (parts.length >= 2) {
-    // Return the root domain (last two parts for most cases)
-    return parts.slice(-2).join('.');
-  }
-  
-  // Fallback
-  return hostWithoutPort;
-}
 
-// Function to check if current hostname is a tenant domain
-function checkIsTenantDomain(hostname: string): boolean {
-  const hostWithoutPort = hostname.split(':')[0];
-  const rootDomains = ['localhost', 'lvh.me', '127.0.0.1'];
-  
-  // If it's exactly a root domain, it's not a tenant domain
-  if (rootDomains.includes(hostWithoutPort)) {
-    return false;
-  }
-  
-  // If it has a subdomain (e.g., tenant1.localhost), it's a tenant domain
-  const parts = hostWithoutPort.split('.');
-  return parts.length > 1;
-}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -55,8 +19,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const cookie = request.cookies.get('Authentication');
-  const rootDomain = getRootDomain(hostname);
-  const isTenantDomain = checkIsTenantDomain(hostname);
+  const isPlatform = isPlatformHost(hostname);
+  const tenantSubdomain = getTenantSubdomain(hostname);
 
   // If there's no auth cookie, redirect to login for any protected path
   if (!cookie && pathname !== '/login') {
@@ -76,9 +40,9 @@ export async function middleware(request: NextRequest) {
 
       // SCENARIO 1: Logged into a TENANT session.
       if (payload.tenantId) {
-        // If they have a tenant token but try to access the MASTER domain, log them out.
-        if (!isTenantDomain) {
-          console.log('Tenant session trying to access master domain. Denying.');
+        // If they have a tenant token but try to access the PLATFORM domain, log them out.
+        if (isPlatform) {
+          console.log('Tenant session trying to access platform domain. Denying.');
           const loginUrl = new URL('/login', request.url);
           // By clearing the cookie and redirecting, we force a clean login.
           const response = NextResponse.redirect(loginUrl);
@@ -86,11 +50,11 @@ export async function middleware(request: NextRequest) {
           return response;
         }
       } 
-      // SCENARIO 2: Logged into a MASTER session.
+      // SCENARIO 2: Logged into a PLATFORM/MASTER session.
       else {
-        // If they have a master token and are NOT a super admin, block access to tenant domains.
-        if (isTenantDomain && !payload.isSuperAdmin) {
-          console.log('Non-superadmin master session trying to access tenant domain. Denying.');
+        // If they have a platform token and are NOT a super admin, block access to tenant domains.
+        if (!isPlatform && !payload.isSuperAdmin) {
+          console.log('Non-superadmin platform session trying to access tenant domain. Denying.');
           const loginUrl = new URL('/login', request.url);
           const response = NextResponse.redirect(loginUrl);
           response.cookies.delete('Authentication');

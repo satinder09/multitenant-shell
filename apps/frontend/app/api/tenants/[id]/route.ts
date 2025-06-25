@@ -6,7 +6,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   const apiUrl = `${backendUrl}/tenants/${id}`;
 
   try {
@@ -36,7 +36,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   const apiUrl = `${backendUrl}/tenants/${id}`;
   const body = await req.json();
 

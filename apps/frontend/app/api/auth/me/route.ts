@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // CRITICAL: If the backend URL isn't set, we must not proceed.
   // This prevents an infinite loop where the proxy calls itself.

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   if (!backendUrl) {
     return NextResponse.json({ message: 'API base URL is not configured' }, { status: 500 });
   }

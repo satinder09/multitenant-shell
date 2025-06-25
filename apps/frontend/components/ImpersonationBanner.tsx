@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from './ui/alert';
 import { Button } from '@/components/ui/button';
 import { UserCheck, LogOut, Shield } from 'lucide-react';
 import { useState } from 'react';

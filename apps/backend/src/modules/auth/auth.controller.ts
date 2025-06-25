@@ -59,20 +59,21 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
     // Log for debugging
-    console.log('Clearing Authentication cookie for .lvh.me, lvh.me, /');
+    console.log(`Clearing Authentication cookie for .${baseDomain}, ${baseDomain}, /`);
     res.clearCookie('Authentication', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      domain: '.lvh.me',
+      domain: `.${baseDomain}`,
       path: '/',
     });
     res.clearCookie('Authentication', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      domain: 'lvh.me',
+      domain: baseDomain,
       path: '/',
     });
     res.clearCookie('Authentication', {

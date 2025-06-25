@@ -1,5 +1,7 @@
 // apps/frontend/lib/api.ts
 
+import { NextRequest } from 'next/server';
+
 export interface LoginDto {
   email: string;
   password: string;
@@ -116,3 +118,27 @@ export const tenants = {
   create: createTenant,
   delete: deleteTenant,
 };
+
+export function getBackendUrl(req: Request | NextRequest) {
+  // Use the configured backend URL from environment variables
+  const configuredBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  
+  if (configuredBackendUrl) {
+    console.log('[api] Using configured backend URL:', configuredBackendUrl);
+    return configuredBackendUrl;
+  }
+  
+  // Fallback to dynamic construction if no environment variable is set
+  const host = req.headers.get('host');
+  const frontendPort = process.env.NEXT_PUBLIC_FRONTEND_PORT || '3000';
+  const backendPort = process.env.BACKEND_PORT || '3001'; // Changed from PORT to BACKEND_PORT
+  
+  let backendHost = host;
+  if (host && frontendPort !== backendPort) {
+    backendHost = host.replace(`:${frontendPort}`, `:${backendPort}`);
+  }
+  
+  const backendUrl = `http://${backendHost}`;
+  console.log('[api] Constructed backend URL:', backendUrl);
+  return backendUrl;
+}

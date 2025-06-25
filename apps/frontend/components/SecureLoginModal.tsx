@@ -23,7 +23,7 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
   const handleSecureLogin = async () => {
     setLoading(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(`${backendUrl}/tenant-access/secure-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,7 +103,7 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
             <div className="text-sm font-medium mb-1">Access Details</div>
             <div className="text-xs text-muted-foreground space-y-1">
               <div>Tenant: {tenant.tenantName}</div>
-              <div>Subdomain: {tenant.subdomain}.lvh.me</div>
+              <div>Subdomain: {tenant.subdomain}.{process.env.NEXT_PUBLIC_BASE_DOMAIN}</div>
               <div>Access Level: {tenant.accessLevel}</div>
             </div>
           </div>

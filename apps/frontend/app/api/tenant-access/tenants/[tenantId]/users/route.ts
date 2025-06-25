@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tenantId: string } }
+  context: { params: Promise<{ tenantId: string }> }
 ) {
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const authToken = request.cookies.get('Authentication')?.value;
-    const { tenantId } = params;
+    const { tenantId } = await context.params;
 
     if (!authToken) {
       return NextResponse.json(

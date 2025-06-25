@@ -13,6 +13,8 @@ To build a fully domain-independent, enterprise-grade SaaS application shell des
 - **Extensibility by Design:** The architecture will be built around a plugin model for future business modules.
 - **Automated & Scalable:** Tenant lifecycle, deployments, and infrastructure will be managed through code and automation.
 - **Developer Experience:** The shell must be easy to understand, extend, and maintain.
+- **Environment Flexibility:** All domains, ports, and configurations must be environment-driven.
+- **Component Reusability:** Prioritize existing user-defined components over creating new ones.
 
 ---
 
@@ -35,10 +37,20 @@ This phase focuses on establishing a robust monorepo structure, formalizing the 
     - [x] Master database schema with `MasterUser` and `Tenant` models.
     - [x] Centralized login authenticating against the master database.
     - [x] API endpoint to create a new tenant.
+- [x] **Environment Configuration**
+    - [x] Implement environment-driven domain and port configuration.
+    - [x] Remove all hardcoded domains and ports from codebase.
+    - [x] Establish consistent environment variable naming conventions.
+    - [x] Add environment validation and fallback mechanisms.
+- [x] **Component Architecture**
+    - [x] Establish component hierarchy (ui-kit → ui → utils → extend → create new).
+    - [x] Create reusable UI components and utilities.
+    - [x] Implement component usage guidelines and patterns.
 - [x] **Documentation**
     - [x] Create a comprehensive root `README.md` with setup instructions.
     - [x] Create a `.gitignore` file with appropriate rules for the monorepo.
     - [x] Establish this `PROJECT_PLAN.md` for progress tracking.
+    - [x] Create comprehensive development rules and guidelines.
 
 ---
 
@@ -50,6 +62,16 @@ This phase implements the complete RBAC system, which is the cornerstone of the 
 - [x] **Data Model**
     - [x] Define `Role` and `Permission` models in the master Prisma schema.
     - [x] Define `TenantUserRole` and `RolePermission` models to link users, roles, and permissions within a tenant's scope.
+- [x] **Authentication & Authorization**
+    - [x] Implement JWT-based authentication with tenant context.
+    - [x] Create tenant-aware authentication middleware.
+    - [x] Implement secure session management with proper cookie handling.
+    - [x] Add tenant isolation validation on all requests.
+- [x] **Master-First Workflow**
+    - [x] Implement master user dashboard for tenant management.
+    - [x] Create secure login and impersonation capabilities.
+    - [x] Add tenant access control and permission validation.
+    - [x] Implement audit logging for all tenant access events.
 - [ ] **Backend**
     - [ ] Implement CRUD APIs for managing Roles and Permissions.
     - [ ] Implement APIs for assigning Roles to Users for a specific Tenant.
@@ -82,13 +104,18 @@ This phase automates the tenant lifecycle from onboarding to branding and introd
     - [x] Add tenant context middleware for automatic database switching.
     - [x] Implement tenant-specific connection management and cleanup.
     - [x] Add tenant database backup and restore capabilities.
-- [ ] **SAAS based secure Tenant Impersonation** *(Status: ❌ NOT STARTED)*
-    - [ ] Implement secure tenant impersonation system with audit logging.
-    - [ ] Add permission-based impersonation controls (super admin only).
-    - [ ] Create impersonation session management with automatic timeout.
-    - [ ] Implement comprehensive audit trail for all impersonation actions.
-    - [ ] Add impersonation UI for support and debugging purposes.
-    - [ ] Create impersonation API endpoints with proper security validation.
+- [x] **SAAS based secure Tenant Impersonation** *(Status: ✅ COMPLETED)*
+    - [x] Implement secure tenant impersonation system with audit logging.
+    - [x] Add permission-based impersonation controls (super admin only).
+    - [x] Create impersonation session management with automatic timeout.
+    - [x] Implement comprehensive audit trail for all impersonation actions.
+    - [x] Add impersonation UI for support and debugging purposes.
+    - [x] Create impersonation API endpoints with proper security validation.
+- [x] **Subdomain-Based Tenant Resolution**
+    - [x] Implement tenant resolution from subdomain (e.g., tenant1.lvh.me).
+    - [x] Add middleware for automatic tenant context detection.
+    - [x] Implement cross-subdomain authentication with proper cookie handling.
+    - [x] Add tenant isolation validation and security checks.
 - [ ] **Theming Engine**
     - [ ] Add theme-related fields (e.g., `primaryColor`, `logoUrl`) to the `Tenant` model.
     - [ ] Create an API endpoint for tenants to manage their theme settings.
@@ -198,5 +225,54 @@ This final phase prepares the shell for production deployment with a focus on ob
     - [ ] Create performance monitoring and alerting.
     - [ ] Implement auto-scaling based on load.
     - [ ] Add performance optimization and caching strategies.
-    - [ ] Implement monitoring and alerting.
-    - [ ] Implement performance optimization and caching strategies. 
+
+---
+
+## 4. Key Learnings & Best Practices
+
+### Environment Configuration
+- **Never use hardcoded domains or ports** - always use environment variables
+- **Use consistent naming conventions** across backend and frontend
+- **Validate environment variables** at startup with proper error messages
+- **Test with different configurations** to ensure flexibility
+
+### Component Architecture
+- **Always check existing user-defined components first** before creating new ones
+- **Follow component hierarchy**: ui-kit → ui → utils → extend → create new
+- **Use established patterns** in existing user-defined components
+- **Leverage existing TypeScript interfaces** from user-defined components
+
+### Security & Authentication
+- **Implement tenant isolation** at every level (database, API, UI)
+- **Use secure session management** with proper cookie handling
+- **Audit all authentication events** for security compliance
+- **Validate tenant context** on every request
+
+### Development Workflow
+- **Test incrementally** - don't make too many changes at once
+- **Use proper logging** to track execution flow
+- **Handle edge cases** and error conditions
+- **Maintain type safety** throughout the codebase
+- **Update documentation** when making architectural changes
+
+---
+
+## 5. Next Steps
+
+### Immediate Priorities
+1. **Complete RBAC Implementation**: Finish role and permission management
+2. **Enhance Security**: Add MFA and SSO capabilities
+3. **Improve Testing**: Add comprehensive test coverage
+4. **Documentation**: Update API documentation and user guides
+
+### Medium-term Goals
+1. **Billing Integration**: Implement subscription management
+2. **Advanced Theming**: Complete dynamic theming engine
+3. **Performance Optimization**: Add caching and connection pooling
+4. **Monitoring**: Implement comprehensive observability
+
+### Long-term Vision
+1. **Plugin Architecture**: Build extensible plugin system
+2. **Enterprise Features**: Add advanced compliance and security
+3. **Scalability**: Implement horizontal scaling and sharding
+4. **Marketplace**: Create integration marketplace 

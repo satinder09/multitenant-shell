@@ -18,7 +18,13 @@ export interface TenantAccessOption {
   lastAccessed?: Date;
 }
 
-export function MasterDashboard() {
+interface MasterDashboardProps {
+  showNavigation?: boolean;
+}
+
+export function MasterDashboard({ showNavigation = false }: MasterDashboardProps) {
+  console.log('[MasterDashboard] Rendering MasterDashboard component with showNavigation:', showNavigation);
+  
   const [tenants, setTenants] = useState<TenantAccessOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTenant, setSelectedTenant] = useState<TenantAccessOption | null>(null);
@@ -26,6 +32,7 @@ export function MasterDashboard() {
   const [showImpersonation, setShowImpersonation] = useState(false);
 
   useEffect(() => {
+    console.log('[MasterDashboard] useEffect: Fetching tenant access options');
     fetchTenantAccessOptions();
   }, []);
 
@@ -37,12 +44,13 @@ export function MasterDashboard() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('[MasterDashboard] Fetched tenant access options:', data);
         setTenants(data);
       } else {
-        console.error('Failed to fetch tenant access options');
+        console.error('[MasterDashboard] Failed to fetch tenant access options, status:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching tenant access options:', error);
+      console.error('[MasterDashboard] Error fetching tenant access options:', error);
     } finally {
       setLoading(false);
     }
@@ -180,7 +188,7 @@ function TenantCard({
             <CardTitle className="text-lg">{tenant.tenantName}</CardTitle>
             <CardDescription className="flex items-center mt-1">
               <Building2 className="h-4 w-4 mr-1" />
-              {tenant.subdomain}.lvh.me
+              {tenant.subdomain}.{process.env.NEXT_PUBLIC_BASE_DOMAIN}
             </CardDescription>
           </div>
           <Badge className={getAccessLevelColor(tenant.accessLevel)}>

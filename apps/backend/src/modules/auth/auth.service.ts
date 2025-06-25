@@ -158,7 +158,9 @@ export class AuthService {
     await this.logTenantAccess(userId, tenantId, 'SECURE_LOGIN', expiresAt, reason, ipAddress, userAgent);
 
     const accessToken = this.jwt.sign(payload);
-    const redirectUrl = `http://${tenant.subdomain}.lvh.me:3000`;
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
+    const redirectUrl = `http://${tenant.subdomain}.${baseDomain}:${frontendPort}`;
 
     return { accessToken, redirectUrl };
   }
@@ -237,7 +239,9 @@ export class AuthService {
     });
 
     const accessToken = this.jwt.sign(payload);
-    const redirectUrl = `http://${tenant.subdomain}.lvh.me:3000`;
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
+    const redirectUrl = `http://${tenant.subdomain}.${baseDomain}:${frontendPort}`;
 
     return { accessToken, redirectUrl };
   }
@@ -273,7 +277,9 @@ export class AuthService {
     });
 
     // Redirect back to master instance
-    const redirectUrl = 'http://lvh.me:3000';
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
+    const redirectUrl = `http://${baseDomain}:${frontendPort}`;
 
     return { redirectUrl };
   }

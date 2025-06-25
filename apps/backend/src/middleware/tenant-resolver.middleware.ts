@@ -53,12 +53,13 @@ export class TenantResolverMiddleware implements NestMiddleware {
   }
 
   private isRootDomain(hostname: string): boolean {
-    // Define root domains that should bypass tenant resolution
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
     const rootDomains = [
       'localhost',
-      'lvh.me',
+      baseDomain,
       '127.0.0.1',
-      '', // Empty string for cases where hostname is just the domain
+      '',
     ];
     
     // Check if the hostname exactly matches a root domain
@@ -66,7 +67,7 @@ export class TenantResolverMiddleware implements NestMiddleware {
       return true;
     }
     
-    // Check if it's a root domain with port (e.g., localhost:3000, lvh.me:3000)
+    // Check if it's a root domain with port (e.g., localhost:${frontendPort}, ${baseDomain}:${frontendPort})
     const [domain, port] = hostname.split(':');
     if (rootDomains.includes(domain)) {
       return true;
@@ -78,16 +79,18 @@ export class TenantResolverMiddleware implements NestMiddleware {
   private extractSubdomain(hostname: string): string {
     // Remove port if present
     const hostWithoutPort = hostname.split(':')[0];
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
     
     // Split by dots and get the first part as subdomain
     const parts = hostWithoutPort.split('.');
     
-    // For localhost:3000 or lvh.me:3000, there's no subdomain
+    // For localhost:${frontendPort} or ${baseDomain}:${frontendPort}, there's no subdomain
     if (parts.length <= 1) {
       throw new Error('No subdomain found in hostname');
     }
     
-    // For tenant1.localhost or tenant1.lvh.me, the first part is the subdomain
+    // For tenant1.localhost or tenant1.${baseDomain}, the first part is the subdomain
     return parts[0];
   }
 }

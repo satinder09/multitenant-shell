@@ -41,6 +41,17 @@
 - **Add comprehensive logging** for debugging and monitoring
 - **Handle edge cases** (missing data, invalid requests, etc.)
 
+### Environment Configuration
+- **NEVER use hardcoded domains or ports** - always use environment variables
+- **Use consistent environment variable naming** across backend and frontend
+- **Backend environment variables**: `BASE_DOMAIN`, `FRONTEND_PORT`, `PORT`
+- **Frontend environment variables**: `NEXT_PUBLIC_BASE_DOMAIN`, `NEXT_PUBLIC_BACKEND_URL`, `FRONTEND_PORT`
+- **Validate environment variables** at startup with proper error messages
+- **Use fallback values** for development (e.g., `|| 'lvh.me'`, `|| '3000'`)
+- **Update ALL references** when changing domain/port configuration
+- **Test with different environment configurations** to ensure flexibility
+- **Document required environment variables** in README and setup guides
+
 ## 🎨 Frontend Development (Next.js)
 
 ### State Management
@@ -71,6 +82,27 @@
 - **Use proper JSX escaping** for dynamic content
 - **Implement proper error handling** with try-catch blocks
 - **Add proper TypeScript interfaces** for all data structures
+
+### Environment Configuration
+- **Use `NEXT_PUBLIC_` prefix** for client-side environment variables
+- **Never expose sensitive variables** to the client (no `NEXT_PUBLIC_` prefix)
+- **Use consistent environment variable naming** with backend
+- **Validate environment variables** in API routes and components
+- **Handle missing environment variables** gracefully with fallbacks
+- **Update all hardcoded URLs** when changing configuration
+- **Test with different domain/port configurations** for flexibility
+
+### Component & UI Development
+- **ALWAYS check existing user-defined components first** before creating new ones
+- **Use `@/components/ui-kit/` components** for complex UI patterns (DataTable, DialogForm, etc.)
+- **Use `@/components/ui/` components** for basic UI elements (Button, Input, Card, etc.)
+- **Use `@/utils/ui/` utilities** for common UI operations (dialogs, sheets, toasts, etc.)
+- **Check `@/components/` for existing business logic components** before duplicating
+- **Extend existing components** rather than creating similar ones from scratch
+- **Follow established patterns** in existing user-defined components
+- **Document new components** if they don't fit existing patterns
+- **Use consistent naming conventions** with existing component library
+- **Leverage existing TypeScript interfaces** from user-defined components
 
 ## 🔒 Security Best Practices
 
@@ -148,6 +180,17 @@
 - **Separate concerns** (auth, business logic, UI)
 - **Keep components focused** and single-purpose
 
+### Component Hierarchy & Usage
+- **Priority 1**: Use existing `@/components/ui-kit/` components for complex patterns
+- **Priority 2**: Use existing `@/components/ui/` components for basic elements
+- **Priority 3**: Use `@/utils/ui/` utilities for common operations
+- **Priority 4**: Extend existing components with props/interfaces
+- **Priority 5**: Create new components only if no suitable existing ones
+- **Always check component library** before implementing new UI patterns
+- **Follow established component patterns** for consistency
+- **Use TypeScript interfaces** from existing components when possible
+- **Document component usage** and dependencies clearly
+
 ### Code Quality
 - **Write self-documenting code** with clear variable names
 - **Add proper comments** for complex logic
@@ -164,6 +207,9 @@
 - [ ] Error handling works gracefully
 - [ ] Build process completes without errors
 - [ ] Linting passes without warnings
+- [ ] UI components use existing user-defined components where appropriate
+- [ ] No duplicate components created when suitable existing ones exist
+- [ ] Component library is properly utilized across the application
 
 ### Automated Testing (Future)
 - [ ] Unit tests for business logic
@@ -205,3 +251,8 @@
 - **Reset loading states** in all async operations
 - **Handle authentication state** properly across navigation
 - **Use proper error boundaries** for graceful failure handling
+- **Validate environment variables** before starting services
+- **Check for hardcoded domains/ports** when debugging connection issues
+- **Update ALL environment references** when changing configuration
+- **Check existing user-defined components** before creating new UI elements
+- **Use component library hierarchy** (ui-kit → ui → utils → extend → create new)

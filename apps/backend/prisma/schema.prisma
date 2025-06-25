@@ -35,6 +35,7 @@ model User {
   permissions TenantUserPermission[]
   initiatedImpersonations ImpersonationSession[] @relation("OriginalUser")
   accessLogs TenantAccessLog[]
+  userRoles UserRole[]
 }
 
 model TenantUserPermission {
@@ -110,4 +111,37 @@ enum AccessType {
   SECURE_LOGIN
   IMPERSONATION
   DIRECT_ACCESS
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  userRoles   UserRole[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  rolePermissions RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id])
+  role   Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
 }

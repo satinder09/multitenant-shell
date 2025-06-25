@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Handler for GET /api/tenants (fetch all)
 export async function GET(req: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   const apiUrl = `${backendUrl}/tenants`;
 
   try {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
 // Handler for POST /api/tenants (create)
 export async function POST(req: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   const apiUrl = `${backendUrl}/tenants`;
 
   try {

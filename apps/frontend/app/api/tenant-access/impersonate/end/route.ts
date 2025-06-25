@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const authToken = request.cookies.get('Authentication')?.value;
 
     if (!authToken) {

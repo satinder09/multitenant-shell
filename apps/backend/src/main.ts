@@ -15,12 +15,14 @@ async function bootstrap() {
   // Initialize Passport so the 'jwt' strategy is registered
   app.use(passport.initialize());
 
+  const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+  const frontendPort = process.env.FRONTEND_PORT || '3000';
   app.enableCors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       if (
         !origin ||
-        origin === 'http://lvh.me:3000' ||
-        /^http:\/\/[a-zA-Z0-9-]+\.lvh\.me:3000$/.test(origin)
+        origin === `http://${baseDomain}:${frontendPort}` ||
+        new RegExp(`^http://[a-zA-Z0-9-]+\\.${baseDomain}:${frontendPort}$`).test(origin)
       ) {
         callback(null, true);
       } else {
@@ -32,7 +34,7 @@ async function bootstrap() {
 
   const port = parseInt(config.get<string>('PORT') || '4000', 10);
   await app.listen(port);
-  console.log(`🚀 Backend listening on http://lvh.me:${port}`);
+  console.log(`🚀 Backend listening on http://${baseDomain}:${port}`);
 }
 
 bootstrap();

@@ -58,13 +58,15 @@ export class TenantAccessController {
       req.get('User-Agent')
     );
 
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
     // Set cookie for tenant session (cross-subdomain, local dev)
     res.cookie('Authentication', accessToken, {
       httpOnly: true,
-      secure: false, // For local dev; set to true in production with HTTPS
-      sameSite: 'lax', // More permissive for cross-subdomain
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
       maxAge: dto.duration * 60 * 1000,
-      domain: '.lvh.me',
+      domain: `.${baseDomain}`,
     });
 
     return { redirectUrl };
@@ -95,13 +97,15 @@ export class TenantAccessController {
       req.get('User-Agent')
     );
 
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
     // Set cookie for impersonation session (cross-subdomain, local dev)
     res.cookie('Authentication', accessToken, {
       httpOnly: true,
-      secure: false, // For local dev; set to true in production with HTTPS
-      sameSite: 'lax', // More permissive for cross-subdomain
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
       maxAge: dto.duration * 60 * 1000,
-      domain: '.lvh.me',
+      domain: `.${baseDomain}`,
     });
 
     return { redirectUrl };
@@ -116,6 +120,8 @@ export class TenantAccessController {
   ): Promise<{ redirectUrl: string }> {
     const user = req.user as any;
 
+    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+    const frontendPort = process.env.FRONTEND_PORT || '3000';
     if (user.impersonationSessionId) {
       // End impersonation session in DB
       const { redirectUrl } = await this.authService.endImpersonation(
@@ -128,7 +134,7 @@ export class TenantAccessController {
     } else {
       // Secure login: just clear cookie and redirect to master
       res.clearCookie('Authentication');
-      return { redirectUrl: 'http://lvh.me:3000' };
+      return { redirectUrl: `http://${baseDomain}:${frontendPort}` };
     }
   }
 
