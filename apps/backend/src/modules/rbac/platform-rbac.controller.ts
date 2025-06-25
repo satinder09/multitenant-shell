@@ -125,8 +125,10 @@ export class PlatformRbacController {
   async getPermissions() {
     return this.masterPrisma.permission.findMany({
       include: {
-        rolePermissions: {
-          include: { role: true }
+        _count: {
+          select: {
+            rolePermissions: true
+          }
         }
       }
     });

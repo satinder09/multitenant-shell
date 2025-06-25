@@ -5,7 +5,7 @@ import { usePlatform } from '@/context/PlatformContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -15,15 +15,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { DataTable } from '@/components/ui-kit/DataTable';
 import { toastNotify } from '@/utils/ui/toastNotify';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/context/AuthContext';
 import { confirm } from '@/utils/ui/dialogUtils';
-import { AlertTriangle, Shield, UserCheck } from 'lucide-react';
+import { AlertTriangle, Shield, UserCheck, MoreHorizontal, Plus, Building2, Calendar, Settings, Key } from 'lucide-react';
 import { StatusBadge } from '@/components/ui-kit/StatusBadge';
 import { SecureLoginModal } from '@/components/SecureLoginModal';
 import { ImpersonationModal } from '@/components/ImpersonationModal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 // Enhanced Tenant interface that combines both data structures
 interface EnhancedTenant {
@@ -203,104 +204,13 @@ export default function PlatformTenantsPage() {
     setShowImpersonation(true);
   };
 
-  const columns = [
-    { accessorKey: 'name', header: 'Name' },
-    { accessorKey: 'subdomain', header: 'Subdomain' },
-    { 
-      accessorKey: 'isActive', 
-      header: 'Status',
-      cell: ({ row }: { row: { getValue: (key: string) => unknown; original: EnhancedTenant } }) => {
-        const isActive = row.getValue('isActive') as boolean;
-        return <StatusBadge isActive={isActive} />;
-      },
-    },
-    {
-      accessorKey: 'accessLevel',
-      header: 'Access Level',
-      cell: ({ row }: { row: { getValue: (key: string) => unknown; original: EnhancedTenant } }) => {
-        const level = row.getValue('accessLevel') as string;
-        const getAccessLevelColor = (level: string) => {
-          switch (level) {
-            case 'admin':
-              return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-            case 'write':
-              return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-            case 'read':
-              return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-            default:
-              return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-          }
-        };
-        return (
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAccessLevelColor(level)}`}>
-            {level}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Created At',
-      cell: ({ row }: { row: { getValue: (key: string) => unknown; original: EnhancedTenant } }) => 
-        new Date(row.getValue('createdAt') as string).toLocaleDateString(),
-    },
-    {
-      id: 'actions',
-      header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }: { row: { getValue: (key: string) => unknown; original: EnhancedTenant } }) => {
-        const tenant = row.original;
-        const isUpdating = updatingTenantId === tenant.id;
-
-        return (
-          <div className="text-right space-x-2">
-            {tenant.canAccess && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={isUpdating || isPending}
-                onClick={() => handleSecureLogin(tenant)}
-              >
-                <Shield className="w-4 h-4 mr-1" />
-                Secure Login
-              </Button>
-            )}
-            
-            {tenant.canImpersonate && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                disabled={isUpdating || isPending}
-                onClick={() => handleImpersonate(tenant)}
-              >
-                <UserCheck className="w-4 h-4 mr-1" />
-                Impersonate
-              </Button>
-            )}
-            
-            {tenant.isActive ? (
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                disabled={isUpdating || isPending}
-                onClick={() => handleDeactivate(tenant)}
-              >
-                {isUpdating ? <Spinner size="sm" /> : 'Deactivate'}
-              </Button>
-            ) : (
-              <Button 
-                variant="default" 
-                size="sm" 
-                disabled={isUpdating || isPending}
-                onClick={() => handleStatusToggle(tenant.id, tenant.isActive)}
-              >
-                {isUpdating ? <Spinner size="sm" /> : 'Activate'}
-              </Button>
-            )}
-          </div>
-        );
-      },
-    },
-  ];
+  const getAccessLevelColor = (level: string) => {
+    switch (level) {
+      case 'admin': return 'bg-red-100 text-red-800 border-red-200';
+      case 'write': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-green-100 text-green-800 border-green-200';
+    }
+  };
 
   if (!isPlatform) {
     console.log('[PlatformTenantsPage] Not platform context, showing error');
@@ -324,18 +234,29 @@ export default function PlatformTenantsPage() {
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Tenants</h1>
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Tenants</h1>
+          <p className="text-muted-foreground">
+            Manage your organization's tenants and access controls
+          </p>
+        </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={handleDialogOpening}>
           <DialogTrigger asChild>
-            <Button>Create Tenant</Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Tenant
+            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Create New Tenant</DialogTitle>
-                <DialogDescription>Enter the details for the new tenant.</DialogDescription>
+                <DialogDescription>
+                  Enter the details for the new tenant. A subdomain will be automatically generated.
+                </DialogDescription>
               </DialogHeader>
               {createError && (
                 <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive my-2">
@@ -345,8 +266,16 @@ export default function PlatformTenantsPage() {
               )}
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">Name</Label>
-                  <Input id="name" name="name" className="col-span-3" required />
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    className="col-span-3"
+                    placeholder="Enter tenant name"
+                    required
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -358,8 +287,152 @@ export default function PlatformTenantsPage() {
           </DialogContent>
         </Dialog>
       </div>
-      
-      <DataTable columns={columns} data={tenants} />
+
+      {/* Tenants Grid */}
+      <div className="grid gap-4">
+        {tenants.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No tenants found</h3>
+              <p className="text-sm text-muted-foreground mb-4">Get started by creating your first tenant</p>
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Tenant
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>All Tenants ({tenants.length})</CardTitle>
+              <CardDescription>
+                Manage tenant status and access permissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-medium">Name</th>
+                      <th className="text-left py-3 px-4 font-medium">Subdomain</th>
+                      <th className="text-left py-3 px-4 font-medium">Status</th>
+                      <th className="text-left py-3 px-4 font-medium">Access Level</th>
+                      <th className="text-left py-3 px-4 font-medium">Created</th>
+                      <th className="text-right py-3 px-4 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tenants.map((tenant, index) => (
+                      <tr
+                        key={tenant.id}
+                        className={`border-b hover:bg-muted/50 transition-colors ${
+                          index % 2 === 0 ? 'bg-muted/20' : ''
+                        }`}
+                      >
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                              <Building2 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{tenant.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {tenant.lastAccessed ? 
+                                  `Last accessed ${tenant.lastAccessed.toLocaleDateString()}` : 
+                                  'Never accessed'
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <code className="text-sm bg-muted px-2 py-1 rounded">
+                            {tenant.subdomain}
+                          </code>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge
+                            variant={tenant.isActive ? 'default' : 'secondary'}
+                            className={
+                              tenant.isActive
+                                ? 'bg-green-100 text-green-800 border-green-200'
+                                : 'bg-gray-100 text-gray-800 border-gray-200'
+                            }
+                          >
+                            {tenant.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge
+                            variant="outline"
+                            className={getAccessLevelColor(tenant.accessLevel)}
+                          >
+                            {tenant.accessLevel}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(tenant.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2 justify-end">
+                            {tenant.canAccess && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSecureLogin(tenant)}
+                                className="h-8"
+                              >
+                                <Shield className="h-4 w-4 mr-1" />
+                                Login
+                              </Button>
+                            )}
+                            {tenant.canImpersonate && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleImpersonate(tenant)}
+                                className="h-8"
+                              >
+                                <UserCheck className="h-4 w-4 mr-1" />
+                                Impersonate
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusToggle(tenant.id, tenant.isActive)}
+                                  disabled={updatingTenantId === tenant.id}
+                                >
+                                  {updatingTenantId === tenant.id ? (
+                                    <Spinner size="sm" />
+                                  ) : (
+                                    <Settings className="w-4 h-4 mr-2" />
+                                  )}
+                                  {tenant.isActive ? 'Deactivate' : 'Activate'}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Modals */}
       {selectedTenant && (
@@ -377,7 +450,6 @@ export default function PlatformTenantsPage() {
             open={showSecureLogin}
             onOpenChange={setShowSecureLogin}
           />
-          
           <ImpersonationModal
             tenant={{
               tenantId: selectedTenant.id,

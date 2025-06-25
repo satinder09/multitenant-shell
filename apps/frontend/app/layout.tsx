@@ -10,7 +10,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { DialogOverlay } from '@/utils/ui/dialogUtils';
 import { AppSheetOverlay } from '@/utils/ui/sheetUtils';
 import { PlatformProvider } from '@/context/PlatformContext';
-import LayoutWrapper from '@/components/LayoutWrapper';
+import ConditionalLayoutWrapper from '@/components/ConditionalLayoutWrapper';
 
 
 interface RootLayoutProps {
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <ThemeProvider>
           <AuthProvider>
             <PlatformProvider>
-              <LayoutWrapper>{children}</LayoutWrapper>
+              <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
             </PlatformProvider>
           </AuthProvider>
           <DialogOverlay />
