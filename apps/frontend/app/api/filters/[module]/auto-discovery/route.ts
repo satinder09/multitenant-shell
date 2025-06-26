@@ -1,4 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getModuleConfig } from '@/lib/modules/module-registry';
+import { getEffectiveOperators } from '@/lib/modules/types';
+
+// Convert operators from config format to API format
+function convertOperators(operators: any[]): string[] {
+  return operators.map(op => {
+    // Convert modules/types operators to API format
+    switch (op) {
+      case 'greater_than_or_equal': return 'greater_equal';
+      case 'less_than_or_equal': return 'less_equal';
+      default: return op;
+    }
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -7,11 +21,51 @@ export async function GET(
   try {
     const { module } = await params;
     
-    // Get real field definitions based on actual database schema
-    const fieldDefinitions = getRealFieldDefinitions(module);
-    const relationships = getRealRelationships(module);
+    // Get module config via registry
+    const config = await getModuleConfig(module);
+    if (!config) {
+      return NextResponse.json(
+        { 
+          error: `Module configuration not found for: ${module}`,
+          fields: [],
+          relationships: [],
+          nestedFields: []
+        },
+        { status: 404 }
+      );
+    }
     
-    // Transform to the format expected by the UI
+    // Generate field definitions from config
+    const fieldDefinitions = config.columns
+      .filter(col => col.filterable !== false)
+      .map(col => {
+        const effectiveOperators = getEffectiveOperators(col);
+        
+        return {
+          name: col.field,
+          label: col.display,
+          type: col.type || 'string',
+          operators: convertOperators(effectiveOperators),
+          renderType: getRenderType(col.type, col.options),
+          isSearchable: col.searchable || false,
+          options: col.options?.map(opt => ({
+            value: opt.value,
+            label: opt.label
+          }))
+        };
+      });
+    
+    // Generate relationships from config (basic implementation)
+    const relationships = config.columns
+      .filter(col => col.reference)
+      .map(col => ({
+        name: col.field,
+        label: col.display,
+        type: 'relation',
+        targetTable: typeof col.reference === 'function' ? 'Unknown' : col.reference?.sourceTable || 'Unknown'
+      }));
+    
+    // Transform to nested fields format
     const nestedFields = transformToNestedFields(fieldDefinitions, relationships);
     
     return NextResponse.json({
@@ -26,6 +80,24 @@ export async function GET(
       { error: 'Failed to discover fields' },
       { status: 500 }
     );
+  }
+}
+
+function getRenderType(type?: string, options?: any[]): string {
+  if (options && options.length > 0) {
+    return 'select';
+  }
+  
+  switch (type) {
+    case 'boolean':
+      return 'select';
+    case 'date':
+    case 'datetime':
+      return 'date';
+    case 'number':
+      return 'number';
+    default:
+      return 'input';
   }
 }
 
@@ -44,269 +116,16 @@ function transformToNestedFields(fields: any[], relationships: any[]): any[] {
     });
   });
   
-  // Add relationship fields
+  // Add relationship fields (basic implementation)
   relationships.forEach(relationship => {
-    if (relationship.fields) {
-      relationship.fields.forEach((relField: any) => {
-        const pathParts = relField.name.split('.');
-        nestedFields.push({
-          path: pathParts,
-          label: relField.label,
-          type: relField.type,
-          operators: relField.operators,
-          renderType: relField.renderType,
-          options: relField.options
-        });
-      });
-    }
+    nestedFields.push({
+      path: [relationship.name],
+      label: relationship.label,
+      type: relationship.type,
+      operators: ['equals', 'not_equals'],
+      renderType: 'select'
+    });
   });
   
   return nestedFields;
-}
-
-function getRealFieldDefinitions(moduleName: string) {
-  switch (moduleName) {
-    case 'tenants':
-      return [
-        {
-          name: 'id',
-          label: 'ID',
-          type: 'string',
-          operators: ['equals', 'not_equals', 'in', 'not_in'],
-          renderType: 'input',
-          isSearchable: true
-        },
-        {
-          name: 'name',
-          label: 'Name',
-          type: 'string',
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
-          renderType: 'input',
-          isSearchable: true
-        },
-        {
-          name: 'subdomain',
-          label: 'Subdomain',
-          type: 'string',
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
-          renderType: 'input',
-          isSearchable: true
-        },
-        {
-          name: 'dbName',
-          label: 'Database Name',
-          type: 'string',
-          operators: ['equals', 'contains', 'starts_with'],
-          renderType: 'input',
-          isSearchable: true
-        },
-        {
-          name: 'isActive',
-          label: 'Active Status',
-          type: 'boolean',
-          operators: ['equals', 'not_equals'],
-          renderType: 'select',
-          options: [
-            { value: true, label: 'Active' },
-            { value: false, label: 'Inactive' }
-          ],
-          isSearchable: false
-        },
-        {
-          name: 'createdAt',
-          label: 'Created Date',
-          type: 'datetime',
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date',
-          isSearchable: false
-        },
-        {
-          name: 'updatedAt',
-          label: 'Updated Date',
-          type: 'datetime',
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date',
-          isSearchable: false
-        }
-      ];
-
-    case 'users':
-      return [
-        {
-          name: 'id',
-          label: 'ID',
-          type: 'string',
-          operators: ['equals', 'not_equals', 'in', 'not_in'],
-          renderType: 'input',
-          isSearchable: true
-        },
-        {
-          name: 'email',
-          label: 'Email',
-          type: 'string',
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
-          renderType: 'input',
-          isSearchable: true
-        },
-        {
-          name: 'name',
-          label: 'Name',
-          type: 'string',
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
-          renderType: 'input',
-          isSearchable: true
-        },
-        {
-          name: 'isSuperAdmin',
-          label: 'Super Admin',
-          type: 'boolean',
-          operators: ['equals', 'not_equals'],
-          renderType: 'select',
-          options: [
-            { value: true, label: 'Yes' },
-            { value: false, label: 'No' }
-          ],
-          isSearchable: false
-        },
-        {
-          name: 'createdAt',
-          label: 'Created Date',
-          type: 'datetime',
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date',
-          isSearchable: false
-        },
-        {
-          name: 'updatedAt',
-          label: 'Updated Date',
-          type: 'datetime',
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date',
-          isSearchable: false
-        }
-      ];
-
-    default:
-      return [];
-  }
-}
-
-function getRealRelationships(moduleName: string) {
-  switch (moduleName) {
-    case 'tenants':
-      return [
-        {
-          name: 'permissions',
-          label: 'User Permissions',
-          type: 'one-to-many',
-          relatedTable: 'TenantUserPermission',
-          foreignKey: 'tenantId',
-          fields: [
-            {
-              name: 'permissions.user.email',
-              label: 'User > Email',
-              type: 'string',
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            },
-            {
-              name: 'permissions.user.name',
-              label: 'User > Name',
-              type: 'string',
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            }
-          ]
-        },
-        {
-          name: 'impersonationSessions',
-          label: 'Impersonation Sessions',
-          type: 'one-to-many',
-          relatedTable: 'ImpersonationSession',
-          foreignKey: 'impersonatedTenantId',
-          fields: [
-            {
-              name: 'impersonationSessions.status',
-              label: 'Impersonation > Status',
-              type: 'enum',
-              operators: ['equals', 'not_equals', 'in'],
-              renderType: 'select',
-              options: [
-                { value: 'ACTIVE', label: 'Active' },
-                { value: 'ENDED', label: 'Ended' },
-                { value: 'EXPIRED', label: 'Expired' },
-                { value: 'REVOKED', label: 'Revoked' }
-              ]
-            }
-          ]
-        },
-        {
-          name: 'accessLogs',
-          label: 'Access Logs',
-          type: 'one-to-many',
-          relatedTable: 'TenantAccessLog',
-          foreignKey: 'tenantId',
-          fields: [
-            {
-              name: 'accessLogs.accessType',
-              label: 'Access Log > Type',
-              type: 'enum',
-              operators: ['equals', 'not_equals', 'in'],
-              renderType: 'select',
-              options: [
-                { value: 'SECURE_LOGIN', label: 'Secure Login' },
-                { value: 'IMPERSONATION', label: 'Impersonation' },
-                { value: 'DIRECT_ACCESS', label: 'Direct Access' }
-              ]
-            }
-          ]
-        }
-      ];
-
-    case 'users':
-      return [
-        {
-          name: 'permissions',
-          label: 'Tenant Permissions',
-          type: 'one-to-many',
-          relatedTable: 'TenantUserPermission',
-          foreignKey: 'userId',
-          fields: [
-            {
-              name: 'permissions.tenant.name',
-              label: 'Tenant > Name',
-              type: 'string',
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            },
-            {
-              name: 'permissions.tenant.subdomain',
-              label: 'Tenant > Subdomain',
-              type: 'string',
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            }
-          ]
-        },
-        {
-          name: 'userRoles',
-          label: 'User Roles',
-          type: 'one-to-many',
-          relatedTable: 'UserRole',
-          foreignKey: 'userId',
-          fields: [
-            {
-              name: 'userRoles.role.name',
-              label: 'Role > Name',
-              type: 'string',
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            }
-          ]
-        }
-      ];
-
-    default:
-      return [];
-  }
 } 

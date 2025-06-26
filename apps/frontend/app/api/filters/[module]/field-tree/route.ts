@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getModuleConfig } from '@/lib/modules/module-registry';
 
 interface FieldNode {
   name: string;
@@ -12,6 +13,62 @@ interface FieldNode {
   options?: Array<{ value: any; label: string }>;
 }
 
+/**
+ * Build field tree from module configuration
+ * Returns ALL fields regardless of visibility or filterability settings
+ * to allow advanced search on any field
+ */
+async function buildFieldTreeFromConfig(
+  moduleName: string, 
+  parentPath: string[] = [], 
+  maxDepth: number = 3,
+  currentDepth: number = 0
+): Promise<FieldNode[]> {
+  if (currentDepth >= maxDepth) {
+    return [];
+  }
+
+  const config = await getModuleConfig(moduleName);
+  if (!config) {
+    return [];
+  }
+
+  const fields: FieldNode[] = [];
+
+  // Build fields from column definitions
+  for (const column of config.columns) {
+    // Include ALL fields in the field selector for advanced search
+    // Users should be able to filter on any field, including hidden ones
+
+    const fieldNode: FieldNode = {
+      name: column.field,
+      label: column.display,
+      type: column.type || 'string',
+      path: [...parentPath, column.field],
+      hasChildren: false
+    };
+
+    // Add options if available
+    if (column.options) {
+      fieldNode.options = column.options.map(opt => ({
+        value: opt.value,
+        label: opt.label
+      }));
+    }
+
+    // Add reference fields as children (if not at max depth)
+    if (column.reference && currentDepth < maxDepth - 1) {
+      fieldNode.hasChildren = true;
+      // Note: For now, we'll mark as having children but won't traverse
+      // In a full implementation, we'd recursively load the referenced config
+    }
+
+    fields.push(fieldNode);
+  }
+
+  return fields;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ module: string }> }
@@ -19,422 +76,47 @@ export async function GET(
   try {
     const { module } = await params;
     const { searchParams } = new URL(request.url);
-    const parent = searchParams.get('parent');
-
-    let fields: FieldNode[];
-
-    if (parent) {
-      // Return child fields for a specific parent
-      fields = getChildFields(module, parent.split('.'));
-    } else {
-      // Return root level fields
-      fields = getRootFields(module);
+    const parentParam = searchParams.get('parent');
+    const maxDepthParam = searchParams.get('maxDepth');
+    
+    // Parse parent path
+    const parentPath = parentParam ? parentParam.split('.') : [];
+    const maxDepth = maxDepthParam ? parseInt(maxDepthParam) : 3;
+    
+    // Get module config via registry
+    const config = await getModuleConfig(module);
+    if (!config) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Module configuration not found for: ${module}`,
+          fields: []
+        },
+        { status: 404 }
+      );
     }
-
+    
+    // Build field tree from module configuration
+    const fields = await buildFieldTreeFromConfig(module, parentPath, maxDepth);
+    
     return NextResponse.json({
+      success: true,
       fields,
-      success: true
+      parentPath,
+      tableName: config.sourceTable,
+      moduleName: config.module.name,
+      moduleTitle: config.module.title
     });
+    
   } catch (error) {
     console.error('Error in field-tree API:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch field tree' },
+      { 
+        success: false, 
+        error: 'Failed to fetch field tree',
+        fields: []
+      },
       { status: 500 }
     );
-  }
-}
-
-function getRootFields(moduleName: string): FieldNode[] {
-  switch (moduleName) {
-    case 'tenants':
-      return [
-        {
-          name: 'id',
-          label: 'ID',
-          type: 'string',
-          path: ['id'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'in', 'not_in'],
-          renderType: 'input'
-        },
-        {
-          name: 'name',
-          label: 'Name',
-          type: 'string',
-          path: ['name'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with'],
-          renderType: 'input'
-        },
-        {
-          name: 'subdomain',
-          label: 'Subdomain',
-          type: 'string',
-          path: ['subdomain'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with'],
-          renderType: 'input'
-        },
-        {
-          name: 'dbName',
-          label: 'Database Name',
-          type: 'string',
-          path: ['dbName'],
-          hasChildren: false,
-          operators: ['equals', 'contains', 'starts_with'],
-          renderType: 'input'
-        },
-        {
-          name: 'isActive',
-          label: 'Active Status',
-          type: 'boolean',
-          path: ['isActive'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals'],
-          renderType: 'select',
-          options: [
-            { value: true, label: 'Active' },
-            { value: false, label: 'Inactive' }
-          ]
-        },
-        {
-          name: 'createdAt',
-          label: 'Created Date',
-          type: 'datetime',
-          path: ['createdAt'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date'
-        },
-        {
-          name: 'updatedAt',
-          label: 'Updated Date',
-          type: 'datetime',
-          path: ['updatedAt'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date'
-        },
-        // Relationship fields (have children)
-        {
-          name: 'permissions',
-          label: 'User Permissions',
-          type: 'relation',
-          path: ['permissions'],
-          hasChildren: true,
-          operators: [],
-          renderType: 'relation'
-        },
-        {
-          name: 'impersonationSessions',
-          label: 'Impersonation Sessions',
-          type: 'relation',
-          path: ['impersonationSessions'],
-          hasChildren: true,
-          operators: [],
-          renderType: 'relation'
-        },
-        {
-          name: 'accessLogs',
-          label: 'Access Logs',
-          type: 'relation',
-          path: ['accessLogs'],
-          hasChildren: true,
-          operators: [],
-          renderType: 'relation'
-        }
-      ];
-
-    case 'users':
-      return [
-        {
-          name: 'id',
-          label: 'ID',
-          type: 'string',
-          path: ['id'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'in', 'not_in'],
-          renderType: 'input'
-        },
-        {
-          name: 'email',
-          label: 'Email',
-          type: 'string',
-          path: ['email'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with'],
-          renderType: 'input'
-        },
-        {
-          name: 'name',
-          label: 'Name',
-          type: 'string',
-          path: ['name'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with'],
-          renderType: 'input'
-        },
-        {
-          name: 'isSuperAdmin',
-          label: 'Super Admin',
-          type: 'boolean',
-          path: ['isSuperAdmin'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals'],
-          renderType: 'select',
-          options: [
-            { value: true, label: 'Yes' },
-            { value: false, label: 'No' }
-          ]
-        },
-        {
-          name: 'createdAt',
-          label: 'Created Date',
-          type: 'datetime',
-          path: ['createdAt'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date'
-        },
-        {
-          name: 'updatedAt',
-          label: 'Updated Date',
-          type: 'datetime',
-          path: ['updatedAt'],
-          hasChildren: false,
-          operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'],
-          renderType: 'date'
-        },
-        // Relationship fields
-        {
-          name: 'permissions',
-          label: 'Tenant Permissions',
-          type: 'relation',
-          path: ['permissions'],
-          hasChildren: true,
-          operators: [],
-          renderType: 'relation'
-        },
-        {
-          name: 'userRoles',
-          label: 'User Roles',
-          type: 'relation',
-          path: ['userRoles'],
-          hasChildren: true,
-          operators: [],
-          renderType: 'relation'
-        }
-      ];
-
-    default:
-      return [];
-  }
-}
-
-function getChildFields(moduleName: string, parentPath: string[]): FieldNode[] {
-  const parentKey = parentPath.join('.');
-
-  switch (moduleName) {
-    case 'tenants':
-      switch (parentKey) {
-        case 'permissions':
-          return [
-            {
-              name: 'user',
-              label: 'User',
-              type: 'relation',
-              path: ['permissions', 'user'],
-              hasChildren: true,
-              operators: [],
-              renderType: 'relation'
-            }
-          ];
-
-        case 'permissions.user':
-          return [
-            {
-              name: 'id',
-              label: 'User ID',
-              type: 'string',
-              path: ['permissions', 'user', 'id'],
-              hasChildren: false,
-              operators: ['equals', 'not_equals'],
-              renderType: 'input'
-            },
-            {
-              name: 'email',
-              label: 'User Email',
-              type: 'string',
-              path: ['permissions', 'user', 'email'],
-              hasChildren: false,
-              operators: ['equals', 'contains', 'starts_with', 'ends_with'],
-              renderType: 'input'
-            },
-            {
-              name: 'name',
-              label: 'User Name',
-              type: 'string',
-              path: ['permissions', 'user', 'name'],
-              hasChildren: false,
-              operators: ['equals', 'contains', 'starts_with', 'ends_with'],
-              renderType: 'input'
-            }
-          ];
-
-        case 'impersonationSessions':
-          return [
-            {
-              name: 'status',
-              label: 'Status',
-              type: 'enum',
-              path: ['impersonationSessions', 'status'],
-              hasChildren: false,
-              operators: ['equals', 'not_equals', 'in', 'not_in'],
-              renderType: 'select',
-              options: [
-                { value: 'ACTIVE', label: 'Active' },
-                { value: 'ENDED', label: 'Ended' },
-                { value: 'EXPIRED', label: 'Expired' },
-                { value: 'REVOKED', label: 'Revoked' }
-              ]
-            },
-            {
-              name: 'reason',
-              label: 'Reason',
-              type: 'string',
-              path: ['impersonationSessions', 'reason'],
-              hasChildren: false,
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            },
-            {
-              name: 'startedAt',
-              label: 'Started At',
-              type: 'datetime',
-              path: ['impersonationSessions', 'startedAt'],
-              hasChildren: false,
-              operators: ['equals', 'greater_than', 'less_than', 'between'],
-              renderType: 'date'
-            }
-          ];
-
-        case 'accessLogs':
-          return [
-            {
-              name: 'accessType',
-              label: 'Access Type',
-              type: 'enum',
-              path: ['accessLogs', 'accessType'],
-              hasChildren: false,
-              operators: ['equals', 'not_equals', 'in', 'not_in'],
-              renderType: 'select',
-              options: [
-                { value: 'SECURE_LOGIN', label: 'Secure Login' },
-                { value: 'IMPERSONATION', label: 'Impersonation' },
-                { value: 'DIRECT_ACCESS', label: 'Direct Access' }
-              ]
-            },
-            {
-              name: 'reason',
-              label: 'Reason',
-              type: 'string',
-              path: ['accessLogs', 'reason'],
-              hasChildren: false,
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            },
-            {
-              name: 'startedAt',
-              label: 'Started At',
-              type: 'datetime',
-              path: ['accessLogs', 'startedAt'],
-              hasChildren: false,
-              operators: ['equals', 'greater_than', 'less_than', 'between'],
-              renderType: 'date'
-            }
-          ];
-
-        default:
-          return [];
-      }
-
-    case 'users':
-      switch (parentKey) {
-        case 'permissions':
-          return [
-            {
-              name: 'tenant',
-              label: 'Tenant',
-              type: 'relation',
-              path: ['permissions', 'tenant'],
-              hasChildren: true,
-              operators: [],
-              renderType: 'relation'
-            }
-          ];
-
-        case 'permissions.tenant':
-          return [
-            {
-              name: 'id',
-              label: 'Tenant ID',
-              type: 'string',
-              path: ['permissions', 'tenant', 'id'],
-              hasChildren: false,
-              operators: ['equals', 'not_equals'],
-              renderType: 'input'
-            },
-            {
-              name: 'name',
-              label: 'Tenant Name',
-              type: 'string',
-              path: ['permissions', 'tenant', 'name'],
-              hasChildren: false,
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            },
-            {
-              name: 'subdomain',
-              label: 'Tenant Subdomain',
-              type: 'string',
-              path: ['permissions', 'tenant', 'subdomain'],
-              hasChildren: false,
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            }
-          ];
-
-        case 'userRoles':
-          return [
-            {
-              name: 'role',
-              label: 'Role',
-              type: 'relation',
-              path: ['userRoles', 'role'],
-              hasChildren: true,
-              operators: [],
-              renderType: 'relation'
-            }
-          ];
-
-        case 'userRoles.role':
-          return [
-            {
-              name: 'name',
-              label: 'Role Name',
-              type: 'string',
-              path: ['userRoles', 'role', 'name'],
-              hasChildren: false,
-              operators: ['equals', 'contains'],
-              renderType: 'input'
-            }
-          ];
-
-        default:
-          return [];
-      }
-
-    default:
-      return [];
   }
 } 

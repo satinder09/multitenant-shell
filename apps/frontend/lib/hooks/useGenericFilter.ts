@@ -13,25 +13,80 @@ import {
   DynamicFieldDiscovery,
   SavedSearch,
   PaginationMeta,
-  SortParams
+  SortParams,
+  FilterOperator,
+  FilterType
 } from '@/lib/types';
+import { ModuleConfig, getEffectiveOperators } from '@/lib/modules/types';
+import { getModuleConfig } from '@/lib/modules/module-registry';
 import { generateId, debounce } from '@/lib/utils';
+import { VisibilityState } from '@tanstack/react-table';
 
 export function useGenericFilter<
   T extends GenericEntity,
   TFilters extends AdvancedBaseFilters = AdvancedBaseFilters
 >(
   moduleName: string,
+  config?: ModuleConfig,
   options: UseGenericFilterOptions = {}
 ): UseGenericFilterReturn<T, TFilters> {
   // State
   const [data, setData] = useState<T[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // Start with false to reduce initial loading
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [metadata, setMetadata] = useState<FilterMetadata[]>([]);
   const [fieldDiscovery, setFieldDiscovery] = useState<DynamicFieldDiscovery | null>(null);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  
+  // Refs to track what we've already fetched to prevent duplicates
+  const hasInitializedRef = useRef(false);
+  const fetchedFieldDiscoveryRef = useRef(false);
+  const fetchedSavedSearchesRef = useRef(false);
+  const lastConfigKeyRef = useRef<string>('');
+
+  // Create field discovery from config
+  const createFieldDiscoveryFromConfig = useCallback((config: ModuleConfig): DynamicFieldDiscovery => {
+    // Convert operators from config format to lib/types format
+    const convertOperators = (operators: any[]): FilterOperator[] => {
+      return operators.map(op => {
+        // Convert modules/types operators to lib/types operators
+        switch (op) {
+          case 'greater_than_or_equal': return 'greater_equal';
+          case 'less_than_or_equal': return 'less_equal';
+          default: return op as FilterOperator;
+        }
+      });
+    };
+
+    const fields: FilterMetadata[] = config.columns
+      .map(col => {
+        const effectiveOperators = getEffectiveOperators(col);
+        
+        return {
+          id: `${config.module.name}-${col.field}`,
+          moduleName: config.module.name,
+          fieldName: col.field,
+          fieldLabel: col.display,
+          fieldType: (col.type || 'string') as FilterType,
+          isFilterable: col.filterable !== false,
+          isGroupable: false,
+          isSearchable: col.searchable || false,
+          operators: convertOperators(effectiveOperators),
+          fieldValues: col.options?.map(opt => ({
+            value: opt.value,
+            label: opt.label
+          }))
+        };
+      });
+
+    return {
+      fields,
+      nestedFields: [],
+      relationPaths: []
+    };
+  }, []);
 
   // Query parameters
   const [queryParams, setQueryParams] = useState<AdvancedQueryParams<TFilters>>({
@@ -44,30 +99,55 @@ export function useGenericFilter<
     savedSearchId: undefined
   });
 
-  // Fetch field discovery metadata and initial data on mount
-  useEffect(() => {
-    fetchFieldDiscovery();
-    if (options.enableSavedSearches) {
-      fetchSavedSearches();
+  // Stable fetch functions using useCallback
+  const fetchFieldDiscovery = useCallback(async (configOverride?: ModuleConfig) => {
+    // Allow config to be passed in to handle dynamic config changes
+    const effectiveConfig = configOverride || config;
+    
+    // Reset the ref if config changes to allow refetch with new config
+    const configKey = effectiveConfig ? JSON.stringify(effectiveConfig.module) : 'none';
+    
+    if (lastConfigKeyRef.current !== configKey) {
+      fetchedFieldDiscoveryRef.current = false;
+      lastConfigKeyRef.current = configKey;
     }
-    // Load initial data
-    fetchData();
-  }, [moduleName, options.enableSavedSearches]);
-
-  const fetchFieldDiscovery = async () => {
+    
+    if (fetchedFieldDiscoveryRef.current) return;
+    fetchedFieldDiscoveryRef.current = true;
+    
     try {
-      const response = await fetch(`/api/filters/${moduleName}/auto-discovery`);
-      if (response.ok) {
-        const discovery = await response.json();
+      // Use provided config if available
+      if (effectiveConfig && effectiveConfig.columns && effectiveConfig.columns.length > 0) {
+        const discovery = createFieldDiscoveryFromConfig(effectiveConfig);
         setFieldDiscovery(discovery);
         setMetadata(discovery.fields || []);
+      } else {
+        // Try to get config from module registry first
+        const registryConfig = await getModuleConfig(moduleName);
+        if (registryConfig) {
+          const discovery = createFieldDiscoveryFromConfig(registryConfig);
+          setFieldDiscovery(discovery);
+          setMetadata(discovery.fields || []);
+        } else {
+          // Fallback to API if no config found
+          const response = await fetch(`/api/filters/${moduleName}/auto-discovery`);
+          if (response.ok) {
+            const discovery = await response.json();
+            setFieldDiscovery(discovery);
+            setMetadata(discovery.fields || []);
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to fetch field discovery:', err);
+      fetchedFieldDiscoveryRef.current = false; // Reset on error so it can retry
     }
-  };
+  }, [moduleName, createFieldDiscoveryFromConfig]);
 
-  const fetchSavedSearches = async () => {
+  const fetchSavedSearches = useCallback(async () => {
+    if (fetchedSavedSearchesRef.current) return;
+    fetchedSavedSearchesRef.current = true;
+    
     try {
       const response = await fetch(`/api/filters/${moduleName}/saved-searches?userId=current-user`);
       if (response.ok) {
@@ -76,18 +156,29 @@ export function useGenericFilter<
       }
     } catch (err) {
       console.error('Failed to fetch saved searches:', err);
+      fetchedSavedSearchesRef.current = false; // Reset on error so it can retry
     }
-  };
+  }, [moduleName]);
 
-  const fetchData = useCallback(async () => {
+  // Fetch field discovery and saved searches on mount and when config changes
+  useEffect(() => {
+    fetchFieldDiscovery(config);
+    if (options.enableSavedSearches) {
+      fetchSavedSearches();
+    }
+  }, [fetchFieldDiscovery, fetchSavedSearches, options.enableSavedSearches, config]);
+
+  const fetchData = useCallback(async (params?: AdvancedQueryParams<TFilters>) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/filters/${moduleName}/search`, {
+      const requestParams = params || queryParams;
+
+      const response = await fetch(`/api/modules/${moduleName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(queryParams)
+        body: JSON.stringify(requestParams)
       });
 
       if (!response.ok) {
@@ -109,29 +200,46 @@ export function useGenericFilter<
     } finally {
       setIsLoading(false);
     }
-  }, [moduleName, queryParams]);
+  }, [moduleName]); // Only depend on moduleName, not queryParams
 
   // Debounced fetch data function
+  const queryParamsRef = useRef(queryParams);
+  queryParamsRef.current = queryParams;
+
   const debouncedFetchData = useRef(
-    debounce(() => fetchData(), 500)
+    debounce(() => fetchData(queryParamsRef.current), 500)
   ).current;
 
-  // Fetch data when query params change (debounced for search, immediate for pagination)
+  // Fetch data when query params change - optimized to prevent excessive calls
   useEffect(() => {
-    // For pagination and limit changes, fetch immediately
-    if (queryParams.page > 1 || queryParams.limit !== (options.defaultLimit || 10)) {
-      fetchData();
-    } else if (queryParams.filters?.search) {
-      // For search changes, use debounced fetch
-      debouncedFetchData();
-    } else if (queryParams.complexFilter) {
-      // For complex filter changes, fetch immediately (they are applied via button)
-      fetchData();
-    } else if (!queryParams.complexFilter && !queryParams.filters?.search) {
-      // Initial load
-      fetchData();
+    // Only run initial load once
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      fetchData(queryParams);
+      return;
     }
-  }, [queryParams, fetchData, debouncedFetchData, options.defaultLimit]);
+
+    // Only fetch data when queryParams actually change in meaningful ways
+    // Don't fetch for initial default values
+    const shouldFetchImmediately = 
+      queryParams.page > 1 || 
+      queryParams.limit !== (options.defaultLimit || 10) ||
+      queryParams.complexFilter !== null;
+
+    const shouldFetchDebounced = queryParams.filters?.search;
+
+    if (shouldFetchImmediately) {
+      fetchData(queryParams);
+    } else if (shouldFetchDebounced) {
+      debouncedFetchData();
+    }
+  }, [
+    queryParams.page,
+    queryParams.limit, 
+    queryParams.complexFilter,
+    queryParams.filters?.search,
+    options.defaultLimit
+  ]); // Removed fetchData and debouncedFetchData to make it more stable
 
   // Filter actions
   const setComplexFilter = useCallback((filter: ComplexFilter | null) => {
@@ -314,7 +422,7 @@ export function useGenericFilter<
   }, [moduleName]);
 
   const refetch = useCallback(() => {
-    fetchData();
+    fetchData(queryParamsRef.current);
   }, [fetchData]);
 
   return {

@@ -113,9 +113,11 @@ export type FilterOperator =
   | 'greater_equal' | 'less_equal'
   | 'between' | 'not_between'
   | 'is_set' | 'is_not_set'
+  | 'is_empty' | 'is_not_empty'
   | 'in' | 'not_in'
   | 'is_in' | 'is_not_in'
-  | 'contains_any' | 'contains_all';
+  | 'contains_any' | 'contains_all'
+  | 'preset';
 
 // Filter field types
 export type FilterType = 'string' | 'number' | 'date' | 'boolean' | 'enum' | 'relation';

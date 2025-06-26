@@ -186,10 +186,9 @@ export const FilterRuleComponent: React.FC<FilterRuleComponentProps> = ({
         {isFieldSelectorOpen && (
           <div className="absolute z-50 mt-1 w-80 bg-popover border rounded-md shadow-md">
             <NestedFieldSelector
-              fieldDiscovery={fieldDiscovery}
-              selectedPath={rule.fieldPath || []}
-              onPathChange={handleFieldSelect}
               moduleName={moduleName}
+              selectedPath={rule.fieldPath || []}
+              onFieldSelect={(field) => handleFieldSelect(field.path)}
               onClose={() => setIsFieldSelectorOpen(false)}
             />
           </div>

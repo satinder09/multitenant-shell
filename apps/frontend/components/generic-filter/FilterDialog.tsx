@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, X, ChevronDown } from 'lucide-react';
@@ -15,7 +14,12 @@ import {
   FilterOperator 
 } from '@/lib/types';
 import { generateId } from '@/lib/utils';
-import { MultiValueSelector } from './MultiValueSelector';
+import { 
+  detectFieldType, 
+  getOperatorsForFieldType, 
+  getDefaultValueForFieldType 
+} from '@/lib/filter-field-types';
+import { EnhancedValueInput } from './EnhancedValueInputs';
 import { NestedFieldSelector } from './NestedFieldSelector';
 
 interface FilterDialogProps {
@@ -33,6 +37,7 @@ interface FilterRule {
   operator: FilterOperator;
   value: any;
   fieldPath: string[];
+  fieldType: string;
   label?: string;
 }
 
@@ -58,6 +63,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
         operator: rule.operator,
         value: rule.value,
         fieldPath: rule.fieldPath || [],
+        fieldType: detectFieldType(rule.field, rule.fieldPath || []),
         label: rule.label
       })));
     } else {
@@ -67,60 +73,12 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
         field: '',
         operator: 'equals' as FilterOperator,
         value: '',
-        fieldPath: []
+        fieldPath: [],
+        fieldType: 'string'
       }]);
       setLogic('AND');
     }
   }, [initialFilter, open]);
-
-  const getFieldOptions = () => {
-    if (!fieldDiscovery) {
-      console.log('No fieldDiscovery available');
-      return [];
-    }
-    const fields = fieldDiscovery.nestedFields || [];
-    console.log('Available fields:', fields);
-    return fields;
-  };
-
-  const getOperatorOptions = (fieldType: string) => {
-    switch (fieldType) {
-      case 'string':
-        return [
-          { value: 'equals', label: 'is equal' },
-          { value: 'not_equals', label: 'is not equal' },
-          { value: 'contains', label: 'contains' },
-          { value: 'not_contains', label: 'does not contain' },
-          { value: 'starts_with', label: 'starts with' },
-          { value: 'ends_with', label: 'ends with' }
-        ];
-      case 'number':
-        return [
-          { value: 'equals', label: 'is equal' },
-          { value: 'not_equals', label: 'is not equal' },
-          { value: 'greater_than', label: 'is greater than' },
-          { value: 'less_than', label: 'is less than' },
-          { value: 'between', label: 'is between' }
-        ];
-      case 'boolean':
-        return [
-          { value: 'equals', label: 'is equal' },
-          { value: 'not_equals', label: 'is not equal' }
-        ];
-      case 'enum':
-        return [
-          { value: 'equals', label: 'is equal' },
-          { value: 'not_equals', label: 'is not equal' },
-          { value: 'in', label: 'is in' },
-          { value: 'not_in', label: 'is not in' }
-        ];
-      default:
-        return [
-          { value: 'equals', label: 'is equal' },
-          { value: 'not_equals', label: 'is not equal' }
-        ];
-    }
-  };
 
   const addRule = () => {
     const newRule: FilterRule = {
@@ -128,7 +86,8 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
       field: '',
       operator: 'equals' as FilterOperator,
       value: '',
-      fieldPath: []
+      fieldPath: [],
+      fieldType: 'string'
     };
     setRules([...rules, newRule]);
   };
@@ -143,123 +102,76 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
     setRules(rules.filter(rule => rule.id !== ruleId));
   };
 
-  const handleFieldChange = (ruleId: string, fieldPath: string) => {
-    const field = getFieldOptions().find(f => f.path.join('.') === fieldPath);
-    if (field) {
-      updateRule(ruleId, {
-        field: field.path[field.path.length - 1],
-        fieldPath: field.path,
-        label: field.label,
-        operator: 'equals' as FilterOperator,
-        value: ''
+  const handleFieldSelect = (ruleId: string, field: any) => {
+    const fieldType = detectFieldType(field.name, field.path);
+    const operators = getOperatorsForFieldType(fieldType);
+    const defaultValue = getDefaultValueForFieldType(fieldType);
+    
+    updateRule(ruleId, {
+      field: field.name,
+      fieldPath: field.path,
+      fieldType: fieldType,
+      label: field.label,
+      operator: operators[0]?.value as FilterOperator || 'equals',
+      value: defaultValue
+    });
+  };
+
+  const handleOperatorChange = (ruleId: string, operator: FilterOperator) => {
+    const rule = rules.find(r => r.id === ruleId);
+    if (!rule) return;
+    
+    // For date preset operator, set a default preset value
+    if (operator === 'preset' && (rule.fieldType === 'date' || rule.fieldType === 'datetime')) {
+      updateRule(ruleId, { 
+        operator, 
+        value: 'today' 
+      });
+    } else {
+      const defaultValue = getDefaultValueForFieldType(rule.fieldType);
+      updateRule(ruleId, { 
+        operator, 
+        value: defaultValue 
       });
     }
   };
 
-  const getFieldType = (fieldPath: string[]) => {
-    const field = getFieldOptions().find(f => 
-      f.path.length === fieldPath.length && 
-      f.path.every((p, i) => p === fieldPath[i])
-    );
-    return field?.type || 'string';
-  };
-
-  const getFieldTypeFromPath = (fieldPath: string[]) => {
-    if (fieldPath.length === 0) return 'string';
+  const getEnumOptions = (fieldPath: string[]) => {
+    if (fieldPath.length === 0) return [];
     
-    // For now, return basic type inference based on field names
     const fieldName = fieldPath[fieldPath.length - 1];
     
-    if (fieldName === 'isActive' || fieldName === 'isSuperAdmin') return 'boolean';
-    if (fieldName === 'createdAt' || fieldName === 'updatedAt' || fieldName === 'startedAt') return 'datetime';
-    if (fieldName === 'status' || fieldName === 'accessType') return 'enum';
-    
-    return 'string';
-  };
-
-  const renderValueInput = (rule: FilterRule) => {
-    const fieldType = getFieldTypeFromPath(rule.fieldPath);
-    
-    if (fieldType === 'boolean') {
-      return (
-        <Select value={String(rule.value)} onValueChange={(value) => updateRule(rule.id, { value: value === 'true' })}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="true">True</SelectItem>
-            <SelectItem value="false">False</SelectItem>
-          </SelectContent>
-        </Select>
-      );
-    }
-
-    if (fieldType === 'enum') {
-      const fieldName = rule.fieldPath[rule.fieldPath.length - 1];
-      let options: Array<{ value: any; label: string }> = [];
-      
-      if (fieldName === 'status') {
-        options = [
+    // Return enum options based on field name - this should come from API in real implementation
+    switch (fieldName) {
+      case 'status':
+        return [
           { value: 'ACTIVE', label: 'Active' },
           { value: 'ENDED', label: 'Ended' },
           { value: 'EXPIRED', label: 'Expired' },
           { value: 'REVOKED', label: 'Revoked' }
         ];
-      } else if (fieldName === 'accessType') {
-        options = [
+      case 'accessType':
+        return [
           { value: 'SECURE_LOGIN', label: 'Secure Login' },
           { value: 'IMPERSONATION', label: 'Impersonation' },
           { value: 'DIRECT_ACCESS', label: 'Direct Access' }
         ];
-      }
-      
-      if (rule.operator === 'in' || rule.operator === 'not_in') {
-        return (
-          <MultiValueSelector
-            moduleName={moduleName}
-            fieldPath={rule.fieldPath}
-            fieldConfig={{ label: rule.label || rule.field, type: 'enum', operators: [], path: rule.fieldPath }}
-            selectedValues={Array.isArray(rule.value) ? rule.value : []}
-            onValuesChange={(values) => updateRule(rule.id, { value: values })}
-          />
-        );
-      } else {
-        return (
-          <Select value={rule.value} onValueChange={(value) => updateRule(rule.id, { value })}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      }
+      default:
+        return [];
     }
-
-    return (
-      <Input
-        value={rule.value || ''}
-        onChange={(e) => updateRule(rule.id, { value: e.target.value })}
-        placeholder="Enter value..."
-        className="flex-1"
-      />
-    );
   };
 
   const handleApply = () => {
-    if (rules.length === 0) {
+    const validRules = rules.filter(rule => rule.field && rule.fieldPath.length > 0);
+    
+    if (validRules.length === 0) {
       onApply(null);
     } else {
       const filter: ComplexFilter = {
         rootGroup: {
           id: generateId(),
           logic,
-          rules: rules.map(rule => ({
+          rules: validRules.map(rule => ({
             id: rule.id,
             field: rule.field,
             operator: rule.operator,
@@ -280,7 +192,14 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
   };
 
   const handleClear = () => {
-    setRules([]);
+    setRules([{
+      id: generateId(),
+      field: '',
+      operator: 'equals' as FilterOperator,
+      value: '',
+      fieldPath: [],
+      fieldType: 'string'
+    }]);
     setLogic('AND');
   };
 
@@ -312,8 +231,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
           {/* Rules */}
           <div className="space-y-3">
             {rules.map((rule) => {
-              const fieldType = getFieldTypeFromPath(rule.fieldPath);
-              const operatorOptions = getOperatorOptions(fieldType);
+              const operatorOptions = getOperatorsForFieldType(rule.fieldType);
 
               return (
                 <div key={rule.id} className="flex items-center gap-2 p-3 border rounded">
@@ -339,13 +257,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                         moduleName={moduleName}
                         selectedPath={rule.fieldPath}
                         onFieldSelect={(field) => {
-                          updateRule(rule.id, {
-                            field: field.name,
-                            fieldPath: field.path,
-                            label: field.label,
-                            operator: 'equals' as FilterOperator,
-                            value: ''
-                          });
+                          handleFieldSelect(rule.id, field);
                           setFieldSelectorOpen(null);
                         }}
                         onClose={() => setFieldSelectorOpen(null)}
@@ -356,9 +268,10 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                   {/* Operator Selector */}
                   <Select 
                     value={rule.operator} 
-                    onValueChange={(value) => updateRule(rule.id, { operator: value as FilterOperator, value: '' })}
+                    onValueChange={(value) => handleOperatorChange(rule.id, value as FilterOperator)}
+                    disabled={!rule.field}
                   >
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -371,7 +284,20 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                   </Select>
 
                   {/* Value Input */}
-                  {renderValueInput(rule)}
+                  {rule.field && (
+                    <div className="flex-1">
+                      <EnhancedValueInput
+                        fieldName={rule.field}
+                        fieldPath={rule.fieldPath}
+                        fieldType={rule.fieldType}
+                        operator={rule.operator}
+                        value={rule.value}
+                        onChange={(value) => updateRule(rule.id, { value })}
+                        moduleName={moduleName}
+                        enumOptions={getEnumOptions(rule.fieldPath)}
+                      />
+                    </div>
+                  )}
 
                   {/* Remove Button */}
                   <Button
@@ -379,6 +305,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                     size="sm"
                     onClick={() => removeRule(rule.id)}
                     className="h-8 w-8 p-0"
+                    disabled={rules.length === 1}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -395,7 +322,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-4 border-t">
-            <Button variant="outline" onClick={handleClear} disabled={rules.length === 0}>
+            <Button variant="outline" onClick={handleClear} disabled={rules.length <= 1}>
               Clear All
             </Button>
             <div className="flex items-center gap-2">
@@ -403,7 +330,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                 Cancel
               </Button>
               <Button onClick={handleApply}>
-                Add
+                Add Filter
               </Button>
             </div>
           </div>

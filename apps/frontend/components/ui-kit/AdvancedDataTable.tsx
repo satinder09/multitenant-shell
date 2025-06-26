@@ -47,16 +47,122 @@ interface AdvancedDataTableProps<TData> {
   data: TData[]
   columns: ColumnDef<TData>[]
   allowDrag?: boolean
+  persistenceKey?: string // Key for localStorage persistence
+  defaultPageSize?: number
+  enableColumnVisibility?: boolean
+  enableSorting?: boolean
+  enableFiltering?: boolean
+  enableRowSelection?: boolean
 }
 
-export function AdvancedDataTable<TData>({ data: initialData, columns, allowDrag = false }: AdvancedDataTableProps<TData>) {
+interface TableState {
+  columnVisibility: VisibilityState
+  sorting: SortingState
+  columnFilters: ColumnFiltersState
+  pagination: { pageIndex: number; pageSize: number }
+  rowSelection: Record<string, boolean>
+}
+
+// Hook for managing table state with persistence
+function useTableState(
+  columns: ColumnDef<any>[],
+  persistenceKey?: string,
+  defaultPageSize = 10
+): [TableState, {
+  setColumnVisibility: (updater: VisibilityState | ((old: VisibilityState) => VisibilityState)) => void
+  setSorting: (updater: SortingState | ((old: SortingState) => SortingState)) => void
+  setColumnFilters: (updater: ColumnFiltersState | ((old: ColumnFiltersState) => ColumnFiltersState)) => void
+  setPagination: (updater: { pageIndex: number; pageSize: number } | ((old: { pageIndex: number; pageSize: number }) => { pageIndex: number; pageSize: number })) => void
+  setRowSelection: (updater: Record<string, boolean> | ((old: Record<string, boolean>) => Record<string, boolean>)) => void
+}] {
+  
+  const getInitialState = (): TableState => {
+    // Try to load from localStorage if persistenceKey is provided
+    if (persistenceKey && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(`tableState_${persistenceKey}`)
+        if (saved) {
+          const parsedState = JSON.parse(saved)
+          // Ensure the saved state has all required properties
+          return {
+            columnVisibility: parsedState.columnVisibility || {},
+            sorting: parsedState.sorting || [],
+            columnFilters: parsedState.columnFilters || [],
+            pagination: parsedState.pagination || { pageIndex: 0, pageSize: defaultPageSize },
+            rowSelection: parsedState.rowSelection || {}
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load table state from localStorage:', error)
+      }
+    }
+
+    // Initialize column visibility from config
+    const initialColumnVisibility: VisibilityState = {}
+    columns.forEach((column) => {
+      const meta = (column as any).meta
+      if (meta && typeof meta.defaultVisible === 'boolean') {
+        initialColumnVisibility[column.id || ''] = meta.defaultVisible
+      }
+    })
+
+    return {
+      columnVisibility: initialColumnVisibility,
+      sorting: [],
+      columnFilters: [],
+      pagination: { pageIndex: 0, pageSize: defaultPageSize },
+      rowSelection: {}
+    }
+  }
+
+  const [state, setState] = React.useState<TableState>(getInitialState)
+
+  // Save to localStorage whenever state changes
+  React.useEffect(() => {
+    if (persistenceKey && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`tableState_${persistenceKey}`, JSON.stringify(state))
+      } catch (error) {
+        console.warn('Failed to save table state to localStorage:', error)
+      }
+    }
+  }, [state, persistenceKey])
+
+  const createUpdater = <T,>(key: keyof TableState) => (updater: T | ((old: T) => T)) => {
+    setState(prev => ({
+      ...prev,
+      [key]: typeof updater === 'function' ? (updater as (old: T) => T)(prev[key] as T) : updater
+    }))
+  }
+
+  return [
+    state,
+    {
+      setColumnVisibility: createUpdater<VisibilityState>('columnVisibility'),
+      setSorting: createUpdater<SortingState>('sorting'),
+      setColumnFilters: createUpdater<ColumnFiltersState>('columnFilters'),
+      setPagination: createUpdater<{ pageIndex: number; pageSize: number }>('pagination'),
+      setRowSelection: createUpdater<Record<string, boolean>>('rowSelection')
+    }
+  ]
+}
+
+export function AdvancedDataTable<TData>({ 
+  data: initialData, 
+  columns, 
+  allowDrag = false, 
+  persistenceKey,
+  defaultPageSize = 10,
+  enableColumnVisibility = true,
+  enableSorting = true,
+  enableFiltering = true,
+  enableRowSelection = true,
+}: AdvancedDataTableProps<TData>) {
   const [data, setData] = React.useState(() => initialData)
-  const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [columnSearch, setColumnSearch] = React.useState("")
+
+  // Use custom hook for table state management
+  const [tableState, tableActions] = useTableState(columns, persistenceKey, defaultPageSize)
 
   // Sync internal data state with prop changes
   React.useEffect(() => {
@@ -76,14 +182,20 @@ export function AdvancedDataTable<TData>({ data: initialData, columns, allowDrag
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, columnVisibility, rowSelection, columnFilters, pagination },
-    onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    onColumnFiltersChange: setColumnFilters,
-    onPaginationChange: setPagination,
+    state: { 
+      sorting: enableSorting ? tableState.sorting : [],
+      columnVisibility: enableColumnVisibility ? tableState.columnVisibility : {},
+      rowSelection: enableRowSelection ? tableState.rowSelection : {},
+      columnFilters: enableFiltering ? tableState.columnFilters : [],
+      pagination: tableState.pagination
+    },
+    onSortingChange: enableSorting ? tableActions.setSorting : undefined,
+    onColumnVisibilityChange: enableColumnVisibility ? tableActions.setColumnVisibility : undefined,
+    onRowSelectionChange: enableRowSelection ? tableActions.setRowSelection : undefined,
+    onColumnFiltersChange: enableFiltering ? tableActions.setColumnFilters : undefined,
+    onPaginationChange: tableActions.setPagination,
     getRowId: (_row, index) => index.toString(),
-    enableRowSelection: true,
+    enableRowSelection: enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -185,10 +297,20 @@ export function AdvancedDataTable<TData>({ data: initialData, columns, allowDrag
                 {table
                   .getAllColumns()
                   .filter((column) => column.getCanHide())
-                  .filter((column) => 
-                    column.id.toLowerCase().includes(columnSearch.toLowerCase())
-                  )
+                  .filter((column) => {
+                    const headerText = typeof column.columnDef.header === 'string' 
+                      ? column.columnDef.header 
+                      : column.id;
+                    const searchTerm = columnSearch.toLowerCase();
+                    return column.id.toLowerCase().includes(searchTerm) ||
+                           headerText.toLowerCase().includes(searchTerm);
+                  })
                   .map((column) => {
+                    // Get the column header text for better display
+                    const headerText = typeof column.columnDef.header === 'string' 
+                      ? column.columnDef.header 
+                      : column.id;
+                    
                     return (
                       <DropdownMenuCheckboxItem
                         key={column.id}
@@ -199,7 +321,7 @@ export function AdvancedDataTable<TData>({ data: initialData, columns, allowDrag
                         }
                         onSelect={(e) => e.preventDefault()}
                       >
-                        {column.id}
+                        {headerText}
                       </DropdownMenuCheckboxItem>
                     )
                   })}

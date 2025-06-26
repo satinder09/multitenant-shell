@@ -7,22 +7,20 @@ import {
   Search, 
   Filter, 
   Star, 
+  ChevronDown,
   ChevronRight, 
   Plus,
   BarChart3,
-  Loader2
+  Loader2,
+  Calendar,
+  RotateCcw
 } from 'lucide-react';
 import { 
   ComplexFilter, 
   SavedSearch
 } from '@/lib/types';
-import { 
-  PopularFilterConfig, 
-  formatDisplayValue, 
-  convertPresetToDate 
-} from '@/lib/filter-registry';
+import { ModuleConfig, ColumnDefinition } from '@/lib/modules/types';
 import { FilterDialog } from './FilterDialog';
-import { DatePickerInput, DropdownInput } from './UserInputComponents';
 
 interface FilterDropdownMenuProps {
   moduleName: string;
@@ -33,13 +31,23 @@ interface FilterDropdownMenuProps {
   onFilterApply: (filter: ComplexFilter | null) => void;
   onSavedSearchLoad: (searchId: string) => void;
   placeholder?: string;
+  config?: ModuleConfig;
 }
 
-interface AutoDiscoveredFields {
-  sourceTable: string;
-  fields: any[];
-  relationships: any[];
-  popularFilters: PopularFilterConfig[];
+interface PopularFilter {
+  id: string;
+  label: string;
+  type: 'preloaded' | 'user_input';
+  field: string;
+  operator: string;
+  value?: any;
+  icon?: React.ReactNode;
+}
+
+interface GroupByOption {
+  id: string;
+  label: string;
+  field: string;
 }
 
 export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
@@ -50,139 +58,139 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
   onSearchChange,
   onFilterApply,
   onSavedSearchLoad,
-  placeholder = "Search..."
+  placeholder = "Search...",
+  config
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'filters' | 'groupby' | 'favorites'>('filters');
-  const [fieldSearchTerm, setFieldSearchTerm] = useState('');
   const [showCustomFilterDialog, setShowCustomFilterDialog] = useState(false);
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
-  const [autoDiscovery, setAutoDiscovery] = useState<AutoDiscoveredFields | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userInputStates, setUserInputStates] = useState<Record<string, any>>({});
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Auto-discover fields on mount
-  useEffect(() => {
-    const loadAutoDiscovery = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/filters/${moduleName}/auto-discovery`);
-        if (response.ok) {
-          const discovery = await response.json();
-          setAutoDiscovery(discovery);
-        } else {
-          console.error('Failed to load auto-discovery:', await response.text());
-        }
-      } catch (error) {
-        console.error('Failed to load auto-discovery:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadAutoDiscovery();
-  }, [moduleName]);
-
-  // Handle preloaded filter click
-  const handlePreloadedFilter = (filter: PopularFilterConfig) => {
-    const complexFilter: ComplexFilter = {
-      rootGroup: {
-        id: Date.now().toString(),
-        logic: 'AND',
-        rules: [{
-          id: Date.now().toString(),
-          field: filter.field,
-          operator: filter.operator,
-          value: filter.preloadedValue,
-          fieldPath: [filter.field],
-          label: filter.label
-        }],
-        groups: []
-      }
-    };
-    
-    onFilterApply(complexFilter);
-    setIsOpen(false);
-  };
-  
-  // Handle user input filter value change
-  const handleUserInputChange = (filterId: string, value: any) => {
-    setUserInputStates(prev => ({
-      ...prev,
-      [filterId]: value
-    }));
-  };
-  
-  // Apply user input filter
-  const applyUserInputFilter = (filter: PopularFilterConfig) => {
-    const value = userInputStates[filter.id];
-    if (!value) return;
-    
-    // Convert preset values to actual dates if needed
-    let actualValue = value;
-    if (filter.inputConfig?.renderType === 'datepicker' && typeof value === 'string') {
-      const convertedDate = convertPresetToDate(value);
-      if (convertedDate) {
-        actualValue = convertedDate;
-      }
+  // Generate popular filters from config
+  const popularFilters: PopularFilter[] = React.useMemo(() => {
+    if (!config) {
+      return []; // Return empty if no config
     }
-    
-    const complexFilter: ComplexFilter = {
-      rootGroup: {
-        id: Date.now().toString(),
-        logic: 'AND',
-        rules: [{
+
+    const filters: PopularFilter[] = [];
+
+    // Get columns that have popular filters defined
+    config.columns
+      .filter(col => col.popular && col.popularFilter)
+      .forEach(col => {
+        const popularFilter = col.popularFilter!;
+        
+        filters.push({
+          id: `${col.field}-popular`,
+          label: popularFilter.label || col.display,
+          type: popularFilter.value !== undefined ? 'preloaded' : 'user_input',
+          field: popularFilter.field,
+          operator: popularFilter.operator,
+          value: popularFilter.value,
+          icon: getIconForColumn(col)
+        });
+      });
+
+    // Add common filters based on column types
+    config.columns
+      .filter(col => col.filterable && col.visible)
+      .forEach(col => {
+        // Add date range filters for date columns
+        if (col.type === 'date' || col.type === 'datetime') {
+          filters.push({
+            id: `${col.field}-range`,
+            label: `${col.display} Range`,
+            type: 'user_input',
+            field: col.field,
+            operator: 'between',
+            icon: <Calendar className="w-4 h-4" />
+          });
+        }
+
+        // Add boolean filters
+        if (col.type === 'boolean' && col.options) {
+          col.options.forEach(option => {
+            filters.push({
+              id: `${col.field}-${option.value}`,
+              label: `${col.display}: ${option.label}`,
+              type: 'preloaded',
+              field: col.field,
+              operator: 'equals',
+              value: option.value
+            });
+          });
+        }
+      });
+
+    return filters.slice(0, 8); // Limit to 8 popular filters
+  }, [config]);
+
+  // Generate group by options from config
+  const groupByOptions: GroupByOption[] = React.useMemo(() => {
+    if (!config) {
+      return [];
+    }
+
+    return config.columns
+      .filter(col => col.visible && (col.type === 'string' || col.type === 'enum'))
+      .slice(0, 5) // Limit to 5 group by options
+      .map(col => ({
+        id: col.field,
+        label: col.display,
+        field: col.field
+      }));
+  }, [config]);
+
+  // Helper function to get appropriate icon for column type
+  function getIconForColumn(col: ColumnDefinition): React.ReactNode {
+    switch (col.type) {
+      case 'date':
+      case 'datetime':
+        return <Calendar className="w-4 h-4" />;
+      case 'boolean':
+        return <RotateCcw className="w-4 h-4" />;
+      default:
+        return undefined;
+    }
+  }
+
+  // Handle filter application
+  const handleFilterClick = (filter: PopularFilter) => {
+    if (filter.type === 'preloaded') {
+      const complexFilter: ComplexFilter = {
+        rootGroup: {
           id: Date.now().toString(),
-          field: filter.field,
-          operator: filter.operator,
-          value: actualValue,
-          fieldPath: [filter.field],
-          label: `${filter.label}: ${formatDisplayValue(value, filter.inputConfig?.renderType)}`
-        }],
-        groups: []
-      }
-    };
-    
-    onFilterApply(complexFilter);
+          logic: 'AND',
+          rules: [{
+            id: Date.now().toString(),
+            field: filter.field,
+            operator: filter.operator as any,
+            value: filter.value,
+            fieldPath: [filter.field],
+            label: filter.label
+          }],
+          groups: []
+        }
+      };
+      
+      onFilterApply(complexFilter);
+      setIsOpen(false);
+    } else {
+      // For user input filters, open custom filter dialog
+      setShowCustomFilterDialog(true);
+      setIsOpen(false);
+    }
+  };
+
+  const handleGroupByClick = (option: GroupByOption) => {
+    // Handle group by functionality
+    console.log('Group by:', option);
     setIsOpen(false);
   };
 
   const handleCustomFilterDialog = () => {
     setShowCustomFilterDialog(true);
-    setIsOpen(false);
-  };
-
-  const toggleExpanded = (pathKey: string) => {
-    const newExpanded = new Set(expandedPaths);
-    if (newExpanded.has(pathKey)) {
-      newExpanded.delete(pathKey);
-    } else {
-      newExpanded.add(pathKey);
-    }
-    setExpandedPaths(newExpanded);
-  };
-
-  const applyFieldFilter = (field: any) => {
-    const complexFilter: ComplexFilter = {
-      rootGroup: {
-        id: Date.now().toString(),
-        logic: 'AND',
-        rules: [{
-          id: Date.now().toString(),
-          field: field.name,
-          operator: 'contains',
-          value: '',
-          fieldPath: [field.name],
-          label: field.label
-        }],
-        groups: []
-      }
-    };
-    
-    onFilterApply(complexFilter);
     setIsOpen(false);
   };
 
@@ -198,290 +206,135 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const renderPopularFilters = () => {
-    if (!autoDiscovery?.popularFilters || autoDiscovery.popularFilters.length === 0) {
-      return null;
-    }
-    
-    return (
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground px-2">Popular Filters</div>
-        
-        {autoDiscovery.popularFilters.map(filter => (
-          <div key={filter.id}>
-            {filter.type === 'preloaded' ? (
-              // PRELOADED FILTER - One click
-              <button
-                onClick={() => handlePreloadedFilter(filter)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted rounded transition-colors"
-              >
-                {filter.icon}
-                <span>{filter.label}</span>
-              </button>
-            ) : (
-              // USER INPUT FILTER - Interactive
-              <div className="px-2 py-1">
-                <div className="flex items-center gap-2 mb-2">
-                  {filter.icon}
-                  <span className="text-sm font-medium">{filter.label}</span>
-                </div>
-                
-                {filter.inputConfig?.renderType === 'datepicker' && (
-                  <DatePickerInput
-                    value={userInputStates[filter.id]}
-                    onChange={(value) => handleUserInputChange(filter.id, value)}
-                    onApply={() => applyUserInputFilter(filter)}
-                    presets={filter.inputConfig.datePresets}
-                    placeholder={filter.inputConfig.placeholder}
-                  />
-                )}
-                
-                {filter.inputConfig?.renderType === 'dropdown' && (
-                  <DropdownInput
-                    value={userInputStates[filter.id]}
-                    onChange={(value) => handleUserInputChange(filter.id, value)}
-                    onApply={() => applyUserInputFilter(filter)}
-                    dataSource={filter.inputConfig.dataSource}
-                    placeholder={filter.inputConfig.placeholder}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const renderAvailableFields = () => {
-    if (!autoDiscovery?.fields) return null;
-    
-    const filteredFields = autoDiscovery.fields.filter(field => 
-      !fieldSearchTerm || 
-      field.label.toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
-      field.name.toLowerCase().includes(fieldSearchTerm.toLowerCase())
-    );
-    
-    return (
-      <div>
-        <div className="text-xs font-medium text-muted-foreground mb-2 px-2">Fields</div>
-        <div className="max-h-48 overflow-y-auto space-y-1">
-          {filteredFields.map((field: any) => (
-            <button
-              key={field.name}
-              onClick={() => applyFieldFilter(field)}
-              className="w-full flex items-center gap-1 px-2 py-1 text-xs hover:bg-muted rounded"
-            >
-              <span className="flex-1 text-left truncate">{field.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderRelationshipFields = () => {
-    if (!autoDiscovery?.relationships) return null;
-    
-    return (
-      <div>
-        <div className="text-xs font-medium text-muted-foreground mb-2 px-2">Related Fields</div>
-        <div className="max-h-48 overflow-y-auto space-y-1">
-          {autoDiscovery.relationships.map((rel: any) => {
-            const pathKey = rel.name;
-            const isExpanded = expandedPaths.has(pathKey);
-            
-            return (
-              <div key={rel.name}>
-                <button
-                  onClick={() => toggleExpanded(pathKey)}
-                  className="w-full flex items-center gap-1 px-2 py-1 text-xs hover:bg-muted rounded"
-                >
-                  <ChevronRight 
-                    className={`w-3 h-3 text-muted-foreground transition-transform ${
-                      isExpanded ? 'rotate-90' : ''
-                    }`} 
-                  />
-                  <span className="flex-1 text-left truncate">{rel.label}</span>
-                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                </button>
-                
-                {isExpanded && rel.children && (
-                  <div className="ml-4 space-y-1">
-                    {rel.children.map((child: any) => (
-                      <button
-                        key={child.name}
-                        onClick={() => applyFieldFilter(child)}
-                        className="w-full flex items-center gap-1 px-2 py-1 text-xs hover:bg-muted rounded"
-                        style={{ paddingLeft: '12px' }}
-                      >
-                        <span className="flex-1 text-left truncate">{child.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderFiltersTab = () => {
-    return (
-      <div className="space-y-4">
-        {/* Popular Filters */}
-        {renderPopularFilters()}
-
-        {/* Separator */}
-        {autoDiscovery?.popularFilters && autoDiscovery.popularFilters.length > 0 && (
-          <div className="border-t" />
-        )}
-
-        {/* Field Search */}
-        <div className="px-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-            <Input
-              placeholder="Search fields..."
-              value={fieldSearchTerm}
-              onChange={(e) => setFieldSearchTerm(e.target.value)}
-              className="pl-7 h-7 text-xs"
-            />
-          </div>
-        </div>
-
-        {/* Available Fields */}
-        {renderAvailableFields()}
-
-        {/* Relationship Fields */}
-        {renderRelationshipFields()}
-
-        {/* Separator */}
-        <div className="border-t" />
-
-        {/* Add Custom Filter */}
-        <div className="px-2">
-          <button
-            onClick={handleCustomFilterDialog}
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Custom Filter</span>
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderGroupByTab = () => {
-    return (
-      <div className="space-y-4">
-        <div className="text-center text-muted-foreground text-sm py-8">
-          Group By functionality coming soon...
-        </div>
-      </div>
-    );
-  };
-
-  const renderFavoritesTab = () => {
-    return (
-      <div className="space-y-4">
-        {savedSearches.length === 0 ? (
-          <div className="text-center text-muted-foreground text-sm py-8">
-            No saved searches yet
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {savedSearches.map((search) => (
-              <button
-                key={search.id}
-                onClick={() => {
-                  onSavedSearchLoad(search.id);
-                  setIsOpen(false);
-                }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted rounded"
-              >
-                <Star className={`w-4 h-4 ${search.isFavorite ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
-                <span className="flex-1 text-left truncate">{search.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative w-full" ref={dropdownRef}>
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input
           ref={inputRef}
           placeholder={placeholder}
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
-          className="pl-8 h-9"
+          className="pl-10 pr-10 h-10 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
+        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
       </div>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg z-50 min-w-80">
-          {/* Tabs */}
-          <div className="flex border-b">
-            <button
-              onClick={() => setActiveTab('filters')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'filters'
-                  ? 'border-primary text-primary bg-primary/5'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-            </button>
-            <button
-              onClick={() => setActiveTab('groupby')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'groupby'
-                  ? 'border-primary text-primary bg-primary/5'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Group By
-            </button>
-            <button
-              onClick={() => setActiveTab('favorites')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'favorites'
-                  ? 'border-primary text-primary bg-primary/5'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <Star className="w-4 h-4" />
-              Favorites
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          <div className="p-2 max-h-96 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-sm text-muted-foreground">Loading...</span>
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+          <div className="flex">
+            {/* Filters Section */}
+            <div className="flex-1 border-r border-gray-200">
+              <div className="p-3 border-b border-gray-100 bg-gray-50">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Filter className="w-4 h-4" />
+                  Filters
+                </div>
               </div>
-            ) : (
-              <>
-                {activeTab === 'filters' && renderFiltersTab()}
-                {activeTab === 'groupby' && renderGroupByTab()}
-                {activeTab === 'favorites' && renderFavoritesTab()}
-              </>
-            )}
+              <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+                {popularFilters.map((filter) => (
+                  <button
+                    key={filter.id}
+                    onClick={() => handleFilterClick(filter)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
+                  >
+                    {filter.icon}
+                    {filter.label}
+                    {filter.type === 'user_input' && (
+                      <ChevronDown className="w-3 h-3 ml-auto text-gray-400" />
+                    )}
+                  </button>
+                ))}
+                
+                <div className="border-t border-gray-100 pt-2 mt-2">
+                  <button
+                    onClick={handleCustomFilterDialog}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Custom Filter
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Group By Section */}
+            <div className="flex-1 border-r border-gray-200">
+              <div className="p-3 border-b border-gray-100 bg-gray-50">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <BarChart3 className="w-4 h-4" />
+                  Group By
+                </div>
+              </div>
+              <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+                {groupByOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => handleGroupByClick(option)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    {option.label}
+                    <ChevronDown className="w-3 h-3 ml-auto text-gray-400 inline-block" />
+                  </button>
+                ))}
+                
+                <div className="border-t border-gray-100 pt-2 mt-2">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Custom Group
+                    <ChevronDown className="w-3 h-3 ml-auto text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Favorites Section */}
+            <div className="flex-1">
+              <div className="p-3 border-b border-gray-100 bg-gray-50">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Star className="w-4 h-4" />
+                  Favorites
+                </div>
+              </div>
+              <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+                {savedSearches.length === 0 ? (
+                  <div className="text-center text-gray-500 text-sm py-8">
+                    <div className="flex flex-col items-center gap-2">
+                      <Star className="w-8 h-8 text-gray-300" />
+                      <span>No saved searches yet</span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {savedSearches.map((search) => (
+                      <button
+                        key={search.id}
+                        onClick={() => {
+                          onSavedSearchLoad(search.id);
+                          setIsOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
+                      >
+                        <Star className={`w-4 h-4 ${search.isFavorite ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'}`} />
+                        <span className="flex-1 truncate">{search.name}</span>
+                      </button>
+                    ))}
+                    
+                    <div className="border-t border-gray-100 pt-2 mt-2">
+                      <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors">
+                        Save current search
+                        <ChevronDown className="w-3 h-3 ml-auto text-gray-400 inline-block" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -17,6 +17,11 @@ interface FieldNode {
   options?: Array<{ value: any; label: string }>;
 }
 
+interface Breadcrumb {
+  label: string;
+  path: string[];
+}
+
 interface NestedFieldSelectorProps {
   moduleName: string;
   selectedPath?: string[];
@@ -35,9 +40,7 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [navigating, setNavigating] = useState(false);
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
-  
-  type Breadcrumb = { label: string; path: string[] };
-  const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([]);
+  const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([{ label: 'Fields', path: [] }]);
   
   // Cache to prevent refetching the same data
   const [fieldCache, setFieldCache] = useState<Map<string, FieldNode[]>>(new Map());
@@ -101,7 +104,7 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
       setBreadcrumbs([{ label: 'Fields', path: [] }]);
     } else {
       // Build breadcrumbs from path
-      const newBreadcrumbs = [{ label: 'Fields', path: [] }];
+      const newBreadcrumbs: Breadcrumb[] = [{ label: 'Fields', path: [] }];
       for (let i = 0; i < parentPath.length; i++) {
         const pathSegment = parentPath.slice(0, i + 1);
         const label = getFieldLabelFromPath(pathSegment);
@@ -220,7 +223,7 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
       </div>
       
       {/* Field List */}
-      <div className="h-80 overflow-y-auto relative">
+      <div className="h-80 overflow-hidden relative border-t">
         {/* Navigation overlay */}
         {navigating && (
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
@@ -231,34 +234,36 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
           </div>
         )}
         
-        <div className={`p-2 transition-opacity duration-200 ${navigating ? 'opacity-30' : 'opacity-100'}`}>
-          {filteredFields.length > 0 ? (
-            filteredFields.map(field => (
-              <div
-                key={field.path.join('.')}
-                className={`flex items-center gap-2 py-2 px-3 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
-                  navigating ? 'pointer-events-none' : ''
-                }`}
-                onClick={() => navigateToField(field)}
-              >
-                <span className="text-sm font-medium flex-1">{field.label}</span>
-                
-                {!field.hasChildren && (
-                  <span className="text-xs text-gray-500">
-                    {field.type}
-                  </span>
-                )}
-                
-                {field.hasChildren && (
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                )}
+        <div className={`h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-opacity duration-200 ${navigating ? 'opacity-30' : 'opacity-100'}`}>
+          <div className="p-2">
+            {filteredFields.length > 0 ? (
+              filteredFields.map(field => (
+                <div
+                  key={field.path.join('.')}
+                  className={`flex items-center gap-2 py-2 px-3 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
+                    navigating ? 'pointer-events-none' : ''
+                  }`}
+                  onClick={() => navigateToField(field)}
+                >
+                  <span className="text-sm font-medium flex-1">{field.label}</span>
+                  
+                  {!field.hasChildren && (
+                    <span className="text-xs text-gray-500">
+                      {field.type}
+                    </span>
+                  )}
+                  
+                  {field.hasChildren && (
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 py-4">
+                {searchTerm ? `No fields found matching "${searchTerm}"` : 'No fields found'}
               </div>
-            ))
-          ) : (
-            <div className="text-center text-gray-500 py-4">
-              {searchTerm ? `No fields found matching "${searchTerm}"` : 'No fields found'}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
       
