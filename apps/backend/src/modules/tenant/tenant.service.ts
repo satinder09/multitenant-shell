@@ -106,42 +106,44 @@ export class TenantService {
     }
   }
 
-  async findAll() {
-    return this.masterPrisma.tenant.findMany({
-      include: {
-        permissions: {
-          include: {
-            user: true
-          }
-        },
-        impersonationSessions: {
-          include: {
-            originalUser: true
-          }
-        },
-        accessLogs: {
-          include: {
-            user: true
-          }
-        }
-      }
-    });
+  async findAll(queryDto?: GetTenantsQueryDto) {
+    this.logger.log('📋 Executing optimized findAll with minimal includes');
+    
+    // Always use the optimized query method, even for simple queries
+    const optimizedQuery = queryDto || {
+      page: 1,
+      limit: 50, // Reasonable default limit
+      sort: { field: 'createdAt', direction: 'desc' as const }
+    };
+    
+    return this.findWithComplexQuery(optimizedQuery);
   }
 
   async findWithComplexQuery(queryDto: any) {
+    this.logger.log('🔍 Starting optimized query analysis...');
+    
     // Analyze the query to determine required includes
     const requiredIncludes = this.analyzeRequiredIncludes(queryDto);
+    const includeCount = Object.keys(requiredIncludes).length;
+    this.logger.log(`📊 Required includes: ${includeCount > 0 ? JSON.stringify(requiredIncludes, null, 2) : 'NONE (base fields only)'}`);
     
     // Build the Prisma where clause from complex filters
     const whereClause = this.buildWhereClause(queryDto.complexFilter);
+    const hasFilters = Object.keys(whereClause).length > 0;
+    this.logger.log(`🎯 Generated where clause: ${hasFilters ? JSON.stringify(whereClause, null, 2) : 'NONE (no filtering)'}`);
     
     // Build the order by clause
     const orderBy = this.buildOrderBy(queryDto.sort);
+    this.logger.log(`📈 Order by: ${JSON.stringify(orderBy)}`);
     
     // Calculate pagination
     const skip = ((queryDto.page || 1) - 1) * (queryDto.limit || 10);
     const take = queryDto.limit || 10;
+    this.logger.log(`📄 Pagination: skip=${skip}, take=${take} (ALWAYS applied - never loads all data)`);
 
+    this.logger.log('🚀 Executing optimized database query with filters applied first...');
+    const startTime = Date.now();
+    
     // Execute the optimized query
     const [data, total] = await Promise.all([
       this.masterPrisma.tenant.findMany({
@@ -155,6 +157,10 @@ export class TenantService {
         where: whereClause,
       }),
     ]);
+
+    const queryTime = Date.now() - startTime;
+    const efficiency = total > 0 ? `${((data.length / total) * 100).toFixed(1)}%` : '100%';
+    this.logger.log(`✅ Query completed in ${queryTime}ms - Retrieved ${data.length}/${total} records (${efficiency} efficiency)`);
 
     return {
       data,
@@ -173,11 +179,21 @@ export class TenantService {
     const includes: any = {};
     
     if (!queryDto.complexFilter?.rootGroup) {
-      return includes;
+      this.logger.log('⚡ No complex filters found - using zero includes (only base tenant fields)');
+      return includes; // Return empty - only load base tenant fields
     }
 
+    this.logger.log('🔬 Analyzing filter rules to determine required database joins...');
+    
     // Recursively analyze all rules to determine required joins
     this.analyzeRulesForIncludes(queryDto.complexFilter.rootGroup, includes);
+    
+    const includeCount = Object.keys(includes).length;
+    if (includeCount === 0) {
+      this.logger.log('🎯 Analysis complete - no relationships needed, only base tenant fields will be loaded');
+    } else {
+      this.logger.log(`🎯 Analysis complete - ${includeCount} relationship(s) required for optimal query`);
+    }
     
     return includes;
   }
@@ -204,32 +220,39 @@ export class TenantService {
     if (fieldPath.length < 2) return;
 
     const [firstLevel, ...restPath] = fieldPath;
+    const fullPath = fieldPath.join('.');
     
     switch (firstLevel) {
       case 'permissions':
         if (!includes.permissions) {
           includes.permissions = { include: {} };
+          this.logger.log(`🔗 Adding join: Tenant → Permissions`);
         }
         if (restPath.length > 0 && restPath[0] === 'user') {
           includes.permissions.include.user = true;
+          this.logger.log(`🔗 Adding nested join: Permissions → User (for ${fullPath})`);
         }
         break;
         
       case 'impersonationSessions':
         if (!includes.impersonationSessions) {
           includes.impersonationSessions = { include: {} };
+          this.logger.log(`🔗 Adding join: Tenant → Impersonation Sessions`);
         }
         if (restPath.length > 0 && restPath[0] === 'originalUser') {
           includes.impersonationSessions.include.originalUser = true;
+          this.logger.log(`🔗 Adding nested join: Impersonation Sessions → Original User (for ${fullPath})`);
         }
         break;
         
       case 'accessLogs':
         if (!includes.accessLogs) {
           includes.accessLogs = { include: {} };
+          this.logger.log(`🔗 Adding join: Tenant → Access Logs`);
         }
         if (restPath.length > 0 && restPath[0] === 'user') {
           includes.accessLogs.include.user = true;
+          this.logger.log(`🔗 Adding nested join: Access Logs → User (for ${fullPath})`);
         }
         break;
     }
@@ -237,10 +260,15 @@ export class TenantService {
 
   private buildWhereClause(complexFilter: any): any {
     if (!complexFilter?.rootGroup) {
+      this.logger.log('📝 No complex filters - using empty where clause');
       return {};
     }
 
-    return this.buildGroupWhereClause(complexFilter.rootGroup);
+    this.logger.log('🏗️  Building database where clause from complex filters...');
+    const whereClause = this.buildGroupWhereClause(complexFilter.rootGroup);
+    this.logger.log('✅ Where clause construction complete');
+    
+    return whereClause;
   }
 
   private buildGroupWhereClause(group: any): any {
@@ -286,13 +314,18 @@ export class TenantService {
     const fieldPath = rule.fieldPath || [rule.field];
     const operator = rule.operator;
     const value = rule.value;
+    const fullPath = fieldPath.join('.');
+
+    this.logger.log(`🔧 Processing rule: ${fullPath} ${operator} "${value}"`);
 
     // Handle direct tenant fields
     if (fieldPath.length === 1) {
+      this.logger.log(`📍 Direct field query on: ${fieldPath[0]}`);
       return this.buildDirectFieldCondition(fieldPath[0], operator, value);
     }
 
     // Handle nested fields
+    this.logger.log(`🔗 Nested field query on: ${fullPath}`);
     return this.buildNestedFieldCondition(fieldPath, operator, value);
   }
 

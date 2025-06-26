@@ -46,12 +46,8 @@ async function fetchRealModuleData(
 
     switch (moduleName) {
       case 'tenants':
-        // Use the new search endpoint for complex queries
-        if (params.complexFilter) {
-          apiUrl = `${backendUrl}/tenants/search`;
-        } else {
-          apiUrl = `${backendUrl}/tenants`;
-        }
+        // Always use the search endpoint for optimized queries
+        apiUrl = `${backendUrl}/tenants/search`;
         break;
       case 'users':
         apiUrl = `${backendUrl}/platform/users`;
@@ -60,14 +56,14 @@ async function fetchRealModuleData(
         throw new Error(`Module ${moduleName} not supported`);
     }
 
-    // Make the API call to backend
+    // Make the API call to backend - always POST for tenants to ensure optimization
     const response = await fetch(apiUrl, {
-      method: params.complexFilter ? 'POST' : 'GET',
+      method: moduleName === 'tenants' ? 'POST' : 'GET',
       headers: {
         'Content-Type': 'application/json',
         'cookie': request.headers.get('cookie') || '',
       },
-      ...(params.complexFilter && { body: JSON.stringify(params) }),
+      ...(moduleName === 'tenants' && { body: JSON.stringify(params) }),
     });
 
     if (!response.ok) {
@@ -76,12 +72,12 @@ async function fetchRealModuleData(
 
     const rawData = await response.json();
     
-    // If using complex filters, the backend already handled filtering and pagination
-    if (params.complexFilter && moduleName === 'tenants') {
+    // For tenants, the backend always handles filtering and pagination optimally
+    if (moduleName === 'tenants') {
       return rawData;
     }
     
-    // Transform the raw data into the expected format for simple queries
+    // Transform the raw data into the expected format for other modules (legacy support)
     return transformRealData(moduleName, rawData, params);
 
   } catch (error) {

@@ -29,17 +29,13 @@ export class TenantController {
 
   @Get()
   findAll(@Query() query?: GetTenantsQueryDto) {
-    // If complex filtering is requested, use the optimized method
-    if (query?.complexFilter) {
-      return this.tenantService.findWithComplexQuery(query);
-    }
-    
-    // Otherwise use the simple method
-    return this.tenantService.findAll();
+    console.log('🎯 GET /tenants - Always using optimized query method');
+    return this.tenantService.findAll(query);
   }
 
   @Post('search')
   searchWithComplexFilters(@Body() queryDto: GetTenantsQueryDto) {
+    console.log('🚀 POST /tenants/search - Complex search request received');
     return this.tenantService.findWithComplexQuery(queryDto);
   }
 
