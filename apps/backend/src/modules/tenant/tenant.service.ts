@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { GetTenantsQueryDto } from './dto/get-tenants-query.dto';
 import { execSync } from 'child_process';
 import { PrismaClient as MasterPrismaClient } from '../../../generated/master-prisma';
 
@@ -106,7 +107,288 @@ export class TenantService {
   }
 
   async findAll() {
-    return this.masterPrisma.tenant.findMany();
+    return this.masterPrisma.tenant.findMany({
+      include: {
+        permissions: {
+          include: {
+            user: true
+          }
+        },
+        impersonationSessions: {
+          include: {
+            originalUser: true
+          }
+        },
+        accessLogs: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+  }
+
+  async findWithComplexQuery(queryDto: any) {
+    // Analyze the query to determine required includes
+    const requiredIncludes = this.analyzeRequiredIncludes(queryDto);
+    
+    // Build the Prisma where clause from complex filters
+    const whereClause = this.buildWhereClause(queryDto.complexFilter);
+    
+    // Build the order by clause
+    const orderBy = this.buildOrderBy(queryDto.sort);
+    
+    // Calculate pagination
+    const skip = ((queryDto.page || 1) - 1) * (queryDto.limit || 10);
+    const take = queryDto.limit || 10;
+
+    // Execute the optimized query
+    const [data, total] = await Promise.all([
+      this.masterPrisma.tenant.findMany({
+        where: whereClause,
+        include: requiredIncludes,
+        orderBy,
+        skip,
+        take,
+      }),
+      this.masterPrisma.tenant.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page: queryDto.page || 1,
+        limit: queryDto.limit || 10,
+        total,
+        totalPages: Math.ceil(total / (queryDto.limit || 10)),
+        hasNext: (queryDto.page || 1) * (queryDto.limit || 10) < total,
+        hasPrev: (queryDto.page || 1) > 1,
+      },
+    };
+  }
+
+  private analyzeRequiredIncludes(queryDto: any) {
+    const includes: any = {};
+    
+    if (!queryDto.complexFilter?.rootGroup) {
+      return includes;
+    }
+
+    // Recursively analyze all rules to determine required joins
+    this.analyzeRulesForIncludes(queryDto.complexFilter.rootGroup, includes);
+    
+    return includes;
+  }
+
+  private analyzeRulesForIncludes(group: any, includes: any) {
+    // Check rules
+    if (group.rules) {
+      for (const rule of group.rules) {
+        if (rule.fieldPath && rule.fieldPath.length > 1) {
+          this.addIncludeForPath(rule.fieldPath, includes);
+        }
+      }
+    }
+
+    // Check nested groups
+    if (group.groups) {
+      for (const nestedGroup of group.groups) {
+        this.analyzeRulesForIncludes(nestedGroup, includes);
+      }
+    }
+  }
+
+  private addIncludeForPath(fieldPath: string[], includes: any) {
+    if (fieldPath.length < 2) return;
+
+    const [firstLevel, ...restPath] = fieldPath;
+    
+    switch (firstLevel) {
+      case 'permissions':
+        if (!includes.permissions) {
+          includes.permissions = { include: {} };
+        }
+        if (restPath.length > 0 && restPath[0] === 'user') {
+          includes.permissions.include.user = true;
+        }
+        break;
+        
+      case 'impersonationSessions':
+        if (!includes.impersonationSessions) {
+          includes.impersonationSessions = { include: {} };
+        }
+        if (restPath.length > 0 && restPath[0] === 'originalUser') {
+          includes.impersonationSessions.include.originalUser = true;
+        }
+        break;
+        
+      case 'accessLogs':
+        if (!includes.accessLogs) {
+          includes.accessLogs = { include: {} };
+        }
+        if (restPath.length > 0 && restPath[0] === 'user') {
+          includes.accessLogs.include.user = true;
+        }
+        break;
+    }
+  }
+
+  private buildWhereClause(complexFilter: any): any {
+    if (!complexFilter?.rootGroup) {
+      return {};
+    }
+
+    return this.buildGroupWhereClause(complexFilter.rootGroup);
+  }
+
+  private buildGroupWhereClause(group: any): any {
+    const conditions: any[] = [];
+
+    // Process rules
+    if (group.rules) {
+      for (const rule of group.rules) {
+        const condition = this.buildRuleWhereClause(rule);
+        if (condition) {
+          conditions.push(condition);
+        }
+      }
+    }
+
+    // Process nested groups
+    if (group.groups) {
+      for (const nestedGroup of group.groups) {
+        const nestedCondition = this.buildGroupWhereClause(nestedGroup);
+        if (nestedCondition) {
+          conditions.push(nestedCondition);
+        }
+      }
+    }
+
+    if (conditions.length === 0) {
+      return {};
+    }
+
+    if (conditions.length === 1) {
+      return conditions[0];
+    }
+
+    // Apply group logic (AND/OR)
+    if (group.logic === 'OR') {
+      return { OR: conditions };
+    } else {
+      return { AND: conditions };
+    }
+  }
+
+  private buildRuleWhereClause(rule: any): any {
+    const fieldPath = rule.fieldPath || [rule.field];
+    const operator = rule.operator;
+    const value = rule.value;
+
+    // Handle direct tenant fields
+    if (fieldPath.length === 1) {
+      return this.buildDirectFieldCondition(fieldPath[0], operator, value);
+    }
+
+    // Handle nested fields
+    return this.buildNestedFieldCondition(fieldPath, operator, value);
+  }
+
+  private buildDirectFieldCondition(field: string, operator: string, value: any): any {
+    switch (operator) {
+      case 'equals':
+        return { [field]: value };
+      case 'not_equals':
+        return { [field]: { not: value } };
+      case 'contains':
+        return { [field]: { contains: value, mode: 'insensitive' } };
+      case 'not_contains':
+        return { [field]: { not: { contains: value, mode: 'insensitive' } } };
+      case 'starts_with':
+        return { [field]: { startsWith: value, mode: 'insensitive' } };
+      case 'ends_with':
+        return { [field]: { endsWith: value, mode: 'insensitive' } };
+      case 'greater_than':
+        return { [field]: { gt: value } };
+      case 'less_than':
+        return { [field]: { lt: value } };
+      case 'greater_equal':
+        return { [field]: { gte: value } };
+      case 'less_equal':
+        return { [field]: { lte: value } };
+      case 'is_empty':
+        return { [field]: null };
+      case 'is_not_empty':
+        return { [field]: { not: null } };
+      case 'in':
+        return { [field]: { in: Array.isArray(value) ? value : [value] } };
+      case 'not_in':
+        return { [field]: { notIn: Array.isArray(value) ? value : [value] } };
+      default:
+        return {};
+    }
+  }
+
+  private buildNestedFieldCondition(fieldPath: string[], operator: string, value: any): any {
+    const [firstLevel, ...restPath] = fieldPath;
+
+    switch (firstLevel) {
+      case 'permissions':
+        return {
+          permissions: {
+            some: this.buildNestedCondition(restPath, operator, value)
+          }
+        };
+        
+      case 'impersonationSessions':
+        return {
+          impersonationSessions: {
+            some: this.buildNestedCondition(restPath, operator, value)
+          }
+        };
+        
+      case 'accessLogs':
+        return {
+          accessLogs: {
+            some: this.buildNestedCondition(restPath, operator, value)
+          }
+        };
+        
+      default:
+        return {};
+    }
+  }
+
+  private buildNestedCondition(fieldPath: string[], operator: string, value: any): any {
+    if (fieldPath.length === 1) {
+      return this.buildDirectFieldCondition(fieldPath[0], operator, value);
+    }
+
+    const [nextLevel, ...restPath] = fieldPath;
+    
+    if (nextLevel === 'user' || nextLevel === 'originalUser') {
+      return {
+        [nextLevel]: this.buildNestedCondition(restPath, operator, value)
+      };
+    }
+
+    return {};
+  }
+
+  private buildOrderBy(sort: any): any {
+    if (!sort) {
+      return { createdAt: 'desc' };
+    }
+
+    // Handle nested sorting if needed
+    if (sort.field.includes('.')) {
+      // For now, default to createdAt for complex sorts
+      return { createdAt: 'desc' };
+    }
+
+    return { [sort.field]: sort.direction };
   }
 
   async findOne(id: string) {

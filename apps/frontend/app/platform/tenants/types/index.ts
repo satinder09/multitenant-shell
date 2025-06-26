@@ -7,21 +7,32 @@ import {
   ServerDataTableProps,
   StatusFilter,
   AccessLevelFilter,
-  ModuleFilters 
+  ModuleFilters,
+  GenericEntity,
+  ComplexFilter,
+  DynamicFieldDiscovery,
+  AdvancedBaseFilters,
+  UseGenericFilterReturn
 } from '@/lib/types';
 
 // Tenant domain model that combines base tenant data with access control
-export interface TenantModel {
-  id: string;
+export interface TenantModel extends GenericEntity {
   name: string;
   subdomain: string;
+  description?: string;
   isActive: boolean;
-  createdAt: string;
-  // Access control properties
+  accessLevel: 'read' | 'write' | 'admin';
+  
+  // Computed fields
+  userCount: number;
   canAccess: boolean;
   canImpersonate: boolean;
-  accessLevel: 'read' | 'write' | 'admin';
   lastAccessed?: Date;
+  
+  // Relations
+  permissions: TenantPermission[];
+  createdBy?: User;
+  createdById?: string;
 }
 
 // Base tenant interface for API responses
@@ -53,6 +64,24 @@ export interface TenantAccessOption {
   lastAccessed?: Date;
 }
 
+// Tenant permission interface
+export interface TenantPermission {
+  id: string;
+  userId: string;
+  tenantId: string;
+  canImpersonate: boolean;
+  lastAccessed?: Date;
+  user: User;
+}
+
+// User interface
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 // Tenant user interface for impersonation
 export interface TenantUser {
   id: string;
@@ -61,10 +90,12 @@ export interface TenantUser {
 }
 
 // Tenant-specific filters extending the base filters
-export interface TenantFilters extends ModuleFilters<{
-  status: StatusFilter;
-  accessLevel: AccessLevelFilter;
-}> {}
+export interface TenantFilters extends AdvancedBaseFilters {
+  status?: StatusFilter;
+  accessLevel?: AccessLevelFilter;
+  userCount?: number;
+  createdById?: string;
+}
 
 // Type aliases using system-wide types
 export type TenantSortParams = SortParams<TenantModel>;
@@ -108,4 +139,4 @@ export interface TenantFiltersProps {
 }
 
 // Hook return type using system-wide generic
-export type UseFetchTenantsReturn = UseServerDataReturn<TenantModel, TenantFilters, TenantModel>; 
+export type UseFetchTenantsReturn = UseGenericFilterReturn<TenantModel, TenantFilters>; 

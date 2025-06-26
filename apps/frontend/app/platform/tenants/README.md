@@ -1,261 +1,296 @@
-# Tenants Module
+# Tenants Module - Advanced Filtering Reference Implementation
 
-A comprehensive, modular tenant management system that demonstrates best practices for building scalable SaaS admin interfaces with **server-side pagination**, filtering, and sorting.
+This module serves as the **reference implementation** for advanced filtering, pagination, and data management across the entire application. It demonstrates a modern, scalable approach with complex filtering capabilities that can be applied to any data-heavy module.
 
-## 🏗️ **Architecture Overview**
+## 🎯 Purpose
 
-This module uses a **system-wide architecture** for data management:
+This module is designed to be the **gold standard** for all other data-heavy modules in the application. It showcases:
+- **Complex Dynamic Filtering** with AND/OR logic
+- **Saved Searches** with favorites and sharing
+- **Nested Field Selection** for related data
+- **Server-side Pagination** with performance optimization
+- **Generic Components** that can be reused across modules
 
-- **Global Types** (`/lib/types.ts`) - Reusable pagination, filtering, and data table interfaces
-- **Module-Specific Extensions** - Tenant-specific types that extend the global interfaces
-- **Server-Side Data Management** - All pagination, filtering, and sorting handled by the API
-- **Reusable Patterns** - Can be copied to other modules (users, roles, etc.)
+## 🏗️ Architecture Overview
 
-## 📁 **Structure**
-
+### Enhanced Structure
 ```
 tenants/
-├── components/
-│   ├── TenantList.tsx           # Advanced data table with server-side pagination
-│   ├── TenantFilters.tsx        # Comprehensive filtering component
+├── components/                   # UI Components
+│   ├── TenantList.tsx           # Advanced data table (existing)
+│   ├── AdvancedTenantFilters.tsx # NEW: Complex filtering interface
+│   ├── ServerPagination.tsx     # Pagination controls (existing)
 │   ├── CreateTenantDialog.tsx   # Modal for tenant creation
 │   ├── SecureLoginModal.tsx     # Secure admin access modal
 │   └── ImpersonationModal.tsx   # User impersonation modal
+├── hooks/                       # Data Management
+│   └── useFetchTenants.ts       # UPDATED: Uses generic filter hook
+├── types/                       # TypeScript Definitions
+│   └── index.ts                 # UPDATED: Enhanced with complex filtering
+├── utils/                       # Helper Functions
+│   └── tenantHelpers.ts         # Business logic utilities
+└── page.tsx                     # UPDATED: Uses advanced filters
+```
+
+### 🆕 New Generic Filter System
+```
+/lib/
 ├── hooks/
-│   └── useFetchTenants.ts       # Server-side data fetching hook
-├── types/
-│   └── index.ts                 # Module-specific type extensions
-├── utils/
-│   └── tenantHelpers.ts         # Server actions and utilities
-├── page.tsx                     # Main tenants page
-└── README.md                    # This documentation
+│   └── useGenericFilter.ts      # Universal filtering hook
+├── types.ts                     # Enhanced with complex filtering types
+└── utils.ts                     # Filter utility functions
+
+/components/generic-filter/
+├── ComplexFilterBuilder.tsx     # Main filter builder component
+├── FilterRuleComponent.tsx      # Individual filter rule
+├── NestedFieldSelector.tsx      # Dynamic field selection
+├── MultiValueSelector.tsx       # Multi-select with search
+└── index.ts                     # Component exports
 ```
 
-## 🔧 **Key Components**
+## 🔧 Key Features
 
-### **TenantList** 
-Advanced data table with:
-- ✅ Server-side pagination with page size controls
-- ✅ Column sorting (name, status, access level, created date)
-- ✅ Row selection with bulk actions
-- ✅ Action dropdowns (secure login, impersonate, toggle status)
-- ✅ Loading states and empty states
-- ✅ Responsive design with mobile optimization
+### 1. **Advanced Complex Filtering**
+- **AND/OR Logic**: Match all or any conditions
+- **Nested Groups**: Create complex filter hierarchies
+- **Dynamic Field Discovery**: Fields are loaded from the backend
+- **Multiple Operators**: equals, contains, greater than, between, etc.
+- **Type-Aware Inputs**: Different inputs for strings, numbers, dates, relations
 
-### **TenantFilters**
-Comprehensive filtering with:
-- ✅ Real-time search (name, subdomain)
-- ✅ Status filtering (active/inactive/all)
-- ✅ Access level filtering (read/write/admin/all)
-- ✅ Date range filtering (created date)
-- ✅ Active filters summary with clear all
-- ✅ Filter count badges
+### 2. **Saved Searches**
+- **Personal & Public Searches**: Save filters for quick access
+- **Favorites System**: Star frequently used searches
+- **Search Management**: Create, load, delete, and share searches
+- **Automatic Persistence**: Searches are saved to the database
 
-### **useFetchTenants Hook**
-Server-side data management:
-- ✅ Pagination state management (page, limit)
-- ✅ Filter state management with debouncing
-- ✅ Sort state management
-- ✅ Loading and error states
-- ✅ Automatic refetching on parameter changes
-- ✅ Manual refetch capability
+### 3. **Dynamic Field Selection**
+- **Nested Field Navigation**: Access related entity fields
+- **Tree-based Selection**: Visual hierarchy of available fields
+- **Search Capability**: Find fields quickly by name
+- **Type Information**: Shows field types and available operators
 
-## 🌐 **System-Wide Types**
+### 4. **Multi-Value Selection**
+- **Tag-based Interface**: Selected values shown as removable tags
+- **Search & Filter**: Find values quickly in large datasets
+- **Bulk Selection**: Select multiple values with checkboxes
+- **Count Information**: Shows how many records match each value
 
-Located in `/lib/types.ts` for reuse across modules:
+## 🚀 Usage Examples
 
-```typescript
-// Generic pagination
-interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
+### Basic Implementation for Any Module
 
-// Generic query parameters
-interface QueryParams<TFilters, TSort> {
-  page: number;
-  limit: number;
-  filters?: TFilters;
-  sort?: SortParams<TSort>;
-}
-
-// Generic hook return type
-interface UseServerDataReturn<T, TFilters, TSort> {
-  data: T[];
-  isLoading: boolean;
-  error: string | null;
-  pagination: PaginationMeta | null;
-  queryParams: QueryParams<TFilters, TSort>;
-  setPage: (page: number) => void;
-  setLimit: (limit: number) => void;
-  setFilters: (filters: Partial<TFilters>) => void;
-  setSort: (sort: SortParams<TSort>) => void;
-  refetch: () => void;
-  resetFilters: () => void;
-}
-```
-
-## 🎯 **Module-Specific Extensions**
-
-```typescript
-// Tenant-specific filters extending base filters
-interface TenantFilters extends ModuleFilters<{
-  status: StatusFilter;           // 'all' | 'active' | 'inactive'
-  accessLevel: AccessLevelFilter; // 'all' | 'read' | 'write' | 'admin'
-}> {}
-
-// Type aliases using system-wide generics
-type TenantQueryParams = QueryParams<TenantFilters, TenantModel>;
-type TenantListResponse = PaginatedResponse<TenantModel>;
-type UseFetchTenantsReturn = UseServerDataReturn<TenantModel, TenantFilters, TenantModel>;
-```
-
-## 🚀 **Usage Examples**
-
-### **Basic Usage**
 ```tsx
-export default function TenantsPage() {
-  const {
-    data: tenants,
-    isLoading,
-    pagination,
-    setPage,
-    setFilters,
-    setSort,
-  } = useFetchTenants();
+// 1. Create module-specific types
+interface UserModel extends GenericEntity {
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+}
+
+interface UserFilters extends AdvancedBaseFilters {
+  role?: string;
+  isActive?: boolean;
+}
+
+// 2. Create the hook
+function useFetchUsers() {
+  return useGenericFilter<UserModel, UserFilters>('users', {
+    defaultLimit: 10,
+    defaultSort: { field: 'name', direction: 'asc' },
+    enableSavedSearches: true
+  });
+}
+
+// 3. Use in component
+export default function UsersPage() {
+  const userHook = useFetchUsers();
 
   return (
-    <TenantList
-      data={tenants}
-      isLoading={isLoading}
-      pagination={pagination}
-      onPageChange={setPage}
-      onFiltersChange={setFilters}
-      onSortChange={setSort}
-    />
+    <div>
+      <AdvancedUserFilters userHook={userHook} />
+      <UserList data={userHook.data} isLoading={userHook.isLoading} />
+    </div>
   );
 }
 ```
 
-### **With Filters**
+### Advanced Filter Component
+
 ```tsx
-const [showFilters, setShowFilters] = useState(false);
+export const AdvancedTenantFilters: React.FC<Props> = ({ tenantHook }) => {
+  const {
+    fieldDiscovery,
+    complexFilter,
+    setComplexFilter,
+    savedSearches,
+    saveCurrentSearch,
+    loadSavedSearch
+  } = tenantHook;
 
 return (
-  <div className="flex gap-6">
-    {showFilters && (
-      <div className="w-80">
-        <TenantFilters
-          filters={queryParams.filters}
-          onFiltersChange={setFilters}
-          onReset={resetFilters}
+    <div>
+      {/* Quick Search */}
+      <SearchInput onSearch={tenantHook.setSearch} />
+      
+      {/* Complex Filter Builder */}
+      <ComplexFilterBuilder
+        moduleName="tenants"
+        fieldDiscovery={fieldDiscovery}
+        initialFilter={complexFilter}
+        onFilterChange={setComplexFilter}
         />
-      </div>
-    )}
-    <div className="flex-1">
-      <TenantList {...props} />
-    </div>
+      
+      {/* Saved Searches */}
+      <SavedSearches
+        searches={savedSearches}
+        onSave={saveCurrentSearch}
+        onLoad={loadSavedSearch}
+      />
   </div>
 );
+};
 ```
 
-## 🔄 **Server-Side API Contract**
+## 🌐 Backend Integration
 
-The hook expects the API to support these query parameters:
+### API Endpoints Required
 
+```typescript
+// Field metadata discovery
+GET /api/filters/{module}/metadata
+Response: DynamicFieldDiscovery
+
+// Dynamic search with complex filters
+POST /api/filters/{module}/search
+Body: AdvancedQueryParams
+Response: FilteredResult<T>
+
+// Field values for dropdowns
+POST /api/filters/{module}/field-values
+Body: { fieldPath: string[], search?: string }
+Response: FieldValue[]
+
+// Saved searches management
+GET    /api/filters/{module}/saved-searches
+POST   /api/filters/{module}/saved-searches
+DELETE /api/filters/{module}/saved-searches/{id}
+PATCH  /api/filters/{module}/saved-searches/{id}/favorite
 ```
-GET /api/tenants?page=1&limit=10&search=acme&status=active&accessLevel=admin&sortField=name&sortDirection=asc&dateFrom=2024-01-01&dateTo=2024-12-31
-```
 
-**Response Format:**
-```json
-{
-  "data": [
-    {
-      "id": "tenant-1",
-      "name": "Acme Corp",
-      "subdomain": "acme",
-      "isActive": true,
-      "createdAt": "2024-01-15T10:00:00Z",
-      "canAccess": true,
-      "canImpersonate": true,
-      "accessLevel": "admin"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 25,
-    "totalPages": 3,
-    "hasNext": true,
-    "hasPrev": false
-  }
+### Complex Filter Processing
+
+```typescript
+// Backend DTO
+export class GetTenantsQueryDto {
+  page?: number = 1;
+  limit?: number = 10;
+  search?: string;
+  complexFilter?: ComplexFilterDto;
+  sortBy?: { field: string; direction: 'asc' | 'desc' };
+  groupBy?: string;
+  savedSearchId?: string;
+}
+
+// Complex filter structure
+interface ComplexFilterDto {
+  rootGroup: {
+    logic: 'AND' | 'OR';
+    rules: ComplexFilterRuleDto[];
+    groups?: FilterGroupDto[];
+  };
 }
 ```
 
-## 🎨 **Styling & UX**
+## 🎨 UI/UX Features
 
-- **Consistent Design Language** - Uses shadcn/ui components
-- **Loading States** - Skeleton loaders for better perceived performance
-- **Empty States** - Helpful messages with call-to-action buttons
-- **Error Handling** - User-friendly error messages with retry options
-- **Responsive Design** - Mobile-first approach with adaptive layouts
-- **Accessibility** - ARIA labels, keyboard navigation, screen reader support
+### Filter Builder Interface
+- **Visual Rule Builder**: Drag-and-drop interface for creating filters
+- **Real-time Validation**: Immediate feedback on filter validity
+- **Active Filter Display**: Shows current filters as removable badges
+- **Filter Count Indicators**: Shows how many filters are active
 
-## 🔧 **Extension Points**
+### Search Experience
+- **Debounced Search**: Smooth typing experience without API spam
+- **Search Suggestions**: Auto-complete based on existing data
+- **Recent Searches**: Quick access to recently used filters
+- **Search History**: Persistent search history per user
 
-### **Adding New Filters**
-1. Extend `TenantFilters` interface in `types/index.ts`
-2. Add filter UI in `TenantFilters.tsx`
-3. Update API query building in `useFetchTenants.ts`
+### Performance Optimizations
+- **Lazy Loading**: Field metadata loaded on-demand
+- **Caching**: Field values cached to reduce API calls
+- **Optimistic Updates**: UI updates immediately, syncs with server
+- **Background Refresh**: Data refreshes without blocking UI
 
-### **Adding New Actions**
-1. Add action props to `TenantListProps`
-2. Add action buttons in `TenantList.tsx` action dropdown
-3. Implement handlers in `page.tsx`
+## 🔄 Migration Guide
 
-### **Customizing Table Columns**
-1. Modify `columns` array in `TenantList.tsx`
-2. Add new accessors to `TenantModel` interface
-3. Update API response to include new fields
+### From Simple Filters to Advanced Filters
 
-## 📋 **Replication Guide**
+1. **Update Types**:
+```tsx
+// Before
+interface SimpleFilters extends BaseFilters {
+  status: string;
+}
 
-To replicate this pattern for other modules:
+// After  
+interface EnhancedFilters extends AdvancedBaseFilters {
+  status?: string;
+}
+```
 
-1. **Copy Global Types** - Already in `/lib/types.ts`
-2. **Create Module Types** - Extend base interfaces
-3. **Create Hook** - Use `UseServerDataReturn<T, TFilters, TSort>`
-4. **Create Components** - List, Filters, Modals
-5. **Update API** - Support pagination query parameters
+2. **Update Hook**:
+```tsx
+// Before
+const { data, setFilters } = useSimpleFetch();
 
-## ✅ **Completed Features**
+// After
+const hook = useGenericFilter('module-name');
+const { data, setComplexFilter } = hook;
+```
 
-- ✅ **Server-Side Pagination** - Scalable for large datasets
-- ✅ **Advanced Filtering** - Search, status, access level, date range
-- ✅ **Column Sorting** - Server-side sorting on all columns
-- ✅ **Bulk Operations** - Multi-select actions (activate/deactivate multiple)
-- ✅ **Type Safety** - Full TypeScript coverage with generics
-- ✅ **Separation of Concerns** - Clear component boundaries
-- ✅ **Reusable Architecture** - System-wide types and patterns
-- ✅ **Performance Optimization** - Debounced filters, efficient re-renders
-- ✅ **User Experience** - Loading states, error handling, accessibility
-- ✅ **Maintainability** - Clear structure, comprehensive documentation
+3. **Update Components**:
+```tsx
+// Before
+<SimpleFilters onFiltersChange={setFilters} />
 
-## 🚧 **Future Enhancements**
+// After
+<AdvancedFilters moduleHook={hook} />
+```
 
-- [ ] **Export Functionality** - CSV/Excel export with current filters
-- [ ] **Advanced Sorting** - Multi-column sorting
-- [ ] **Saved Filters** - User-defined filter presets
-- [ ] **Real-time Updates** - WebSocket integration for live data
-- [ ] **Column Customization** - User-configurable column visibility
-- [ ] **Keyboard Shortcuts** - Power user navigation
-- [ ] **Audit Trail** - Activity logging for all actions
+## 📋 Implementation Checklist
 
----
+### For New Modules
 
-This module serves as a **reference implementation** for building scalable, maintainable admin interfaces in multi-tenant SaaS applications. 
+- [ ] Create module-specific types extending `GenericEntity`
+- [ ] Define `AdvancedBaseFilters` extension for the module
+- [ ] Implement backend endpoints for filter metadata
+- [ ] Create field discovery configuration
+- [ ] Set up saved searches database tables
+- [ ] Implement complex filter processing in backend
+- [ ] Create module-specific filter component
+- [ ] Test with various filter combinations
+- [ ] Add performance monitoring
+- [ ] Document module-specific fields and relationships
+
+### Backend Requirements
+
+- [ ] Field metadata API endpoint
+- [ ] Complex filter query processing
+- [ ] Field values API for dropdowns
+- [ ] Saved searches CRUD operations
+- [ ] Proper indexing for filtered fields
+- [ ] Query optimization for complex filters
+- [ ] Rate limiting for filter APIs
+- [ ] Caching for field metadata
+
+## 🎯 Best Practices
+
+1. **Field Configuration**: Always provide meaningful labels and proper field types
+2. **Performance**: Index frequently filtered fields in the database
+3. **UX**: Provide clear feedback when filters return no results
+4. **Security**: Validate all filter inputs on the backend
+5. **Accessibility**: Ensure filter components work with screen readers
+6. **Testing**: Test with various filter combinations and edge cases
+
+This implementation serves as the foundation for all future data-heavy modules in the application. 

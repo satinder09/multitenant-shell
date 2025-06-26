@@ -191,27 +191,30 @@ const TenantList: React.FC<TenantListProps> = ({
                         <Building2 className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <div className="font-medium">{tenant.name}</div>
-                        <div className="text-sm text-muted-foreground">{tenant.subdomain}.example.com</div>
+                        <div className="font-medium">{tenant.name || 'Unknown'}</div>
+                        <div className="text-sm text-muted-foreground">{tenant.subdomain || 'unknown'}.example.com</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <StatusBadge
-                      status={tenant.isActive ? 'done' : 'pending'}
-                      text={tenant.isActive ? 'Active' : 'Inactive'}
+                      status={tenant.isActive === true ? 'done' : 'pending'}
+                      text={tenant.isActive === true ? 'Active' : 'Inactive'}
                       size="sm"
                     />
                   </TableCell>
                   <TableCell>
                     <Badge className={getAccessLevelColor(tenant.accessLevel)}>
-                      {tenant.accessLevel.charAt(0).toUpperCase() + tenant.accessLevel.slice(1)}
+                      {tenant.accessLevel ? 
+                        tenant.accessLevel.charAt(0).toUpperCase() + tenant.accessLevel.slice(1) : 
+                        'Unknown'
+                      }
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      {new Date(tenant.createdAt).toLocaleDateString()}
+                      {tenant.createdAt ? new Date(tenant.createdAt).toLocaleDateString() : 'Unknown'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -222,24 +225,24 @@ const TenantList: React.FC<TenantListProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {tenant.canAccess && (
+                        {tenant.canAccess === true && (
                           <DropdownMenuItem onClick={() => onSecureLogin(tenant)}>
                             <LogIn className="mr-2 h-4 w-4" />
                             Secure Login
                           </DropdownMenuItem>
                         )}
-                        {tenant.canImpersonate && (
+                        {tenant.canImpersonate === true && (
                           <DropdownMenuItem onClick={() => onImpersonate(tenant)}>
                             <UserCheck className="mr-2 h-4 w-4" />
                             Impersonate
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem 
-                          onClick={() => onToggleStatus(tenant.id, tenant.isActive)} 
+                          onClick={() => onToggleStatus(tenant.id, tenant.isActive === true)} 
                           className="text-destructive"
                         >
                           <Power className="mr-2 h-4 w-4" />
-                          {tenant.isActive ? 'Deactivate' : 'Activate'} Tenant
+                          {tenant.isActive === true ? 'Deactivate' : 'Activate'} Tenant
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -7,10 +7,12 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { GetTenantsQueryDto } from './dto/get-tenants-query.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../../../generated/master-prisma';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
@@ -26,8 +28,19 @@ export class TenantController {
   }
 
   @Get()
-  findAll() {
+  findAll(@Query() query?: GetTenantsQueryDto) {
+    // If complex filtering is requested, use the optimized method
+    if (query?.complexFilter) {
+      return this.tenantService.findWithComplexQuery(query);
+    }
+    
+    // Otherwise use the simple method
     return this.tenantService.findAll();
+  }
+
+  @Post('search')
+  searchWithComplexFilters(@Body() queryDto: GetTenantsQueryDto) {
+    return this.tenantService.findWithComplexQuery(queryDto);
   }
 
   @Get(':id')

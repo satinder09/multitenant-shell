@@ -3,34 +3,32 @@
 import React, { useState } from 'react';
 import { SectionHeader } from '@/components/ui-kit/SectionHeader';
 import { Button } from '@/components/ui/button';
-import { Plus, Settings, Filter, X } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import TenantList from './components/TenantList';
-import TenantFilters from './components/TenantFilters';
+import { AdvancedTenantFilters } from './components/AdvancedTenantFilters';
 import CreateTenantDialog from './components/CreateTenantDialog';
 import { SecureLoginModal } from './components/SecureLoginModal';
 import { ImpersonationModal } from './components/ImpersonationModal';
 import useFetchTenants from './hooks/useFetchTenants';
 import { updateTenantStatusAction, tenantToAccessOption } from './utils/tenantHelpers';
 import type { TenantModel, TenantAccessOption } from './types';
+import './filter-config'; // Import filter configuration
 
 export default function TenantsPage() {
   // Hook for fetching tenants with server-side pagination
+  const tenantHook = useFetchTenants();
   const {
     data: tenants,
     isLoading,
     error,
     pagination,
-    queryParams,
     setPage,
     setLimit,
-    setFilters,
     setSort,
     refetch,
-    resetFilters,
-  } = useFetchTenants();
+  } = tenantHook;
 
   // UI states
-  const [showFilters, setShowFilters] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [secureLoginModalOpen, setSecureLoginModalOpen] = useState(false);
   const [impersonationModalOpen, setImpersonationModalOpen] = useState(false);
@@ -103,39 +101,22 @@ export default function TenantsPage() {
         description="Manage tenants, access permissions, and platform settings"
         actions={
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className={showFilters ? 'bg-muted' : ''}
-            >
-              {showFilters ? <X className="mr-2 h-4 w-4" /> : <Filter className="mr-2 h-4 w-4" />}
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </Button>
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Settings className="mr-2 h-4 w-4" />
               Export
             </Button>
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Tenant
-              </Button>
-                </div>
+            </Button>
+          </div>
         }
       />
 
-      <div className="flex gap-6">
-        {/* Filters Sidebar */}
-        {showFilters && (
-          <div className="w-80 shrink-0">
-            <TenantFilters
-              filters={queryParams.filters || { search: '', status: 'all', accessLevel: 'all' }}
-              onFiltersChange={setFilters}
-              onReset={resetFilters}
-            />
-          </div>
-        )}
+      {/* Filters */}
+      <AdvancedTenantFilters tenantHook={tenantHook} />
 
+      <div className="flex gap-6">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           <TenantList

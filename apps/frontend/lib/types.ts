@@ -92,4 +92,243 @@ export interface DateRangeFilters {
 export type AccessLevelFilter = 'all' | 'read' | 'write' | 'admin';
 
 // Utility type for creating module-specific filters
-export type ModuleFilters<T extends Record<string, any> = {}> = BaseFilters & T; 
+export type ModuleFilters<T extends Record<string, any> = {}> = BaseFilters & T;
+
+// ============= COMPLEX FILTERING SYSTEM =============
+
+// Generic entity interface
+export interface GenericEntity {
+  id: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+  [key: string]: any;
+}
+
+// Filter operators
+export type FilterOperator = 
+  | 'equals' | 'not_equals' 
+  | 'contains' | 'not_contains'
+  | 'starts_with' | 'ends_with'
+  | 'greater_than' | 'less_than'
+  | 'greater_equal' | 'less_equal'
+  | 'between' | 'not_between'
+  | 'is_set' | 'is_not_set'
+  | 'in' | 'not_in'
+  | 'is_in' | 'is_not_in'
+  | 'contains_any' | 'contains_all';
+
+// Filter field types
+export type FilterType = 'string' | 'number' | 'date' | 'boolean' | 'enum' | 'relation';
+
+// Complex filter rule
+export interface ComplexFilterRule {
+  id: string;
+  field: string;
+  operator: FilterOperator;
+  value: any;
+  fieldPath?: string[]; // For nested fields like "permissions.user.name"
+  label?: string;
+}
+
+// Filter group with logic
+export interface FilterGroup {
+  id: string;
+  logic: 'AND' | 'OR'; // Match all/any
+  rules: ComplexFilterRule[];
+  groups?: FilterGroup[]; // Nested groups
+}
+
+// Complete complex filter
+export interface ComplexFilter {
+  rootGroup: FilterGroup;
+}
+
+// Field metadata for dynamic discovery
+export interface FilterMetadata {
+  id?: string;
+  moduleName: string;
+  fieldName: string;
+  fieldLabel: string;
+  fieldType: FilterType;
+  isFilterable: boolean;
+  isGroupable: boolean;
+  isSearchable: boolean;
+  operators: FilterOperator[];
+  relationConfig?: RelationConfig;
+  fieldValues?: FieldValue[];
+}
+
+// Field value for dropdowns
+export interface FieldValue {
+  value: any;
+  label: string;
+  count?: number;
+  metadata?: any;
+}
+
+// Relation configuration
+export interface RelationConfig {
+  targetModule: string;
+  targetTable: string;
+  valueField: string;
+  labelField: string;
+  searchFields: string[];
+  joinType?: 'inner' | 'left' | 'right';
+}
+
+// Nested field configuration
+export interface NestedFieldConfig {
+  path: string[];
+  label: string;
+  type: FilterType;
+  operators: FilterOperator[];
+  isMultiSelect?: boolean;
+  valueSource?: 'static' | 'dynamic' | 'relation';
+  relationConfig?: RelationConfig;
+}
+
+// Dynamic field discovery result
+export interface DynamicFieldDiscovery {
+  fields: FilterMetadata[];
+  nestedFields: NestedFieldConfig[];
+  relationPaths: RelationPath[];
+}
+
+// Relation path for traversal
+export interface RelationPath {
+  path: string[];
+  displayPath: string;
+  targetEntity: string;
+  joinType: 'inner' | 'left' | 'right';
+}
+
+// Module relation definition
+export interface ModuleRelation {
+  field: string;
+  targetModule: string;
+  type: 'oneToOne' | 'oneToMany' | 'manyToOne' | 'manyToMany';
+  displayField: string;
+  searchFields: string[];
+}
+
+// Filterable module configuration
+export interface FilterableModule<T extends GenericEntity = GenericEntity> {
+  name: string;
+  entity: T;
+  tableName: string;
+  searchableFields: (keyof T)[];
+  relations?: ModuleRelation[];
+  customFilters?: CustomFilterConfig[];
+}
+
+// Custom filter configuration
+export interface CustomFilterConfig {
+  id: string;
+  label: string;
+  type: FilterType;
+  operators: FilterOperator[];
+  valueProvider?: () => Promise<FieldValue[]>;
+}
+
+// Enhanced base filters with complex filtering
+export interface AdvancedBaseFilters extends BaseFilters {
+  customFilters?: ComplexFilterRule[];
+  savedSearchId?: string;
+  groupBy?: string;
+}
+
+// Enhanced query params with complex filtering
+export interface AdvancedQueryParams<TFilters extends AdvancedBaseFilters = AdvancedBaseFilters, TSort = any> 
+  extends QueryParams<TFilters, TSort> {
+  groupBy?: string | null;
+  savedSearchId?: string;
+  complexFilter?: ComplexFilter | null;
+}
+
+// Dynamic query DTO
+export interface DynamicQueryDto {
+  page?: number;
+  limit?: number;
+  search?: string;
+  filters?: ComplexFilterRule[];
+  complexFilter?: ComplexFilter;
+  sortBy?: { field: string; direction: 'asc' | 'desc' };
+  groupBy?: string;
+  savedSearchId?: string;
+}
+
+// Grouped data result
+export interface GroupedData<T = any> {
+  groups: {
+    key: string;
+    label: string;
+    count: number;
+    items: T[];
+  }[];
+}
+
+// Filtered result
+export interface FilteredResult<T> {
+  data: T[] | GroupedData<T>;
+  pagination: PaginationMeta;
+  metadata: FilterMetadata[];
+}
+
+// Saved search
+export interface SavedSearch {
+  id: string;
+  name: string;
+  filters: ComplexFilterRule[];
+  complexFilter?: ComplexFilter;
+  groupBy?: string;
+  sortBy?: SortParams;
+  isDefault?: boolean;
+  isFavorite?: boolean;
+  isPublic?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Generic filter options
+export interface UseGenericFilterOptions {
+  defaultLimit?: number;
+  defaultSort?: SortParams;
+  defaultGroupBy?: string;
+  enableSavedSearches?: boolean;
+}
+
+// Generic filter hook return type
+export interface UseGenericFilterReturn<T extends GenericEntity, TFilters extends AdvancedBaseFilters = AdvancedBaseFilters> {
+  // Data
+  data: T[];
+  isLoading: boolean;
+  error: string | null;
+  pagination: PaginationMeta | null;
+  metadata: FilterMetadata[];
+  fieldDiscovery: DynamicFieldDiscovery | null;
+  
+  // Filter state
+  queryParams: AdvancedQueryParams<TFilters>;
+  complexFilter: ComplexFilter | null | undefined;
+  savedSearches: SavedSearch[];
+  
+  // Actions
+  setComplexFilter: (filter: ComplexFilter | null) => void;
+  setSearch: (search: string) => void;
+  setPage: (page: number) => void;
+  setLimit: (limit: number) => void;
+  setSort: (sort: SortParams) => void;
+  setGroupBy: (groupBy: string | null) => void;
+  refetch: () => void;
+  
+  // Filter management
+  addFilter: (filter: ComplexFilterRule) => void;
+  removeFilter: (filterId: string) => void;
+  clearFilters: () => void;
+  
+  // Saved searches
+  saveCurrentSearch: (name: string, isPublic?: boolean) => Promise<void>;
+  loadSavedSearch: (searchId: string) => Promise<void>;
+  deleteSavedSearch: (searchId: string) => Promise<void>;
+  toggleFavorite: (searchId: string) => Promise<void>;
+} 
