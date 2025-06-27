@@ -1,25 +1,13 @@
 // apps/frontend/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { serverPost } from '@/lib/api/server-client';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  if (!backendUrl) {
-    return NextResponse.json({ message: 'API base URL is not configured' }, { status: 500 });
-  }
-
   try {
-    const originalHost = req.headers.get('host') || '';
-
-    // Forward the request to the backend
-    const backendRes = await fetch(`${backendUrl}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-forwarded-host': originalHost,
-      },
-      body: JSON.stringify(body),
-    });
+    const body = await req.json();
+    
+    // Use the generic server client with CSRF protection
+    const backendRes = await serverPost('/auth/login', body, {}, req);
     
     // Create a new response to send back to the client
     const clientRes = new NextResponse(backendRes.body, {

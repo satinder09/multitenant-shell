@@ -11,6 +11,7 @@ import { DialogOverlay } from '@/utils/ui/dialogUtils';
 import { AppSheetOverlay } from '@/utils/ui/sheetUtils';
 import { PlatformProvider } from '@/context/PlatformContext';
 import ConditionalLayoutWrapper from '@/components/ConditionalLayoutWrapper';
+import GlobalErrorBoundary from '@/components/GlobalErrorBoundary';
 
 
 interface RootLayoutProps {
@@ -21,16 +22,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${GeistSans.variable} ${GeistMono.variable}`}>
-        <ThemeProvider>
-          <AuthProvider>
-            <PlatformProvider>
-              <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
-            </PlatformProvider>
-          </AuthProvider>
-          <DialogOverlay />
-          <Toaster richColors position="top-right" />
-          <AppSheetOverlay />
-        </ThemeProvider>
+        <GlobalErrorBoundary>
+          <ThemeProvider>
+            <AuthProvider>
+              <PlatformProvider>
+                <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
+              </PlatformProvider>
+            </AuthProvider>
+            <DialogOverlay />
+            <Toaster richColors position="top-right" />
+            <AppSheetOverlay />
+          </ThemeProvider>
+        </GlobalErrorBoundary>
       </body>
     </html>
   );

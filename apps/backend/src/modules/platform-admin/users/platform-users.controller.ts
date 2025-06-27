@@ -8,10 +8,12 @@ import {
   Delete,
   UseGuards,
   ValidationPipe,
+  Query,
 } from '@nestjs/common';
 import { PlatformUsersService } from './platform-users.service';
 import { CreatePlatformUserDto } from './dto/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dto/update-platform-user.dto';
+import { GetPlatformUsersQueryDto } from './dto/get-platform-users-query.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 
 @Controller('platform/admin/users')
@@ -25,8 +27,8 @@ export class PlatformUsersController {
   }
 
   @Get()
-  findAll() {
-    return this.platformUsersService.findAll();
+  findAll(@Query(ValidationPipe) query: GetPlatformUsersQueryDto) {
+    return this.platformUsersService.findWithComplexQuery(query);
   }
 
   @Get(':id')

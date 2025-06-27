@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateConfigFromSchema } from '@/lib/modules/schema-config-generator';
+import { serverGet, serverPost } from '@/lib/api/server-client';
 
 interface ModuleDataRequest {
   search?: string;
@@ -36,7 +37,7 @@ interface ModuleDataResponse {
 // Module to backend endpoint mapping
 const MODULE_BACKEND_MAPPING: Record<string, { endpoint: string; method: 'GET' | 'POST' }> = {
   'tenants': { endpoint: '/tenants/search', method: 'POST' },
-  'users': { endpoint: '/platform/users', method: 'GET' },
+  'users': { endpoint: '/platform/admin/users', method: 'GET' },
   'permissions': { endpoint: '/platform-rbac/permissions', method: 'GET' },
   'roles': { endpoint: '/platform-rbac/roles', method: 'GET' },
   'impersonation': { endpoint: '/tenant-access/sessions', method: 'GET' },
@@ -115,7 +116,7 @@ async function handleModuleDataRequest(
   }
 
   const sourceTable = moduleConfig.sourceTable;
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
   try {
     // Get backend endpoint configuration
@@ -130,14 +131,33 @@ async function handleModuleDataRequest(
     const apiUrl = `${backendUrl}${backendConfig.endpoint}`;
     const method = backendConfig.method;
 
-    const response = await fetch(apiUrl, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'cookie': request.headers.get('cookie') || '',
-      },
-      ...(method === 'POST' && { body: JSON.stringify(requestData) }),
-    });
+    let response;
+    
+    if (moduleName === 'users') {
+      // For users, we need to send query parameters instead of body
+      const queryParams = new URLSearchParams();
+      if (requestData.page) queryParams.set('page', requestData.page.toString());
+      if (requestData.limit) queryParams.set('limit', requestData.limit.toString());
+      if (requestData.search) queryParams.set('search', requestData.search);
+      if (requestData.sortBy) {
+        queryParams.set('sortField', requestData.sortBy.field);
+        queryParams.set('sortDirection', requestData.sortBy.direction);
+      }
+      if (requestData.complexFilter) {
+        queryParams.set('complexFilter', JSON.stringify(requestData.complexFilter));
+      }
+      
+      const finalUrl = queryParams.toString() ? `${apiUrl}?${queryParams.toString()}` : apiUrl;
+      
+      response = await serverGet(finalUrl.replace(backendUrl, ''), {}, request);
+    } else {
+      // Use the generic server client
+      if (method === 'GET') {
+        response = await serverGet(backendConfig.endpoint, {}, request);
+      } else {
+        response = await serverPost(backendConfig.endpoint, requestData, {}, request);
+      }
+    }
 
     if (!response.ok) {
       throw new Error(`Backend API error: ${response.status} ${response.statusText}`);

@@ -1,0 +1,22 @@
+{
+  "name": "@multitenant-shell/core",
+  "version": "1.0.0",
+  "description": "Core utilities and types for the multitenant shell application",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint \"**/*.ts\" --fix"
+  },
+  "dependencies": {
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.1",
+    "typescript": "^5.1.6"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  }
+}

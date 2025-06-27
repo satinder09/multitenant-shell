@@ -2,8 +2,8 @@ export interface FieldTypeConfig {
   type: string;
   operators: OperatorConfig[];
   renderComponent?: string;
-  defaultValue?: any;
-  validation?: (value: any) => boolean;
+  defaultValue?: unknown;
+  validation?: (value: unknown) => boolean;
 }
 
 export interface OperatorConfig {
@@ -201,9 +201,9 @@ export const FIELD_TYPE_CONFIGS: Record<string, FieldTypeConfig> = {
 };
 
 // Auto-detect field types based on field names and metadata
-export const detectFieldType = (fieldName: string, fieldPath: string[], metadata?: any): string => {
+export const detectFieldType = (fieldName: string, fieldPath: string[], metadata?: Record<string, unknown>): string => {
   // Check metadata first if available
-  if (metadata?.type) {
+  if (metadata?.type && typeof metadata.type === 'string') {
     return metadata.type;
   }
   
@@ -248,7 +248,7 @@ export const getOperatorsForFieldType = (fieldType: string): OperatorConfig[] =>
 };
 
 // Get default value for a field type
-export const getDefaultValueForFieldType = (fieldType: string): any => {
+export const getDefaultValueForFieldType = (fieldType: string): unknown => {
   const config = FIELD_TYPE_CONFIGS[fieldType];
   return config ? config.defaultValue : '';
 };

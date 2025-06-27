@@ -14,6 +14,9 @@ const PlatformContext = createContext<PlatformContextType>({
   baseDomain: 'lvh.me'
 });
 
+// Export the context for testing
+export { PlatformContext };
+
 export const usePlatform = () => useContext(PlatformContext);
 
 export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -11,7 +11,8 @@ export class FilterRule {
   @IsString()
   operator: string;
 
-  value: any;
+  @IsOptional()
+  value?: any;
 
   @IsArray()
   @IsOptional()

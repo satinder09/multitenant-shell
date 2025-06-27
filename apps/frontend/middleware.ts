@@ -3,6 +3,7 @@ import { decodeJwt } from 'jose';
 import { isPlatformHost, getTenantSubdomain } from './lib/contextUtils';
 
 interface JwtPayload {
+  tenantContext?: string;
   tenantId?: string;
   isSuperAdmin?: boolean;
 }
@@ -37,9 +38,12 @@ export async function middleware(request: NextRequest) {
   if (cookie) {
     try {
       const payload = decodeJwt<JwtPayload>(cookie.value);
+      
+      // Extract tenant ID from either tenantContext or tenantId field
+      const tenantId = payload.tenantContext || payload.tenantId;
 
       // SCENARIO 1: Logged into a TENANT session.
-      if (payload.tenantId) {
+      if (tenantId) {
         // If they have a tenant token but try to access the PLATFORM domain, log them out.
         if (isPlatform) {
           console.log('Tenant session trying to access platform domain. Denying.');

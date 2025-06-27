@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { serverGet, serverPost } from '@/lib/api/server-client';
 
 // Handler for GET /api/tenants (fetch all)
 export async function GET(req: NextRequest) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const apiUrl = `${backendUrl}/tenants`;
-
   try {
-    const response = await fetch(apiUrl, {
-      headers: {
-        'cookie': req.headers.get('cookie') || '',
-      },
-    });
+    const response = await serverGet('/tenants', {}, req);
 
     if (!response.ok) {
       const error = await response.json();
@@ -27,19 +21,9 @@ export async function GET(req: NextRequest) {
 
 // Handler for POST /api/tenants (create)
 export async function POST(req: NextRequest) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const apiUrl = `${backendUrl}/tenants`;
-
   try {
     const body = await req.json();
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'cookie': req.headers.get('cookie') || '',
-      },
-      body: JSON.stringify(body),
-    });
+    const response = await serverPost('/tenants', body, {}, req);
 
     if (!response.ok) {
       const error = await response.json();

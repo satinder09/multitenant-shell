@@ -175,11 +175,43 @@ export function useGenericFilter<
 
       const requestParams = params || queryParams;
 
+      // Remove 'filters' property to match backend DTO (GetTenantsQueryDto)
+      const { filters, ...backendCompatibleParams } = requestParams;
+      
+      // Debug logging for tenants requests
+      if (moduleName === 'tenants') {
+        console.log('🔍 TENANTS REQUEST DEBUG:');
+        console.log('🔍 Full request params:', JSON.stringify(backendCompatibleParams, null, 2));
+        if (backendCompatibleParams.complexFilter) {
+          console.log('🔍 Has complex filter - structure:', JSON.stringify(backendCompatibleParams.complexFilter, null, 2));
+        } else {
+          console.log('🔍 No complex filter in request');
+        }
+      }
+      
       const response = await fetch(`/api/modules/${moduleName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestParams)
+        body: JSON.stringify(backendCompatibleParams)
       });
+      
+      // Debug response for tenants
+      if (moduleName === 'tenants' && !response.ok) {
+        console.log('🔍 TENANTS ERROR RESPONSE:');
+        console.log('🔍 Status:', response.status);
+        try {
+          const errorText = await response.text();
+          console.log('🔍 Error body:', errorText);
+          // Recreate response since we consumed the body
+          return new Response(errorText, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
+        } catch (e) {
+          console.log('🔍 Could not read error response');
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);

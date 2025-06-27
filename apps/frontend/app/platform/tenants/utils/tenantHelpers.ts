@@ -25,6 +25,8 @@ export const mergeTenantWithAccessInfo = (
     canImpersonate: accessInfo?.canImpersonate || false,
     accessLevel: accessInfo?.accessLevel || 'read',
     lastAccessed: accessInfo?.lastAccessed ? new Date(accessInfo.lastAccessed) : undefined,
+    userCount: 0, // Default value, should be provided by API
+    permissions: [], // Default empty array, should be provided by API
   };
 };
 

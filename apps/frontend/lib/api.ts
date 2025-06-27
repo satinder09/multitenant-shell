@@ -1,6 +1,22 @@
 // apps/frontend/lib/api.ts
 
 import { NextRequest } from 'next/server';
+import { securityFetch } from '@/domains/auth/services/csrfService';
+
+// Input sanitization functions (from core utilities)
+function sanitizeInput(input: string): string {
+  return input
+    .replace(/[<>]/g, '') // Remove angle brackets
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .replace(/\x00/g, '') // Remove null bytes
+    .trim();
+}
+
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email) && email.length <= 254;
+}
 
 export interface LoginDto {
   email: string;
@@ -39,15 +55,37 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 }
 
 export async function login(dto: LoginDto): Promise<LoginResponse> {
-  const res = await fetchWithTimeout('/api/auth/login', {
+  // Input validation and sanitization
+  if (!dto.email || !dto.password) {
+    throw new Error('Email and password are required');
+  }
+  
+  const sanitizedEmail = sanitizeInput(dto.email.toLowerCase());
+  if (!isValidEmail(sanitizedEmail)) {
+    throw new Error('Invalid email format');
+  }
+  
+  if (dto.password.length < 1 || dto.password.length > 128) {
+    throw new Error('Invalid password length');
+  }
+
+  const sanitizedDto = {
+    email: sanitizedEmail,
+    password: dto.password, // Don't sanitize passwords as they may contain special chars
+  };
+
+  const res = await securityFetch('/api/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dto),
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest', // CSRF protection
+    },
+    body: JSON.stringify(sanitizedDto),
   });
 
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message || 'Login failed');
+    throw new Error(sanitizeInput(error.message || 'Login failed'));
   }
 
   return res.json();
@@ -95,7 +133,7 @@ async function fetchTenants(): Promise<Tenant[]> {
 }
 
 async function createTenant(dto: CreateTenantDto): Promise<Tenant> {
-  const res = await fetchWithTimeout('/api/tenants', {
+  const res = await securityFetch('/api/tenants', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -106,7 +144,7 @@ async function createTenant(dto: CreateTenantDto): Promise<Tenant> {
 }
 
 async function deleteTenant(id: string): Promise<void> {
-  const res = await fetchWithTimeout(`/api/tenants/${id}`, {
+  const res = await securityFetch(`/api/tenants/${id}`, {
     method: 'DELETE',
     credentials: 'include',
   });

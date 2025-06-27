@@ -175,8 +175,8 @@ export class TenantService {
     };
   }
 
-  private analyzeRequiredIncludes(queryDto: any) {
-    const includes: any = {};
+  private analyzeRequiredIncludes(queryDto: { complexFilter?: any; [key: string]: unknown }) {
+    const includes: Record<string, any> = {};
     
     if (!queryDto.complexFilter?.rootGroup) {
       this.logger.log('⚡ No complex filters found - using zero includes (only base tenant fields)');
@@ -198,7 +198,7 @@ export class TenantService {
     return includes;
   }
 
-  private analyzeRulesForIncludes(group: any, includes: any) {
+  private analyzeRulesForIncludes(group: { rules?: Array<{ field: string; fieldPath?: string[] }>; groups?: any[] }, includes: Record<string, any>) {
     // Check rules
     if (group.rules) {
       for (const rule of group.rules) {
@@ -216,7 +216,7 @@ export class TenantService {
     }
   }
 
-  private addIncludeForPath(fieldPath: string[], includes: any) {
+  private addIncludeForPath(fieldPath: string[], includes: Record<string, any>) {
     if (fieldPath.length < 2) return;
 
     const [firstLevel, ...restPath] = fieldPath;
@@ -258,7 +258,7 @@ export class TenantService {
     }
   }
 
-  private buildWhereClause(complexFilter: any): any {
+  private buildWhereClause(complexFilter: { rootGroup: any }): Record<string, any> {
     if (!complexFilter?.rootGroup) {
       this.logger.log('📝 No complex filters - using empty where clause');
       return {};
@@ -271,8 +271,8 @@ export class TenantService {
     return whereClause;
   }
 
-  private buildGroupWhereClause(group: any): any {
-    const conditions: any[] = [];
+  private buildGroupWhereClause(group: { logic: 'AND' | 'OR'; rules?: any[]; groups?: any[] }): Record<string, any> {
+    const conditions: Record<string, any>[] = [];
 
     // Process rules
     if (group.rules) {
@@ -310,7 +310,7 @@ export class TenantService {
     }
   }
 
-  private buildRuleWhereClause(rule: any): any {
+  private buildRuleWhereClause(rule: { field: string; operator: string; value: any; fieldPath?: string[] }): Record<string, any> {
     const fieldPath = rule.fieldPath || [rule.field];
     const operator = rule.operator;
     const value = rule.value;
@@ -329,7 +329,7 @@ export class TenantService {
     return this.buildNestedFieldCondition(fieldPath, operator, value);
   }
 
-  private buildDirectFieldCondition(field: string, operator: string, value: any): any {
+  private buildDirectFieldCondition(field: string, operator: string, value: any): Record<string, any> {
     switch (operator) {
       case 'equals':
         return { [field]: value };
@@ -364,7 +364,7 @@ export class TenantService {
     }
   }
 
-  private buildNestedFieldCondition(fieldPath: string[], operator: string, value: any): any {
+  private buildNestedFieldCondition(fieldPath: string[], operator: string, value: any): Record<string, any> {
     const [firstLevel, ...restPath] = fieldPath;
 
     switch (firstLevel) {
@@ -394,7 +394,7 @@ export class TenantService {
     }
   }
 
-  private buildNestedCondition(fieldPath: string[], operator: string, value: any): any {
+  private buildNestedCondition(fieldPath: string[], operator: string, value: any): Record<string, any> {
     if (fieldPath.length === 1) {
       return this.buildDirectFieldCondition(fieldPath[0], operator, value);
     }

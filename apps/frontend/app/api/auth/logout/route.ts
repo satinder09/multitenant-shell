@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { serverPost } from '@/lib/api/server-client';
 
 export async function POST(req: NextRequest) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const originalHost = req.headers.get('host') || '';
-  const cookie = req.headers.get('cookie') || '';
+  try {
+    const resp = await serverPost('/auth/logout', {}, {}, req);
+    const body = await resp.json();
+    const nextRes = NextResponse.json(body, { status: resp.status });
 
-  const resp = await fetch(`${backendUrl}/auth/logout`, {
-    method: 'POST',
-    headers: {
-      'x-forwarded-host': originalHost,
-      'cookie': cookie,               // ← forward the client cookie
-    },
-  });
+    // Clear any Set-Cookie header from the backend
+    const setCookie = resp.headers.get('set-cookie');
+    if (setCookie) nextRes.headers.set('set-cookie', setCookie);
 
-  const body = await resp.json();
-  const nextRes = NextResponse.json(body, { status: resp.status });
-
-  // Clear any Set-Cookie header from the backend
-  const setCookie = resp.headers.get('set-cookie');
-  if (setCookie) nextRes.headers.set('set-cookie', setCookie);
-
-  return nextRes;
+    return nextRes;
+  } catch (error) {
+    console.error('Logout error:', error);
+    return NextResponse.json(
+      { error: 'Logout failed' }, 
+      { status: 500 }
+    );
+  }
 }

@@ -36,27 +36,32 @@ export class AuthService {
     dto: Omit<LoginDto, 'tenantId'>,
     tenantId?: string,
   ): Promise<LoginResponse> {
-    if (tenantId) {
+    if (tenantId && tenantId.trim() !== '') {
       // Only check tenant DB for credentials
-      const user = await this.tenantPrisma.db.user.findUnique({ where: { email: dto.email } });
-      if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-      const payload: { [key: string]: any } = {
+      try {
+        const user = await this.tenantPrisma.db.user.findUnique({ where: { email: dto.email } });
+        if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+          throw new UnauthorizedException('Invalid credentials');
+        }
+              const payload = {
         sub: user.id,
         email: user.email,
         name: user.name,
         tenantContext: tenantId,
       };
-      const accessToken = this.jwt.sign(payload);
-      return { accessToken };
+        const accessToken = this.jwt.sign(payload);
+        return { accessToken };
+      } catch (error) {
+        console.error('Error accessing tenant database:', error);
+        throw new UnauthorizedException('Invalid tenant or credentials');
+      }
     } else {
-      // Only check master DB for credentials
+      // Only check master DB for credentials (platform login)
       const user = await this.validateMasterUser(dto.email, dto.password);
       if (!user) {
         throw new UnauthorizedException('Invalid credentials');
       }
-      const payload: { [key: string]: any } = {
+      const payload = {
         sub: user.id,
         isSuperAdmin: user.isSuperAdmin,
         email: user.email,
@@ -167,7 +172,7 @@ export class AuthService {
 
   // Start impersonation
   async startImpersonation(
-    adminUser: any,
+    adminUser: { id: string; email: string; name: string; isSuperAdmin?: boolean; tenantId?: string },
     tenantId: string,
     targetUserId: string,
     reason: string,
@@ -300,7 +305,7 @@ export class AuthService {
   }
 
   // Get tenant users for impersonation
-  async getTenantUsers(tenantId: string): Promise<any[]> {
+  async getTenantUsers(tenantId: string): Promise<Array<{ id: string; email: string; name: string; isActive: boolean }>> {
     // This would need to be implemented to connect to the tenant database
     // and fetch users. For now, return a placeholder
     return [];
@@ -376,7 +381,7 @@ export class AuthService {
   }
 
   // Decode a JWT token without verifying (for internal use only)
-  decodeToken(token: string): any {
+  decodeToken(token: string): { sub: string; email: string; name: string; tenantContext?: string; [key: string]: unknown } {
     return this.jwt.decode(token);
   }
 }

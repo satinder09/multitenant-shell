@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { serverGet, serverPost } from '@/lib/api/server-client';
 
 interface SearchRequest {
   search?: string;
@@ -37,7 +38,7 @@ async function fetchRealModuleData(
   params: SearchRequest,
   request: NextRequest
 ) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
   
   try {
     // Call the real backend API
@@ -57,14 +58,9 @@ async function fetchRealModuleData(
     }
 
     // Make the API call to backend - always POST for tenants to ensure optimization
-    const response = await fetch(apiUrl, {
-      method: moduleName === 'tenants' ? 'POST' : 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'cookie': request.headers.get('cookie') || '',
-      },
-      ...(moduleName === 'tenants' && { body: JSON.stringify(params) }),
-    });
+    const response = moduleName === 'tenants' 
+      ? await serverPost('/tenants/search', params, {}, request)
+      : await serverGet(apiUrl.replace(backendUrl, ''), {}, request);
 
     if (!response.ok) {
       throw new Error(`Backend API error: ${response.status} ${response.statusText}`);

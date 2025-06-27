@@ -42,9 +42,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Export the context for testing
+export { AuthContext };
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isFetchingInitialUser, setIsFetchingInitialUser] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
   const router = useRouter();
 
   const refreshUser = async () => {
@@ -70,10 +74,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Fetch current profile on mount
+  // Handle client-side hydration
   useEffect(() => {
-    refreshUser();
+    setIsHydrated(true);
   }, []);
+
+  // Fetch current profile on mount (client-side only)
+  useEffect(() => {
+    if (isHydrated) {
+      refreshUser();
+    }
+  }, [isHydrated]);
 
   const login = async (dto: LoginDto) => {
     await loginApi(dto);
@@ -106,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser 
     }}>
-      {isFetchingInitialUser ? <div className="min-h-screen w-full flex items-center justify-center"><Spinner size="lg" /></div> : children}
+      {(!isHydrated || isFetchingInitialUser) ? <div className="min-h-screen w-full flex items-center justify-center"><Spinner size="lg" /></div> : children}
     </AuthContext.Provider>
   );
 }
