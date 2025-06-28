@@ -22,6 +22,7 @@ import {
 } from '@/lib/filter-field-types';
 import { EnhancedValueInput } from './EnhancedValueInputs';
 import { NestedFieldSelector } from './NestedFieldSelector';
+import { createFilterLabel } from '@/lib/utils/filterUtils';
 
 interface FilterDialogProps {
   open: boolean;
@@ -193,14 +194,20 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
         rootGroup: {
           id: generateId(),
           logic,
-          rules: validRules.map(rule => ({
-            id: rule.id,
-            field: rule.field,
-            operator: rule.operator,
-            value: rule.value,
-            fieldPath: rule.fieldPath,
-            label: rule.label
-          })),
+          rules: validRules.map(rule => {
+            // Get the field display name from config
+            const fieldConfig = config?.columns.find(col => col.field === rule.field);
+            const fieldDisplayName = fieldConfig?.display || rule.field;
+            
+            return {
+              id: rule.id,
+              field: rule.field,
+              operator: rule.operator,
+              value: rule.value,
+              fieldPath: rule.fieldPath,
+              label: createFilterLabel(fieldDisplayName, rule.operator, rule.value)
+            };
+          }),
           groups: []
         }
       };

@@ -596,7 +596,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                   rootGroup: {
                     ...originalComplexFilter.rootGroup,
                     rules: originalComplexFilter.rootGroup.rules.map(rule => 
-                      rule.id === editingRuleId ? { ...editedRule, id: editingRuleId } : rule
+                      rule.id === editingRuleId ? { 
+                        ...rule, // Keep original rule properties
+                        ...editedRule, // Override with edited properties
+                        id: editingRuleId // Ensure ID is preserved
+                      } : rule
                     )
                   }
                 };

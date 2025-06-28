@@ -20,6 +20,7 @@ import { ComplexFilter, ComplexFilterRule, SavedSearch } from '@/lib/types';
 import { ModuleConfig, ColumnDefinition } from '@/lib/modules/types';
 import { FilterDialog } from './FilterDialog';
 import { PopularFilterComponent, PopularFilterConfig } from './PopularFilterComponents';
+import { createComplexFilterRule } from '@/lib/utils/filterUtils';
 
 interface FilterDropdownMenuProps {
   moduleName: string;
@@ -147,48 +148,13 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
       // Apply preloaded filter directly with additive logic
       // Use the column display name for consistent field naming
       const fieldName = filter.column?.display || filter.field;
-      const valueDisplay = typeof filter.value === 'boolean' 
-        ? (filter.value ? 'Yes' : 'No')
-        : String(filter.value);
       
-      // Create a user-friendly label based on the operator
-      const createFilterLabel = (field: string, operator: string, value: string) => {
-        // Handle pipe operator for OR conditions (though rare for preloaded filters)
-        const hasPipeOperator = value.includes('|');
-        const displayValue = hasPipeOperator 
-          ? value.split('|').map(v => `"${v.trim()}"`).join(' or ')
-          : (typeof filter.value === 'boolean' ? value : `"${value}"`);
-        
-        switch (operator) {
-          case 'equals':
-            return typeof filter.value === 'boolean' 
-              ? `${field} is ${value}`
-              : `${field} equals ${displayValue}`;
-          case 'not_equals':
-            return typeof filter.value === 'boolean'
-              ? `${field} is not ${value}`
-              : `${field} does not equal ${displayValue}`;
-          case 'greater_than':
-            return `${field} > ${value}`;
-          case 'less_than':
-            return `${field} < ${value}`;
-          case 'greater_equal':
-            return `${field} >= ${value}`;
-          case 'less_equal':
-            return `${field} <= ${value}`;
-          default:
-            return `${field} ${operator} ${displayValue}`;
-        }
-      };
-      
-      const newRule: ComplexFilterRule = {
-        id: Date.now().toString(),
-        field: filter.field,
-        operator: filter.operator as any,
-        value: filter.value,
-        fieldPath: [filter.field],
-        label: createFilterLabel(fieldName, filter.operator, valueDisplay)
-      };
+      const newRule = createComplexFilterRule(
+        filter.field,
+        filter.operator,
+        filter.value,
+        fieldName
+      );
       
       // Check if this exact filter already exists to prevent duplicates
       const currentFilter = complexFilter;

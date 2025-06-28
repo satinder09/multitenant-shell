@@ -13,6 +13,7 @@ import { ComplexFilter } from '@/lib/types';
 import { filterSourceService, FilterOption } from '@/lib/services/filter-source.service';
 import { FilterSource } from '@/lib/modules/types';
 import { generateId } from '@/lib/utils';
+import { createComplexFilterRule } from '@/lib/utils/filterUtils';
 
 interface PopularFilterComponentProps {
   filter: PopularFilterConfig;
@@ -60,46 +61,19 @@ export const PredefinedFilter: React.FC<PopularFilterComponentProps> = ({ filter
   const handleApply = () => {
     // Use column display name for proper labeling, fallback to field name
     const fieldName = filter.column?.display || filter.field;
-    const valueDisplay = typeof filter.value === 'boolean' 
-      ? (filter.value ? 'Yes' : 'No')
-      : String(filter.value);
     
-    // Create a user-friendly label based on the operator
-    const createFilterLabel = (field: string, operator: string, value: string) => {
-      switch (operator) {
-        case 'equals':
-          return typeof filter.value === 'boolean' 
-            ? `${field} is ${value}`
-            : `${field} equals "${value}"`;
-        case 'not_equals':
-          return typeof filter.value === 'boolean'
-            ? `${field} is not ${value}`
-            : `${field} does not equal "${value}"`;
-        case 'greater_than':
-          return `${field} > ${value}`;
-        case 'less_than':
-          return `${field} < ${value}`;
-        case 'greater_equal':
-          return `${field} >= ${value}`;
-        case 'less_equal':
-          return `${field} <= ${value}`;
-        default:
-          return `${field} ${operator} ${value}`;
-      }
-    };
+    const newRule = createComplexFilterRule(
+      filter.field,
+      filter.operator,
+      filter.value,
+      fieldName
+    );
     
     const complexFilter: ComplexFilter = {
       rootGroup: {
         id: generateId(),
         logic: 'AND',
-        rules: [{
-          id: generateId(),
-          field: filter.field,
-          operator: filter.operator as any,
-          value: filter.value,
-          fieldPath: [filter.field],
-          label: createFilterLabel(fieldName, filter.operator, valueDisplay)
-        }],
+        rules: [newRule],
         groups: []
       }
     };
@@ -136,52 +110,18 @@ export const UserInputFilter: React.FC<PopularFilterComponentProps> = ({ filter,
     // Use column display name for proper labeling, fallback to field name
     const fieldName = filter.column?.display || filter.field;
     
-    // Create a user-friendly label based on the operator
-    const createFilterLabel = (field: string, operator: string, value: string) => {
-      // Handle pipe operator for OR conditions
-      const hasPipeOperator = value.includes('|');
-      const displayValue = hasPipeOperator 
-        ? value.split('|').map(v => `"${v.trim()}"`).join(' or ')
-        : `"${value}"`;
-      
-      switch (operator) {
-        case 'contains':
-          return `${field} contains ${displayValue}`;
-        case 'not_contains':
-          return `${field} does not contain ${displayValue}`;
-        case 'starts_with':
-          return `${field} starts with ${displayValue}`;
-        case 'ends_with':
-          return `${field} ends with ${displayValue}`;
-        case 'equals':
-          return `${field} equals ${displayValue}`;
-        case 'not_equals':
-          return `${field} does not equal ${displayValue}`;
-        case 'greater_than':
-          return `${field} > ${value}`;
-        case 'less_than':
-          return `${field} < ${value}`;
-        case 'greater_equal':
-          return `${field} >= ${value}`;
-        case 'less_equal':
-          return `${field} <= ${value}`;
-        default:
-          return `${field} ${operator} ${displayValue}`;
-      }
-    };
+    const newRule = createComplexFilterRule(
+      filter.field,
+      filter.operator,
+      value,
+      fieldName
+    );
     
     const complexFilter: ComplexFilter = {
       rootGroup: {
         id: generateId(),
         logic: 'AND',
-        rules: [{
-          id: generateId(),
-          field: filter.field,
-          operator: filter.operator as any,
-          value: value,
-          fieldPath: [filter.field],
-          label: createFilterLabel(fieldName, filter.operator, value)
-        }],
+        rules: [newRule],
         groups: []
       }
     };
@@ -289,42 +229,21 @@ export const DropdownFilter: React.FC<PopularFilterComponentProps> = ({ filter, 
     const selectedOption = options.find(opt => opt.value === selectedValue);
     // Use column display name for proper labeling, fallback to field name
     const fieldName = filter.column?.display || filter.field;
-    const displayValue = selectedOption?.label || selectedValue;
+    // Use the actual value for the filter, not the display label
+    const filterValue = selectedValue;
     
-    // Create a user-friendly label based on the operator
-    const createFilterLabel = (field: string, operator: string, value: string) => {
-      // Handle pipe operator for OR conditions
-      const hasPipeOperator = value.includes('|');
-      const displayValue = hasPipeOperator 
-        ? value.split('|').map(v => `"${v.trim()}"`).join(' or ')
-        : `"${value}"`;
-      
-      switch (operator) {
-        case 'equals':
-          return `${field} is ${displayValue}`;
-        case 'not_equals':
-          return `${field} is not ${displayValue}`;
-        case 'contains':
-          return `${field} contains ${displayValue}`;
-        case 'not_contains':
-          return `${field} does not contain ${displayValue}`;
-        default:
-          return `${field} ${operator} ${displayValue}`;
-      }
-    };
+    const newRule = createComplexFilterRule(
+      filter.field,
+      filter.operator,
+      filterValue,
+      fieldName
+    );
     
     const complexFilter: ComplexFilter = {
       rootGroup: {
         id: generateId(),
         logic: 'AND',
-        rules: [{
-          id: generateId(),
-          field: filter.field,
-          operator: filter.operator as any,
-          value: selectedValue,
-          fieldPath: [filter.field],
-          label: createFilterLabel(fieldName, filter.operator, displayValue)
-        }],
+        rules: [newRule],
         groups: []
       }
     };
