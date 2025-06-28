@@ -122,6 +122,17 @@ export const UsersConfig: ModuleConfig = {
   sourceTable: 'User',
   primaryKey: 'id',
 
+  // GENERIC BACKEND CONFIGURATION
+  backendEndpoint: '/platform/admin/users',
+  backendMethod: 'GET',
+
+  // PHASE 1 ENHANCEMENT: Enhanced module metadata for better filtering
+  module: {
+    name: 'users',
+    title: 'User Management',
+    description: 'Manage system users and their permissions'
+  },
+
   // Column definitions with auto-derived operators
   columns: [
     {
@@ -160,6 +171,12 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: true,
       filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'email',
+        operator: 'contains' as const,
+        label: 'Search by Email'
+      },
       render: customRenderers.email,
       required: true,
       width: 200
@@ -173,17 +190,181 @@ export const UsersConfig: ModuleConfig = {
       searchable: false,
       filterable: true,
       popular: true,
-             popularFilter: {
-         field: 'isSuperAdmin',
-         operator: 'equals' as const,
-         value: true,
-         label: 'Super Admins Only'
-       },
+      popularFilter: {
+        field: 'isSuperAdmin',
+        operator: 'equals' as const,
+        value: true,
+        label: 'Super Admins Only'
+      },
       options: [
         { value: true, label: 'Super Admin', color: 'purple' },
         { value: false, label: 'Regular User', color: 'gray' }
       ],
       render: customRenderers.isSuperAdmin,
+      width: 150
+    },
+    {
+      field: 'department',
+      display: 'Department',
+      type: 'string',
+      visible: false,
+      sortable: true,
+      searchable: false,
+      filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'department',
+        operator: 'equals' as const,
+        label: 'Filter by Department'
+      },
+      options: [
+        { value: 'engineering', label: 'Engineering', color: '#3b82f6' },
+        { value: 'marketing', label: 'Marketing', color: '#ef4444' },
+        { value: 'sales', label: 'Sales', color: '#10b981' },
+        { value: 'hr', label: 'Human Resources', color: '#f59e0b' },
+        { value: 'finance', label: 'Finance', color: '#8b5cf6' }
+      ],
+      width: 120
+    },
+    {
+      field: 'role',
+      display: 'Role',
+      type: 'string',
+      visible: true,
+      sortable: true,
+      searchable: false,
+      filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'role',
+        operator: 'equals' as const,
+        label: 'Filter by Role'
+      },
+      filterSource: {
+        type: 'api' as const,
+        api: {
+          url: '/api/filters/dropdown-options',
+          method: 'POST',
+          params: {
+            field: 'role',
+            module: 'users'
+          },
+          mapping: {
+            value: 'id',
+            label: 'name',
+            color: 'color',
+            description: 'description'
+          },
+          dataPath: 'data.options',
+          totalPath: 'data.total',
+          cache: {
+            enabled: true,
+            ttl: 10 * 60 * 1000, // 10 minutes
+            key: 'user-roles'
+          },
+          searchable: {
+            enabled: true,
+            param: 'search',
+            minLength: 2,
+            debounce: 300
+          }
+        },
+        fallback: [
+          { value: 'admin', label: 'Administrator', color: '#dc2626' },
+          { value: 'user', label: 'User', color: '#6b7280' },
+          { value: 'moderator', label: 'Moderator', color: '#059669' }
+        ],
+        errorMessage: 'Failed to load roles, showing defaults'
+      },
+      width: 120
+    },
+    {
+      field: 'location',
+      display: 'Location',
+      type: 'string',
+      visible: false,
+      sortable: true,
+      searchable: false,
+      filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'location',
+        operator: 'equals' as const,
+        label: 'Filter by Location'
+      },
+      filterSource: {
+        type: 'table' as const,
+        table: {
+          name: 'locations',
+          valueColumn: 'code',
+          labelColumn: 'name',
+          colorColumn: 'color',
+          descriptionColumn: 'country',
+          where: { active: true },
+          orderBy: 'name ASC',
+          limit: 100,
+          cache: {
+            enabled: true,
+            ttl: 30 * 60 * 1000, // 30 minutes
+            key: 'active-locations'
+          }
+        },
+        fallback: [
+          { value: 'us', label: 'United States', description: 'North America' },
+          { value: 'uk', label: 'United Kingdom', description: 'Europe' },
+          { value: 'ca', label: 'Canada', description: 'North America' }
+        ]
+      },
+      width: 120
+    },
+    {
+      field: 'manager',
+      display: 'Manager',
+      type: 'reference',
+      visible: false,
+      sortable: true,
+      searchable: false,
+      filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'manager',
+        operator: 'equals' as const,
+        label: 'Filter by Manager'
+      },
+      filterSource: {
+        type: 'query' as const,
+        query: {
+          sql: `
+            SELECT u.id as value, 
+                   CONCAT(u.first_name, ' ', u.last_name) as label,
+                   CASE WHEN u.is_super_admin THEN '#dc2626' ELSE '#6b7280' END as color,
+                   u.email as description
+            FROM users u 
+            WHERE u.is_manager = true 
+              AND u.active = true 
+            ORDER BY u.first_name, u.last_name
+          `,
+          params: {},
+          mapping: {
+            value: 'value',
+            label: 'label',
+            color: 'color',
+            description: 'description'
+          },
+          cache: {
+            enabled: true,
+            ttl: 15 * 60 * 1000, // 15 minutes
+            key: 'active-managers'
+          }
+        },
+        transform: (data) => data.map(item => ({
+          ...item,
+          label: `${item.label} (${item.description})`
+        })),
+        fallback: [
+          { value: 'system', label: 'System Manager', color: '#6b7280' }
+        ]
+      },
       width: 150
     },
     {
@@ -194,7 +375,45 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'createdAt',
+        operator: 'preset' as const,
+        label: 'Created At Range'
+      },
       render: customRenderers.createdAt,
+      width: 120
+    },
+    {
+      field: 'lastLogin',
+      display: 'Last Login',
+      type: 'datetime',
+      visible: false,
+      sortable: true,
+      searchable: false,
+      filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'lastLogin',
+        operator: 'equals' as const,
+        label: 'Last Login Date'
+      },
+      width: 120
+    },
+    {
+      field: 'activeRange',
+      display: 'Active Period',
+      type: 'datetime',
+      visible: false,
+      sortable: true,
+      searchable: false,
+      filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'activeRange',
+        operator: 'between' as const,
+        label: 'Active Date Range'
+      },
       width: 120
     },
     {
@@ -308,11 +527,5 @@ export const UsersConfig: ModuleConfig = {
     selectable: true
   },
 
-  // Module metadata
-  module: {
-    name: 'users',
-    title: 'Users',
-    description: 'Manage system users and permissions',
-    icon: Users
-  }
+
 }; 

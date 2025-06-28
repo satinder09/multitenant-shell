@@ -13,6 +13,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { GetTenantsQueryDto } from './dto/get-tenants-query.dto';
 import { execSync } from 'child_process';
 import { PrismaClient as MasterPrismaClient } from '../../../generated/master-prisma';
+import { QueryBuilderUtils, FieldMapping } from '../../common/utils/query-builder.utils';
 
 @Injectable()
 export class TenantService {
@@ -122,24 +123,20 @@ export class TenantService {
   async findWithComplexQuery(queryDto: any) {
     this.logger.log('🔍 Starting optimized query analysis...');
     
-    // Analyze the query to determine required includes
-    const requiredIncludes = this.analyzeRequiredIncludes(queryDto);
+    // Use shared utilities for query building
+    const fieldMappings = this.getFieldMappings();
+    const requiredIncludes = QueryBuilderUtils.analyzeRequiredIncludes(queryDto.complexFilter);
+    const whereClause = QueryBuilderUtils.buildWhereClause(queryDto.complexFilter, fieldMappings);
+    const orderBy = QueryBuilderUtils.buildOrderBy(queryDto.sort);
+    const pagination = QueryBuilderUtils.buildPagination(queryDto.page, queryDto.limit);
+
     const includeCount = Object.keys(requiredIncludes).length;
-    this.logger.log(`📊 Required includes: ${includeCount > 0 ? JSON.stringify(requiredIncludes, null, 2) : 'NONE (base fields only)'}`);
-    
-    // Build the Prisma where clause from complex filters
-    const whereClause = this.buildWhereClause(queryDto.complexFilter);
     const hasFilters = Object.keys(whereClause).length > 0;
+    
+    this.logger.log(`📊 Required includes: ${includeCount > 0 ? JSON.stringify(requiredIncludes, null, 2) : 'NONE (base fields only)'}`);
     this.logger.log(`🎯 Generated where clause: ${hasFilters ? JSON.stringify(whereClause, null, 2) : 'NONE (no filtering)'}`);
-    
-    // Build the order by clause
-    const orderBy = this.buildOrderBy(queryDto.sort);
     this.logger.log(`📈 Order by: ${JSON.stringify(orderBy)}`);
-    
-    // Calculate pagination
-    const skip = ((queryDto.page || 1) - 1) * (queryDto.limit || 10);
-    const take = queryDto.limit || 10;
-    this.logger.log(`📄 Pagination: skip=${skip}, take=${take} (ALWAYS applied - never loads all data)`);
+    this.logger.log(`📄 Pagination: skip=${pagination.skip}, take=${pagination.take}`);
 
     this.logger.log('🚀 Executing optimized database query with filters applied first...');
     const startTime = Date.now();
@@ -150,8 +147,7 @@ export class TenantService {
         where: whereClause,
         include: requiredIncludes,
         orderBy,
-        skip,
-        take,
+        ...pagination,
       }),
       this.masterPrisma.tenant.count({
         where: whereClause,
@@ -162,266 +158,40 @@ export class TenantService {
     const efficiency = total > 0 ? `${((data.length / total) * 100).toFixed(1)}%` : '100%';
     this.logger.log(`✅ Query completed in ${queryTime}ms - Retrieved ${data.length}/${total} records (${efficiency} efficiency)`);
 
+    // Use shared utility for response formatting
+    return QueryBuilderUtils.formatResponse(data, total, queryDto);
+  }
+
+  /**
+   * Get field mappings for tenant entity
+   */
+  private getFieldMappings(): Record<string, FieldMapping> {
     return {
-      data,
-      pagination: {
-        page: queryDto.page || 1,
-        limit: queryDto.limit || 10,
-        total,
-        totalPages: Math.ceil(total / (queryDto.limit || 10)),
-        hasNext: (queryDto.page || 1) * (queryDto.limit || 10) < total,
-        hasPrev: (queryDto.page || 1) > 1,
+      name: {
+        type: 'string',
+        operators: ['contains', 'equals', 'starts_with', 'ends_with', 'not_contains', 'not_equals']
       },
+      subdomain: {
+        type: 'string',
+        operators: ['contains', 'equals', 'starts_with', 'ends_with', 'not_contains', 'not_equals']
+      },
+      dbName: {
+        type: 'string',
+        operators: ['contains', 'equals', 'starts_with', 'ends_with']
+      },
+      isActive: {
+        type: 'boolean',
+        operators: ['equals', 'not_equals']
+      },
+      createdAt: {
+        type: 'date',
+        operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between']
+      },
+      updatedAt: {
+        type: 'date',
+        operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between']
+      }
     };
-  }
-
-  private analyzeRequiredIncludes(queryDto: { complexFilter?: any; [key: string]: unknown }) {
-    const includes: Record<string, any> = {};
-    
-    if (!queryDto.complexFilter?.rootGroup) {
-      this.logger.log('⚡ No complex filters found - using zero includes (only base tenant fields)');
-      return includes; // Return empty - only load base tenant fields
-    }
-
-    this.logger.log('🔬 Analyzing filter rules to determine required database joins...');
-    
-    // Recursively analyze all rules to determine required joins
-    this.analyzeRulesForIncludes(queryDto.complexFilter.rootGroup, includes);
-    
-    const includeCount = Object.keys(includes).length;
-    if (includeCount === 0) {
-      this.logger.log('🎯 Analysis complete - no relationships needed, only base tenant fields will be loaded');
-    } else {
-      this.logger.log(`🎯 Analysis complete - ${includeCount} relationship(s) required for optimal query`);
-    }
-    
-    return includes;
-  }
-
-  private analyzeRulesForIncludes(group: { rules?: Array<{ field: string; fieldPath?: string[] }>; groups?: any[] }, includes: Record<string, any>) {
-    // Check rules
-    if (group.rules) {
-      for (const rule of group.rules) {
-        if (rule.fieldPath && rule.fieldPath.length > 1) {
-          this.addIncludeForPath(rule.fieldPath, includes);
-        }
-      }
-    }
-
-    // Check nested groups
-    if (group.groups) {
-      for (const nestedGroup of group.groups) {
-        this.analyzeRulesForIncludes(nestedGroup, includes);
-      }
-    }
-  }
-
-  private addIncludeForPath(fieldPath: string[], includes: Record<string, any>) {
-    if (fieldPath.length < 2) return;
-
-    const [firstLevel, ...restPath] = fieldPath;
-    const fullPath = fieldPath.join('.');
-    
-    switch (firstLevel) {
-      case 'permissions':
-        if (!includes.permissions) {
-          includes.permissions = { include: {} };
-          this.logger.log(`🔗 Adding join: Tenant → Permissions`);
-        }
-        if (restPath.length > 0 && restPath[0] === 'user') {
-          includes.permissions.include.user = true;
-          this.logger.log(`🔗 Adding nested join: Permissions → User (for ${fullPath})`);
-        }
-        break;
-        
-      case 'impersonationSessions':
-        if (!includes.impersonationSessions) {
-          includes.impersonationSessions = { include: {} };
-          this.logger.log(`🔗 Adding join: Tenant → Impersonation Sessions`);
-        }
-        if (restPath.length > 0 && restPath[0] === 'originalUser') {
-          includes.impersonationSessions.include.originalUser = true;
-          this.logger.log(`🔗 Adding nested join: Impersonation Sessions → Original User (for ${fullPath})`);
-        }
-        break;
-        
-      case 'accessLogs':
-        if (!includes.accessLogs) {
-          includes.accessLogs = { include: {} };
-          this.logger.log(`🔗 Adding join: Tenant → Access Logs`);
-        }
-        if (restPath.length > 0 && restPath[0] === 'user') {
-          includes.accessLogs.include.user = true;
-          this.logger.log(`🔗 Adding nested join: Access Logs → User (for ${fullPath})`);
-        }
-        break;
-    }
-  }
-
-  private buildWhereClause(complexFilter: { rootGroup: any }): Record<string, any> {
-    if (!complexFilter?.rootGroup) {
-      this.logger.log('📝 No complex filters - using empty where clause');
-      return {};
-    }
-
-    this.logger.log('🏗️  Building database where clause from complex filters...');
-    const whereClause = this.buildGroupWhereClause(complexFilter.rootGroup);
-    this.logger.log('✅ Where clause construction complete');
-    
-    return whereClause;
-  }
-
-  private buildGroupWhereClause(group: { logic: 'AND' | 'OR'; rules?: any[]; groups?: any[] }): Record<string, any> {
-    const conditions: Record<string, any>[] = [];
-
-    // Process rules
-    if (group.rules) {
-      for (const rule of group.rules) {
-        const condition = this.buildRuleWhereClause(rule);
-        if (condition) {
-          conditions.push(condition);
-        }
-      }
-    }
-
-    // Process nested groups
-    if (group.groups) {
-      for (const nestedGroup of group.groups) {
-        const nestedCondition = this.buildGroupWhereClause(nestedGroup);
-        if (nestedCondition) {
-          conditions.push(nestedCondition);
-        }
-      }
-    }
-
-    if (conditions.length === 0) {
-      return {};
-    }
-
-    if (conditions.length === 1) {
-      return conditions[0];
-    }
-
-    // Apply group logic (AND/OR)
-    if (group.logic === 'OR') {
-      return { OR: conditions };
-    } else {
-      return { AND: conditions };
-    }
-  }
-
-  private buildRuleWhereClause(rule: { field: string; operator: string; value: any; fieldPath?: string[] }): Record<string, any> {
-    const fieldPath = rule.fieldPath || [rule.field];
-    const operator = rule.operator;
-    const value = rule.value;
-    const fullPath = fieldPath.join('.');
-
-    this.logger.log(`🔧 Processing rule: ${fullPath} ${operator} "${value}"`);
-
-    // Handle direct tenant fields
-    if (fieldPath.length === 1) {
-      this.logger.log(`📍 Direct field query on: ${fieldPath[0]}`);
-      return this.buildDirectFieldCondition(fieldPath[0], operator, value);
-    }
-
-    // Handle nested fields
-    this.logger.log(`🔗 Nested field query on: ${fullPath}`);
-    return this.buildNestedFieldCondition(fieldPath, operator, value);
-  }
-
-  private buildDirectFieldCondition(field: string, operator: string, value: any): Record<string, any> {
-    switch (operator) {
-      case 'equals':
-        return { [field]: value };
-      case 'not_equals':
-        return { [field]: { not: value } };
-      case 'contains':
-        return { [field]: { contains: value, mode: 'insensitive' } };
-      case 'not_contains':
-        return { [field]: { not: { contains: value, mode: 'insensitive' } } };
-      case 'starts_with':
-        return { [field]: { startsWith: value, mode: 'insensitive' } };
-      case 'ends_with':
-        return { [field]: { endsWith: value, mode: 'insensitive' } };
-      case 'greater_than':
-        return { [field]: { gt: value } };
-      case 'less_than':
-        return { [field]: { lt: value } };
-      case 'greater_equal':
-        return { [field]: { gte: value } };
-      case 'less_equal':
-        return { [field]: { lte: value } };
-      case 'is_empty':
-        return { [field]: null };
-      case 'is_not_empty':
-        return { [field]: { not: null } };
-      case 'in':
-        return { [field]: { in: Array.isArray(value) ? value : [value] } };
-      case 'not_in':
-        return { [field]: { notIn: Array.isArray(value) ? value : [value] } };
-      default:
-        return {};
-    }
-  }
-
-  private buildNestedFieldCondition(fieldPath: string[], operator: string, value: any): Record<string, any> {
-    const [firstLevel, ...restPath] = fieldPath;
-
-    switch (firstLevel) {
-      case 'permissions':
-        return {
-          permissions: {
-            some: this.buildNestedCondition(restPath, operator, value)
-          }
-        };
-        
-      case 'impersonationSessions':
-        return {
-          impersonationSessions: {
-            some: this.buildNestedCondition(restPath, operator, value)
-          }
-        };
-        
-      case 'accessLogs':
-        return {
-          accessLogs: {
-            some: this.buildNestedCondition(restPath, operator, value)
-          }
-        };
-        
-      default:
-        return {};
-    }
-  }
-
-  private buildNestedCondition(fieldPath: string[], operator: string, value: any): Record<string, any> {
-    if (fieldPath.length === 1) {
-      return this.buildDirectFieldCondition(fieldPath[0], operator, value);
-    }
-
-    const [nextLevel, ...restPath] = fieldPath;
-    
-    if (nextLevel === 'user' || nextLevel === 'originalUser') {
-      return {
-        [nextLevel]: this.buildNestedCondition(restPath, operator, value)
-      };
-    }
-
-    return {};
-  }
-
-  private buildOrderBy(sort: any): any {
-    if (!sort) {
-      return { createdAt: 'desc' };
-    }
-
-    // Handle nested sorting if needed
-    if (sort.field.includes('.')) {
-      // For now, default to createdAt for complex sorts
-      return { createdAt: 'desc' };
-    }
-
-    return { [sort.field]: sort.direction };
   }
 
   async findOne(id: string) {

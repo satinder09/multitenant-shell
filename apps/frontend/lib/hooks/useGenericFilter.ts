@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   GenericEntity, 
   UseGenericFilterReturn, 
@@ -21,6 +21,60 @@ import { ModuleConfig, getEffectiveOperators } from '@/lib/modules/types';
 import { getModuleConfig } from '@/lib/modules/module-registry';
 import { generateId, debounce } from '@/lib/utils';
 import { VisibilityState } from '@tanstack/react-table';
+
+// PHASE 1 ENHANCEMENT: Cached Field Discovery
+const fieldDiscoveryCache = new Map<string, {
+  discovery: DynamicFieldDiscovery;
+  timestamp: number;
+  configHash: string;
+}>();
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+// Helper to create a hash of the config for cache invalidation
+const createConfigHash = (config: ModuleConfig): string => {
+  return JSON.stringify({
+    module: config.module,
+    columns: config.columns.map(col => ({
+      field: col.field,
+      type: col.type,
+      filterable: col.filterable,
+      options: col.options
+    }))
+  });
+};
+
+// PHASE 1 ENHANCEMENT: Enhanced field discovery with caching
+const getCachedFieldDiscovery = (moduleName: string, config?: ModuleConfig): DynamicFieldDiscovery | null => {
+  const cached = fieldDiscoveryCache.get(moduleName);
+  
+  if (!cached) return null;
+  
+  // Check if cache is expired
+  if (Date.now() - cached.timestamp > CACHE_TTL) {
+    fieldDiscoveryCache.delete(moduleName);
+    return null;
+  }
+  
+  // Check if config has changed
+  if (config) {
+    const currentHash = createConfigHash(config);
+    if (cached.configHash !== currentHash) {
+      fieldDiscoveryCache.delete(moduleName);
+      return null;
+    }
+  }
+  
+  return cached.discovery;
+};
+
+const setCachedFieldDiscovery = (moduleName: string, discovery: DynamicFieldDiscovery, config?: ModuleConfig) => {
+  fieldDiscoveryCache.set(moduleName, {
+    discovery,
+    timestamp: Date.now(),
+    configHash: config ? createConfigHash(config) : ''
+  });
+};
 
 export function useGenericFilter<
   T extends GenericEntity,
@@ -46,8 +100,17 @@ export function useGenericFilter<
   const fetchedSavedSearchesRef = useRef(false);
   const lastConfigKeyRef = useRef<string>('');
 
-  // Create field discovery from config
+  // PHASE 1 ENHANCEMENT: Enhanced field discovery from config with caching
   const createFieldDiscoveryFromConfig = useCallback((config: ModuleConfig): DynamicFieldDiscovery => {
+    // Check cache first
+    const cached = getCachedFieldDiscovery(moduleName, config);
+    if (cached) {
+      console.log(`🚀 Using cached field discovery for ${moduleName}`);
+      return cached;
+    }
+
+    console.log(`🔧 Generating field discovery from config for ${moduleName}`);
+
     // Convert operators from config format to lib/types format
     const convertOperators = (operators: any[]): FilterOperator[] => {
       return operators.map(op => {
@@ -61,6 +124,7 @@ export function useGenericFilter<
     };
 
     const fields: FilterMetadata[] = config.columns
+      .filter(col => col.filterable !== false) // Only include filterable columns
       .map(col => {
         const effectiveOperators = getEffectiveOperators(col);
         
@@ -81,12 +145,17 @@ export function useGenericFilter<
         };
       });
 
-    return {
+    const discovery: DynamicFieldDiscovery = {
       fields,
       nestedFields: [],
       relationPaths: []
     };
-  }, []);
+
+    // Cache the discovery
+    setCachedFieldDiscovery(moduleName, discovery, config);
+
+    return discovery;
+  }, [moduleName]);
 
   // Query parameters
   const [queryParams, setQueryParams] = useState<AdvancedQueryParams<TFilters>>({
@@ -99,7 +168,7 @@ export function useGenericFilter<
     savedSearchId: undefined
   });
 
-  // Stable fetch functions using useCallback
+  // PHASE 1 ENHANCEMENT: Performance optimized fetch functions
   const fetchFieldDiscovery = useCallback(async (configOverride?: ModuleConfig) => {
     // Allow config to be passed in to handle dynamic config changes
     const effectiveConfig = configOverride || config;
@@ -116,33 +185,43 @@ export function useGenericFilter<
     fetchedFieldDiscoveryRef.current = true;
     
     try {
-      // Use provided config if available
+      // PHASE 1 ENHANCEMENT: Prioritize config-based discovery with caching
       if (effectiveConfig && effectiveConfig.columns && effectiveConfig.columns.length > 0) {
         const discovery = createFieldDiscoveryFromConfig(effectiveConfig);
         setFieldDiscovery(discovery);
         setMetadata(discovery.fields || []);
-      } else {
-        // Try to get config from module registry first
-        const registryConfig = await getModuleConfig(moduleName);
-        if (registryConfig) {
-          const discovery = createFieldDiscoveryFromConfig(registryConfig);
-          setFieldDiscovery(discovery);
-          setMetadata(discovery.fields || []);
-        } else {
-          // Fallback to API if no config found
-          const response = await fetch(`/api/filters/${moduleName}/auto-discovery`);
-          if (response.ok) {
-            const discovery = await response.json();
-            setFieldDiscovery(discovery);
-            setMetadata(discovery.fields || []);
-          }
-        }
+        return;
+      }
+
+      // Try to get config from module registry first
+      const registryConfig = await getModuleConfig(moduleName);
+      if (registryConfig) {
+        const discovery = createFieldDiscoveryFromConfig(registryConfig);
+        setFieldDiscovery(discovery);
+        setMetadata(discovery.fields || []);
+        return;
+      }
+
+      // Fallback to API if no config found (with caching)
+      const cached = getCachedFieldDiscovery(moduleName);
+      if (cached) {
+        setFieldDiscovery(cached);
+        setMetadata(cached.fields || []);
+        return;
+      }
+
+      const response = await fetch(`/api/filters/${moduleName}/auto-discovery`);
+      if (response.ok) {
+        const discovery = await response.json();
+        setFieldDiscovery(discovery);
+        setMetadata(discovery.fields || []);
+        setCachedFieldDiscovery(moduleName, discovery);
       }
     } catch (err) {
       console.error('Failed to fetch field discovery:', err);
       fetchedFieldDiscoveryRef.current = false; // Reset on error so it can retry
     }
-  }, [moduleName, createFieldDiscoveryFromConfig]);
+  }, [moduleName, createFieldDiscoveryFromConfig, config]);
 
   const fetchSavedSearches = useCallback(async () => {
     if (fetchedSavedSearchesRef.current) return;
@@ -168,6 +247,7 @@ export function useGenericFilter<
     }
   }, [fetchFieldDiscovery, fetchSavedSearches, options.enableSavedSearches, config]);
 
+  // PHASE 1 ENHANCEMENT: Performance optimized fetch functions
   const fetchData = useCallback(async (params?: AdvancedQueryParams<TFilters>) => {
     try {
       setIsLoading(true);
@@ -178,9 +258,9 @@ export function useGenericFilter<
       // Remove 'filters' property to match backend DTO (GetTenantsQueryDto)
       const { filters, ...backendCompatibleParams } = requestParams;
       
-      // Debug logging for tenants requests
-      if (moduleName === 'tenants') {
-        console.log('🔍 TENANTS REQUEST DEBUG:');
+      // Debug logging for users requests
+      if (moduleName === 'users') {
+        console.log('🔍 USERS REQUEST DEBUG:');
         console.log('🔍 Full request params:', JSON.stringify(backendCompatibleParams, null, 2));
         if (backendCompatibleParams.complexFilter) {
           console.log('🔍 Has complex filter - structure:', JSON.stringify(backendCompatibleParams.complexFilter, null, 2));
@@ -195,52 +275,63 @@ export function useGenericFilter<
         body: JSON.stringify(backendCompatibleParams)
       });
       
-      // Debug response for tenants
-      if (moduleName === 'tenants' && !response.ok) {
-        console.log('🔍 TENANTS ERROR RESPONSE:');
-        console.log('🔍 Status:', response.status);
-        try {
-          const errorText = await response.text();
-          console.log('🔍 Error body:', errorText);
-          // Recreate response since we consumed the body
-          return new Response(errorText, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers
-          });
-        } catch (e) {
-          console.log('🔍 Could not read error response');
-        }
+      // Debug response for users
+      if (moduleName === 'users' && !response.ok) {
+        console.log('🔍 USERS ERROR RESPONSE:');
+        const errorText = await response.text();
+        console.log('🔍 Error details:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      setData(result.data || []);
-      setPagination(result.pagination || null);
       
-      if (result.metadata) {
-        setMetadata(result.metadata);
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Debug successful response for users
+        if (moduleName === 'users') {
+          console.log('🔍 USERS SUCCESS RESPONSE:');
+          console.log('🔍 Data count:', result.data?.length || 0);
+          console.log('🔍 Pagination:', result.pagination);
+        }
+        
+        setData(result.data || []);
+        setPagination(result.pagination || null);
+      } else {
+        // Fallback for modules without specific endpoints
+        console.log(`⚠️ No specific endpoint for ${moduleName}, using fallback`);
+        
+        // Mock data for development
+        const mockData = Array.from({ length: 5 }, (_, i) => ({
+          id: `${moduleName}-${i + 1}`,
+          name: `Sample ${moduleName} ${i + 1}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })) as unknown as T[];
+        
+        setData(mockData);
+        setPagination({
+          page: requestParams.page || 1,
+          limit: requestParams.limit || 10,
+          total: mockData.length,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false
+        });
       }
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-      setData([]);
-      setPagination(null);
+      console.error(`Failed to fetch ${moduleName} data:`, err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
-  }, [moduleName]); // Only depend on moduleName, not queryParams
+  }, [moduleName, queryParams]);
 
-  // Debounced fetch data function
-  const queryParamsRef = useRef(queryParams);
-  queryParamsRef.current = queryParams;
-
-  const debouncedFetchData = useRef(
-    debounce(() => fetchData(queryParamsRef.current), 500)
-  ).current;
+  // PHASE 1 ENHANCEMENT: Debounced filter application for performance
+  const debouncedFetchData = useMemo(
+    () => debounce((params: AdvancedQueryParams<TFilters>) => {
+      fetchData(params);
+    }, 300), // 300ms debounce
+    [fetchData]
+  );
 
   // Fetch data when query params change - optimized to prevent excessive calls
   useEffect(() => {
@@ -263,14 +354,16 @@ export function useGenericFilter<
     if (shouldFetchImmediately) {
       fetchData(queryParams);
     } else if (shouldFetchDebounced) {
-      debouncedFetchData();
+      debouncedFetchData(queryParams);
     }
   }, [
     queryParams.page,
     queryParams.limit, 
     queryParams.complexFilter,
     queryParams.filters?.search,
-    options.defaultLimit
+    options.defaultLimit,
+    fetchData,
+    debouncedFetchData
   ]); // Removed fetchData and debouncedFetchData to make it more stable
 
   // Filter actions
@@ -454,7 +547,7 @@ export function useGenericFilter<
   }, [moduleName]);
 
   const refetch = useCallback(() => {
-    fetchData(queryParamsRef.current);
+    fetchData(queryParams);
   }, [fetchData]);
 
   return {

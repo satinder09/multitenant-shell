@@ -82,6 +82,21 @@ export const ClickableFilterTags: React.FC<ClickableFilterTagsProps> = ({
   };
 
   const formatFilterLabel = (rule: ComplexFilterRule): string => {
+    // If rule.label already contains a complete filter description (includes operator keywords), use it as-is
+    if (rule.label && (
+      rule.label.includes('contains') || 
+      rule.label.includes('equals') || 
+      rule.label.includes('is ') || 
+      rule.label.includes('starts with') || 
+      rule.label.includes('ends with') ||
+      rule.label.includes('between') ||
+      rule.label.includes('after') ||
+      rule.label.includes('before')
+    )) {
+      return rule.label;
+    }
+    
+    // Otherwise, construct the label from components
     const fieldLabel = rule.label || rule.field;
     const operatorLabel = getOperatorLabel(rule.operator);
     const value = formatFilterValue(rule);

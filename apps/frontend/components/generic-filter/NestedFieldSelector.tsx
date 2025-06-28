@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, ChevronLeft, Search, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ModuleConfig } from '@/lib/modules/types';
 
 interface FieldNode {
   name: string;
@@ -25,6 +26,7 @@ interface Breadcrumb {
 interface NestedFieldSelectorProps {
   moduleName: string;
   selectedPath?: string[];
+  config?: ModuleConfig;
   onFieldSelect: (field: FieldNode) => void;
   onClose?: () => void;
 }
@@ -32,6 +34,7 @@ interface NestedFieldSelectorProps {
 export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
   moduleName,
   selectedPath = [],
+  config,
   onFieldSelect,
   onClose
 }) => {
@@ -46,10 +49,31 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
   const [fieldCache, setFieldCache] = useState<Map<string, FieldNode[]>>(new Map());
 
   useEffect(() => {
+    // Clear cache and fetch fresh fields when module changes
+    setFieldCache(new Map());
     fetchFields([]);
   }, [moduleName]);
 
   const getCacheKey = (path: string[]) => path.join('.');
+
+  // Enhance fields with display names from config
+  const enhanceFieldsWithDisplayNames = (fields: FieldNode[]): FieldNode[] => {
+    if (!config) return fields;
+    
+    return fields.map(field => {
+      // For root level fields, try to find display name in config
+      if (field.path.length === 1) {
+        const configColumn = config.columns.find(col => col.field === field.name);
+        if (configColumn) {
+          return {
+            ...field,
+            label: configColumn.display || field.label || field.name
+          };
+        }
+      }
+      return field;
+    });
+  };
 
   const fetchFields = useCallback(async (parentPath: string[]) => {
     const cacheKey = getCacheKey(parentPath);
@@ -80,7 +104,10 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        const fields = data.fields || [];
+        const rawFields = data.fields || [];
+        
+        // Enhance fields with display names from config
+        const fields = enhanceFieldsWithDisplayNames(rawFields);
         
         // Cache the results
         setFieldCache(prev => new Map(prev).set(cacheKey, fields));
@@ -97,7 +124,7 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
       setLoading(false);
       setNavigating(false);
     }
-  }, [moduleName, fieldCache]);
+  }, [moduleName, fieldCache, config]);
 
   const updateBreadcrumbs = (parentPath: string[]) => {
     if (parentPath.length === 0) {
@@ -174,8 +201,8 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
   return (
     <div className="w-80 border rounded-lg bg-white shadow-lg">
       {/* Header with breadcrumbs */}
-      <div className="p-3 border-b">
-        <div className="flex items-center gap-2 mb-3">
+      <div className="p-2 border-b">
+        <div className="flex items-center gap-2 mb-2">
           {navigationPath.length > 0 && (
             <Button 
               variant="ghost" 
@@ -216,14 +243,14 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
             placeholder="Search fields..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
+            className="pl-8 h-8"
             disabled={navigating}
           />
         </div>
       </div>
       
-      {/* Field List */}
-      <div className="h-80 overflow-hidden relative border-t">
+      {/* Field List - More compact */}
+      <div className="h-64 overflow-hidden relative">
         {/* Navigation overlay */}
         {navigating && (
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
@@ -235,20 +262,20 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
         )}
         
         <div className={`h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-opacity duration-200 ${navigating ? 'opacity-30' : 'opacity-100'}`}>
-          <div className="p-2">
+          <div className="p-1">
             {filteredFields.length > 0 ? (
               filteredFields.map(field => (
                 <div
                   key={field.path.join('.')}
-                  className={`flex items-center gap-2 py-2 px-3 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
+                  className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
                     navigating ? 'pointer-events-none' : ''
                   }`}
                   onClick={() => navigateToField(field)}
                 >
-                  <span className="text-sm font-medium flex-1">{field.label}</span>
+                  <span className="text-sm font-medium flex-1">{field.label || field.name}</span>
                   
                   {!field.hasChildren && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                       {field.type}
                     </span>
                   )}
@@ -259,7 +286,7 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
                 </div>
               ))
             ) : (
-              <div className="text-center text-gray-500 py-4">
+              <div className="text-center text-gray-500 py-8 text-sm">
                 {searchTerm ? `No fields found matching "${searchTerm}"` : 'No fields found'}
               </div>
             )}
@@ -269,8 +296,8 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
       
       {/* Footer */}
       {onClose && (
-        <div className="p-3 border-t">
-          <Button variant="outline" onClick={onClose} className="w-full" disabled={navigating}>
+        <div className="p-2 border-t">
+          <Button variant="outline" onClick={onClose} className="w-full h-8 text-sm" disabled={navigating}>
             Close
           </Button>
         </div>

@@ -72,43 +72,9 @@ interface PrismaModel {
   }>;
 }
 
-// Schema data based on your actual Prisma schema
-const PRISMA_SCHEMA: Record<string, PrismaModel> = {
-  Tenant: {
-    name: 'Tenant',
-    fields: [
-      { name: 'id', type: 'String', isOptional: false, isId: true, isUnique: false },
-      { name: 'name', type: 'String', isOptional: false, isId: false, isUnique: false },
-      { name: 'subdomain', type: 'String', isOptional: false, isId: false, isUnique: true },
-      { name: 'dbName', type: 'String', isOptional: false, isId: false, isUnique: true },
-      { name: 'encryptedDbUrl', type: 'String', isOptional: false, isId: false, isUnique: false },
-      { name: 'isActive', type: 'Boolean', isOptional: false, isId: false, isUnique: false },
-      { name: 'createdAt', type: 'DateTime', isOptional: false, isId: false, isUnique: false },
-      { name: 'updatedAt', type: 'DateTime', isOptional: false, isId: false, isUnique: false }
-    ],
-    relations: [
-      { name: 'permissions', type: 'one-to-many', model: 'TenantUserPermission', fromFields: ['id'], toFields: ['tenantId'] },
-      { name: 'impersonationSessions', type: 'one-to-many', model: 'ImpersonationSession', fromFields: ['id'], toFields: ['impersonatedTenantId'] },
-      { name: 'accessLogs', type: 'one-to-many', model: 'TenantAccessLog', fromFields: ['id'], toFields: ['tenantId'] }
-    ]
-  },
-  User: {
-    name: 'User',
-    fields: [
-      { name: 'id', type: 'String', isOptional: false, isId: true, isUnique: false },
-      { name: 'email', type: 'String', isOptional: false, isId: false, isUnique: true },
-      { name: 'passwordHash', type: 'String', isOptional: false, isId: false, isUnique: false },
-      { name: 'name', type: 'String', isOptional: true, isId: false, isUnique: false },
-      { name: 'isSuperAdmin', type: 'Boolean', isOptional: false, isId: false, isUnique: false },
-      { name: 'createdAt', type: 'DateTime', isOptional: false, isId: false, isUnique: false },
-      { name: 'updatedAt', type: 'DateTime', isOptional: false, isId: false, isUnique: false }
-    ],
-    relations: [
-      { name: 'permissions', type: 'one-to-many', model: 'TenantUserPermission', fromFields: ['id'], toFields: ['userId'] },
-      { name: 'userRoles', type: 'one-to-many', model: 'UserRole', fromFields: ['id'], toFields: ['userId'] }
-    ]
-  }
-};
+// GENERIC APPROACH: Remove hardcoded schema definitions
+// Instead, make schema generation optional and rely on module configs
+// If needed, schema can be introspected dynamically from the database
 
 // Hidden fields that shouldn't be shown in UI
 const HIDDEN_FIELDS = ['passwordHash', 'encryptedDbUrl', 'sessionId'];
@@ -122,20 +88,52 @@ export class SchemaConfigGenerator {
     modelName: string,
     overrides?: Partial<ModuleConfig>
   ): ModuleConfig {
-    const model = PRISMA_SCHEMA[modelName];
-    if (!model) {
-      throw new Error(`Model ${modelName} not found in schema`);
-    }
-
-    const columns = this.generateColumns(model);
-    const defaultColumns = this.getDefaultVisibleColumns(columns);
-
-    return {
+    // GENERIC APPROACH: Since we removed hardcoded schemas,
+    // this method now creates a basic config that must be overridden
+    console.warn(`⚠️ generateModuleConfig called for ${modelName} but no schema introspection available.`);
+    console.warn(`Please create a manual config for this module in your module config file.`);
+    
+    // Return a minimal config that must be customized
+    const basicConfig: ModuleConfig = {
       sourceTable: modelName,
       primaryKey: 'id',
-      columns,
+      columns: [
+        {
+          field: 'id',
+          display: 'ID',
+          type: 'string',
+          visible: false,
+          sortable: true,
+          searchable: false,
+          filterable: true
+        },
+        {
+          field: 'name',
+          display: 'Name',
+          type: 'string',
+          visible: true,
+          sortable: true,
+          searchable: true,
+          filterable: true,
+          popular: true,
+          popularFilter: {
+            field: 'name',
+            operator: 'contains' as const,
+            label: 'Search by Name'
+          }
+        },
+        {
+          field: 'createdAt',
+          display: 'Created',
+          type: 'datetime',
+          visible: true,
+          sortable: true,
+          searchable: false,
+          filterable: true
+        }
+      ],
       display: {
-        defaultColumns,
+        defaultColumns: ['name', 'createdAt'],
         defaultSort: { field: 'createdAt', direction: 'desc' },
         pageSize: 25,
         selectable: true
@@ -147,159 +145,31 @@ export class SchemaConfigGenerator {
       },
       ...overrides
     };
+
+    return basicConfig;
   }
 
-  private static generateColumns(model: PrismaModel): ColumnDefinition[] {
-    const columns: ColumnDefinition[] = [];
-
-    // Generate columns from fields
-    for (const field of model.fields) {
-      if (HIDDEN_FIELDS.includes(field.name) || SENSITIVE_PATTERNS.test(field.name)) {
-        continue; // Skip hidden/sensitive fields
-      }
-
-      const column = this.generateColumnFromField(field);
-      columns.push(column);
-    }
-
-    // Generate columns from relations
-    for (const relation of model.relations) {
-      const column = this.generateColumnFromRelation(relation);
-      columns.push(column);
-    }
-
-    return columns;
-  }
-
-  private static generateColumnFromField(field: PrismaField): ColumnDefinition {
-    const baseType = field.isEnum ? 'enum' : PRISMA_TYPE_MAPPING[field.type] || 'string';
-    const operators = TYPE_OPERATORS[baseType] || TYPE_OPERATORS.string;
-    
-    // Auto-detect display properties
-    const isVisible = this.shouldBeVisible(field);
-    const isPopular = this.shouldBePopular(field);
-    const popularFilter = isPopular ? this.generatePopularFilter(field) : undefined;
-
-    return {
-      field: field.name,
-      display: this.generateDisplayLabel(field.name),
-      type: baseType as any,
-      visible: isVisible,
-      sortable: !field.relationName,
-      searchable: baseType === 'string' && !FIELD_PATTERNS.id.test(field.name),
-      filterable: true,
-      popular: isPopular,
-      popularFilter,
-      operators,
-      required: !field.isOptional,
-      ...(field.isEnum && field.enumValues && {
-        options: field.enumValues.map(value => ({
-          value,
-          label: this.generateDisplayLabel(value)
-        }))
-      })
-    };
-  }
-
-  private static generateColumnFromRelation(relation: any): ColumnDefinition {
-    return {
-      field: relation.name,
-      display: this.generateDisplayLabel(relation.name),
-      type: 'reference',
-      visible: true,
-      sortable: false,
-      searchable: false,
-      filterable: true,
-      popular: this.shouldRelationBePopular(relation.name),
-      operators: TYPE_OPERATORS.reference,
-      relationship: {
-        type: relation.type as any,
-        sourceField: relation.fromFields[0],
-        targetField: relation.toFields[0]
-      }
-    };
-  }
-
-  private static shouldBeVisible(field: PrismaField): boolean {
-    // Hide IDs except primary key, hide sensitive fields
-    if (field.name !== 'id' && FIELD_PATTERNS.id.test(field.name)) return false;
-    if (SENSITIVE_PATTERNS.test(field.name)) return false;
-    if (field.name === 'updatedAt') return false; // Usually not needed in list view
-    return true;
-  }
-
-  private static shouldBePopular(field: PrismaField): boolean {
-    // Auto-detect popular fields
-    return (
-      FIELD_PATTERNS.name.test(field.name) ||
-      FIELD_PATTERNS.email.test(field.name) ||
-      FIELD_PATTERNS.status.test(field.name) ||
-      FIELD_PATTERNS.active.test(field.name) ||
-      field.name === 'createdAt' ||
-      field.type === 'Boolean'
-    );
-  }
-
-  private static shouldRelationBePopular(relationName: string): boolean {
-    // Relations that are commonly filtered
-    return ['user', 'tenant', 'permissions', 'roles'].includes(relationName);
-  }
-
-  private static generatePopularFilter(field: PrismaField): any {
-    const fieldName = field.name.toLowerCase();
-    
-    if (AUTO_POPULAR_PATTERNS[fieldName]) {
-      return AUTO_POPULAR_PATTERNS[fieldName];
-    }
-
-    // Auto-generate based on field type
-    if (field.type === 'Boolean') {
-      return {
-        operator: 'equals' as FilterOperator,
-        value: field.name.includes('active') || field.name.includes('enabled') ? true : false,
-        label: `${field.name.includes('active') ? 'Active' : 'Enabled'} Only`
-      };
-    }
-
-    if (field.isEnum && field.enumValues) {
-      return {
-        operator: 'equals' as FilterOperator,
-        value: field.enumValues[0],
-        label: `${this.generateDisplayLabel(field.name)} Filter`
-      };
-    }
-
-    return {
-      operator: 'contains' as FilterOperator,
-      label: `Search by ${this.generateDisplayLabel(field.name)}`
-    };
-  }
-
-  private static generateDisplayLabel(fieldName: string): string {
+  // UTILITY METHODS: Keep these for manual config creation
+  static generateDisplayLabel(fieldName: string): string {
     return fieldName
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase())
-      .replace(/Id$/, ' ID')
-      .replace(/Url$/, ' URL')
-      .replace(/At$/, '')
       .trim();
   }
 
-  private static generateTitle(modelName: string): string {
-    // Convert PascalCase to Title Case with pluralization
-    const title = modelName.replace(/([A-Z])/g, ' $1').trim();
-    return title.endsWith('s') ? title : title + 's';
+  static generateTitle(modelName: string): string {
+    return modelName.replace(/([A-Z])/g, ' $1').trim();
   }
 
-  private static getDefaultVisibleColumns(columns: ColumnDefinition[]): string[] {
+  static getDefaultVisibleColumns(columns: ColumnDefinition[]): string[] {
     return columns
-      .filter(col => col.visible && !col.field.endsWith('Id'))
-      .slice(0, 6) // Limit to 6 columns for table view
+      .filter(col => col.visible)
+      .slice(0, 6) // Limit to first 6 visible columns
       .map(col => col.field);
   }
 }
 
-// Export function to generate config for any model
+// SIMPLIFIED: Keep the main export function but make it create basic configs
 export function generateConfigFromSchema(
   modelName: string,
   overrides?: Partial<ModuleConfig>

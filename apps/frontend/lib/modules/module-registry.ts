@@ -1,21 +1,21 @@
+// GENERIC MODULE REGISTRY SYSTEM
+// This registry automatically discovers and loads module configurations
+// without hardcoding specific module names or imports
+
 import { ModuleConfig } from './types';
 
-// Static imports - Next.js can resolve these at build time
-const configImports = {
-  tenants: () => import('@/app/platform/tenants/tenants.config').then(m => m.TenantsConfig),
-  users: () => import('@/app/platform/users/users.config').then(m => m.UsersConfig),
-  // Add new modules here with their static imports
-  // permissions: () => import('@/app/platform/permissions/permissions.config').then(m => m.PermissionsConfig),
-} as const;
+// GENERIC APPROACH: Dynamic module loading
+// Instead of hardcoding imports, modules self-register by placing their config files
+// in the expected location: /app/platform/[moduleName]/[moduleName].config.ts
 
-// Module registry interface
 interface ModuleRegistryEntry {
   name: string;
   title: string;
-  description?: string;
+  description: string;
+  configPath?: string; // Optional custom config path
 }
 
-// Centralized module registry - single place to register all modules
+// SIMPLIFIED REGISTRY: Only register basic metadata, configs are loaded dynamically
 const MODULE_REGISTRY: ModuleRegistryEntry[] = [
   {
     name: 'tenants',
@@ -24,113 +24,69 @@ const MODULE_REGISTRY: ModuleRegistryEntry[] = [
   },
   {
     name: 'users',
-    title: 'Users', 
+    title: 'Users',
     description: 'Manage system users'
-  },
-  // Add new modules here - no need to modify API routes
+  }
+  // NEW MODULES: Just add metadata here, no imports needed!
   // {
   //   name: 'permissions',
-  //   title: 'Permissions',
+  //   title: 'Permissions', 
   //   description: 'Manage user permissions'
-  // },
+  // }
 ];
 
-// Cache for loaded configs to avoid repeated imports
-const configCache = new Map<string, ModuleConfig>();
-
-/**
- * Get module configuration by name
- * Automatically loads and caches configs
- */
+// GENERIC CONFIG LOADER: Dynamically loads module configs
 export async function getModuleConfig(moduleName: string): Promise<ModuleConfig | null> {
-  // Check cache first
-  if (configCache.has(moduleName)) {
-    return configCache.get(moduleName) || null;
-  }
-
-  // Check if module is registered
-  if (!isModuleRegistered(moduleName)) {
-    console.warn(`Module "${moduleName}" not found in registry`);
-    return null;
-  }
-
-  // Get the config import function
-  const importFn = configImports[moduleName as keyof typeof configImports];
-  if (!importFn) {
-    console.error(`No import function found for module "${moduleName}"`);
-    return null;
-  }
-
   try {
-    // Load the config using static import
-    const config = await importFn();
+    // GENERIC APPROACH: Load config from conventional path
+    const configPath = `@/app/platform/${moduleName}/${moduleName}.config`;
+    
+    console.log(`🔍 Loading config for module: ${moduleName} from ${configPath}`);
+    
+    // Dynamic import with error handling
+    const configModule = await import(configPath);
+    
+    // Try different export patterns
+    const configExportName = `${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Config`;
+    const config = configModule[configExportName] || configModule.default || configModule.config;
     
     if (!config) {
-      console.error(`Config not found for module "${moduleName}"`);
+      console.warn(`⚠️ No config found for module ${moduleName}. Expected export: ${configExportName}`);
       return null;
     }
-
-    // Validate config structure
-    if (!config.module || !config.columns || !Array.isArray(config.columns)) {
-      console.error(`Invalid config structure for module "${moduleName}"`);
-      return null;
-    }
-
-    // Cache the config
-    configCache.set(moduleName, config);
+    
+    console.log(`✅ Successfully loaded config for module: ${moduleName}`);
     return config;
+    
   } catch (error) {
-    console.error(`Failed to load config for module "${moduleName}":`, error);
+    console.warn(`⚠️ Failed to load config for module ${moduleName}:`, error);
     return null;
   }
 }
 
-/**
- * Get all registered module names
- */
+// UTILITY FUNCTIONS
 export function getRegisteredModules(): string[] {
   return MODULE_REGISTRY.map(entry => entry.name);
 }
 
-/**
- * Check if a module is registered
- */
 export function isModuleRegistered(moduleName: string): boolean {
   return MODULE_REGISTRY.some(entry => entry.name === moduleName);
 }
 
-/**
- * Get module metadata by name
- */
 export function getModuleMetadata(moduleName: string): ModuleRegistryEntry | null {
   return MODULE_REGISTRY.find(entry => entry.name === moduleName) || null;
 }
 
-/**
- * Clear config cache (useful for development/testing)
- */
-export function clearConfigCache(): void {
-  configCache.clear();
-}
-
-/**
- * Get module registry for debugging
- */
-export function getModuleRegistry(): ModuleRegistryEntry[] {
+export function getAllModuleMetadata(): ModuleRegistryEntry[] {
   return [...MODULE_REGISTRY];
 }
 
-/**
- * Register a new module dynamically (useful for plugins)
- * Note: This only registers metadata, you still need to add the import to configImports
- */
+// HELPER: Add new modules programmatically (useful for plugins/extensions)
 export function registerModule(entry: ModuleRegistryEntry): void {
-  const existingIndex = MODULE_REGISTRY.findIndex(e => e.name === entry.name);
-  if (existingIndex >= 0) {
-    MODULE_REGISTRY[existingIndex] = entry;
-  } else {
+  if (!isModuleRegistered(entry.name)) {
     MODULE_REGISTRY.push(entry);
+    console.log(`📝 Registered new module: ${entry.name}`);
+  } else {
+    console.warn(`⚠️ Module ${entry.name} already registered`);
   }
-  // Clear cache for this module to force reload
-  configCache.delete(entry.name);
 } 

@@ -39,6 +39,13 @@ async function buildFieldTreeFromConfig(
   for (const column of config.columns) {
     // Include ALL fields in the field selector for advanced search
     // Users should be able to filter on any field, including hidden ones
+    // Make sure we only use the actual field name and display label
+
+    // Skip any invalid or malformed field definitions
+    if (!column.field || !column.display) {
+      console.warn('Skipping invalid column definition:', column);
+      continue;
+    }
 
     const fieldNode: FieldNode = {
       name: column.field,

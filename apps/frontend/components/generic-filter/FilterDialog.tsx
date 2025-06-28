@@ -13,6 +13,7 @@ import {
   DynamicFieldDiscovery,
   FilterOperator 
 } from '@/lib/types';
+import { ModuleConfig } from '@/lib/modules/types';
 import { generateId } from '@/lib/utils';
 import { 
   detectFieldType, 
@@ -29,6 +30,7 @@ interface FilterDialogProps {
   fieldDiscovery: DynamicFieldDiscovery | null;
   initialFilter?: ComplexFilter | null;
   onApply: (filter: ComplexFilter | null) => void;
+  config?: ModuleConfig;
 }
 
 interface FilterRule {
@@ -47,7 +49,8 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
   moduleName,
   fieldDiscovery,
   initialFilter,
-  onApply
+  onApply,
+  config
 }) => {
   const [logic, setLogic] = useState<'AND' | 'OR'>('AND');
   const [rules, setRules] = useState<FilterRule[]>([]);
@@ -55,7 +58,10 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
 
   // Initialize rules from initial filter
   useEffect(() => {
+    if (!open) return; // Only initialize when dialog is opened
+    
     if (initialFilter?.rootGroup) {
+      // Load existing filter for editing
       setLogic(initialFilter.rootGroup.logic);
       setRules(initialFilter.rootGroup.rules.map(rule => ({
         id: rule.id,
@@ -67,18 +73,19 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
         label: rule.label
       })));
     } else {
-      // Start with one empty rule for better UX
+      // Always start fresh with empty rule for new custom filters
       setRules([{
         id: generateId(),
         field: '',
         operator: 'equals' as FilterOperator,
         value: '',
         fieldPath: [],
-        fieldType: 'string'
+        fieldType: 'string',
+        label: undefined
       }]);
       setLogic('AND');
     }
-  }, [initialFilter, open]);
+  }, [open, initialFilter]); // Include initialFilter for proper dependency tracking
 
   const addRule = () => {
     const newRule: FilterRule = {
@@ -136,12 +143,27 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
     }
   };
 
-  const getEnumOptions = (fieldPath: string[]) => {
-    if (fieldPath.length === 0) return [];
+  const getFieldOptions = (fieldPath: string[]) => {
+    if (fieldPath.length === 0 || !config) return [];
     
     const fieldName = fieldPath[fieldPath.length - 1];
     
-    // Return enum options based on field name - this should come from API in real implementation
+    // Find the field definition in the config
+    const fieldDef = config.columns.find(col => col.field === fieldName);
+    if (!fieldDef) return [];
+    
+    // Return static options if available
+    if (fieldDef.options && fieldDef.options.length > 0) {
+      return fieldDef.options;
+    }
+    
+    // For filterSource, we'll need to load dynamically
+    // For now, return empty array - this will be handled by EnhancedValueInput
+    if (fieldDef.filterSource) {
+      return []; // EnhancedValueInput will handle filterSource loading
+    }
+    
+    // Fallback to hardcoded options for backward compatibility
     switch (fieldName) {
       case 'status':
         return [
@@ -210,7 +232,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
           <DialogTitle>Add Custom Filter</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Logic Selector */}
           {rules.length > 1 && (
             <div className="flex items-center gap-2">
@@ -229,12 +251,12 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
           )}
 
           {/* Rules */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             {rules.map((rule) => {
               const operatorOptions = getOperatorsForFieldType(rule.fieldType);
 
               return (
-                <div key={rule.id} className="flex items-center gap-2 p-3 border rounded">
+                <div key={rule.id} className="flex items-center gap-2 p-2 border rounded">
                   {/* Field Selector */}
                   <Popover 
                     open={fieldSelectorOpen === rule.id} 
@@ -243,19 +265,23 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                     <PopoverTrigger asChild>
                       <Button 
                         variant="outline" 
-                        className="w-48 justify-between"
+                        className="w-48 justify-between h-8"
                         onClick={() => setFieldSelectorOpen(rule.id)}
                       >
                         <span className="truncate">
-                          {rule.label || 'Select field...'}
+                          {rule.field && rule.fieldPath.length > 0 ? 
+                            (config?.columns.find(col => col.field === rule.field)?.display || rule.field) : 
+                            'Select field...'}
                         </span>
                         <ChevronDown className="h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0" align="start">
                       <NestedFieldSelector
+                        key={`${moduleName}-${rule.id}-${fieldSelectorOpen}`} // Force fresh instance
                         moduleName={moduleName}
                         selectedPath={rule.fieldPath}
+                        config={config}
                         onFieldSelect={(field) => {
                           handleFieldSelect(rule.id, field);
                           setFieldSelectorOpen(null);
@@ -271,7 +297,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                     onValueChange={(value) => handleOperatorChange(rule.id, value as FilterOperator)}
                     disabled={!rule.field}
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-40 h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -294,7 +320,8 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                         value={rule.value}
                         onChange={(value) => updateRule(rule.id, { value })}
                         moduleName={moduleName}
-                        enumOptions={getEnumOptions(rule.fieldPath)}
+                        enumOptions={getFieldOptions(rule.fieldPath)}
+                        fieldConfig={config?.columns.find(col => col.field === rule.field)}
                       />
                     </div>
                   )}
@@ -315,21 +342,21 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
           </div>
 
           {/* Add Rule Button */}
-          <Button variant="outline" onClick={addRule} className="w-full">
+          <Button variant="outline" onClick={addRule} className="w-full h-8">
             <Plus className="w-4 h-4 mr-2" />
             New Rule
           </Button>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t">
-            <Button variant="outline" onClick={handleClear} disabled={rules.length <= 1}>
+          <div className="flex items-center justify-between pt-3 border-t">
+            <Button variant="outline" onClick={handleClear} disabled={rules.length <= 1} size="sm">
               Clear All
             </Button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleCancel}>
+              <Button variant="outline" onClick={handleCancel} size="sm">
                 Cancel
               </Button>
-              <Button onClick={handleApply}>
+              <Button onClick={handleApply} size="sm">
                 Add Filter
               </Button>
             </div>

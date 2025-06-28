@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateConfigFromSchema } from '@/lib/modules/schema-config-generator';
 import { serverGet, serverPost } from '@/lib/api/server-client';
+import { getModuleConfig, getRegisteredModules } from '@/lib/modules/module-registry';
 
 interface ModuleDataRequest {
   search?: string;
@@ -34,15 +35,8 @@ interface ModuleDataResponse {
   config?: any; // Include module config if requested
 }
 
-// Module to backend endpoint mapping
-const MODULE_BACKEND_MAPPING: Record<string, { endpoint: string; method: 'GET' | 'POST' }> = {
-  'tenants': { endpoint: '/tenants/search', method: 'POST' },
-  'users': { endpoint: '/platform/admin/users', method: 'GET' },
-  'permissions': { endpoint: '/platform-rbac/permissions', method: 'GET' },
-  'roles': { endpoint: '/platform-rbac/roles', method: 'GET' },
-  'impersonation': { endpoint: '/tenant-access/sessions', method: 'GET' },
-  'access-logs': { endpoint: '/platform/access-logs', method: 'GET' }
-};
+// GENERIC APPROACH: Remove hardcoded backend mappings
+// Backend endpoints should be configurable in module configs or use convention-based routing
 
 // GET endpoint for simple data retrieval
 export async function GET(
@@ -104,63 +98,64 @@ async function handleModuleDataRequest(
   request: NextRequest,
   includeConfig: boolean = false
 ): Promise<NextResponse> {
-  // Generate module config to get table source and field information
-  let moduleConfig;
   try {
-    moduleConfig = generateConfigFromSchema(getTableNameFromModule(moduleName));
-  } catch (error) {
-    return NextResponse.json(
-      { error: `Module '${moduleName}' not found or not configured` },
-      { status: 404 }
-    );
-  }
-
-  const sourceTable = moduleConfig.sourceTable;
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-
-  try {
-    // Get backend endpoint configuration
-    const backendConfig = MODULE_BACKEND_MAPPING[moduleName];
-    if (!backendConfig) {
-      // Fallback to generic endpoint construction
-      const endpoint = `/api/${moduleName}`;
-      return await fetchFromGenericEndpoint(backendUrl, endpoint, requestData, request, moduleConfig, includeConfig);
+    // Get module configuration from registry
+    let moduleConfig = await getModuleConfig(moduleName);
+    
+    if (!moduleConfig) {
+      // GENERIC APPROACH: Don't hardcode table mappings, return error
+      return NextResponse.json(
+        { 
+          error: `Module '${moduleName}' not found in registry. Please register the module in module-registry.ts`,
+          availableModules: getRegisteredModules()
+        },
+        { status: 404 }
+      );
     }
 
-    // Use specific backend endpoint
-    const apiUrl = `${backendUrl}${backendConfig.endpoint}`;
-    const method = backendConfig.method;
+    // Use sourceTable from config instead of hardcoded mapping
+    const sourceTable = moduleConfig.sourceTable;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+
+    // GENERIC APPROACH: Use backend endpoint from config or convention
+    const backendEndpoint = moduleConfig.backendEndpoint || `/api/${moduleName}`;
+    const backendMethod = moduleConfig.backendMethod || 'POST';
 
     let response;
     
-    if (moduleName === 'users') {
-      // For users, we need to send query parameters instead of body
-      const queryParams = new URLSearchParams();
-      if (requestData.page) queryParams.set('page', requestData.page.toString());
-      if (requestData.limit) queryParams.set('limit', requestData.limit.toString());
-      if (requestData.search) queryParams.set('search', requestData.search);
-      if (requestData.sortBy) {
-        queryParams.set('sortField', requestData.sortBy.field);
-        queryParams.set('sortDirection', requestData.sortBy.direction);
-      }
-      if (requestData.complexFilter) {
-        queryParams.set('complexFilter', JSON.stringify(requestData.complexFilter));
-      }
-      
-      const finalUrl = queryParams.toString() ? `${apiUrl}?${queryParams.toString()}` : apiUrl;
-      
-      response = await serverGet(finalUrl.replace(backendUrl, ''), {}, request);
-    } else {
-      // Use the generic server client
-      if (method === 'GET') {
-        response = await serverGet(backendConfig.endpoint, {}, request);
+    try {
+      // GENERIC BACKEND CALL: Use the method specified in config
+      if (backendMethod === 'GET') {
+        // For GET requests, append query parameters
+        const queryParams = new URLSearchParams();
+        if (requestData.page) queryParams.set('page', requestData.page.toString());
+        if (requestData.limit) queryParams.set('limit', requestData.limit.toString());
+        if (requestData.search) queryParams.set('search', requestData.search);
+        if (requestData.sortBy) {
+          queryParams.set('sortField', requestData.sortBy.field);
+          queryParams.set('sortDirection', requestData.sortBy.direction);
+        }
+        if (requestData.complexFilter) {
+          queryParams.set('complexFilter', JSON.stringify(requestData.complexFilter));
+        }
+        
+        const finalUrl = queryParams.toString() ? `${backendEndpoint}?${queryParams.toString()}` : backendEndpoint;
+        response = await serverGet(finalUrl, {}, request);
       } else {
-        response = await serverPost(backendConfig.endpoint, requestData, {}, request);
+        // For POST requests, send data in body
+        response = await serverPost(backendEndpoint, requestData, {}, request);
       }
+    } catch (backendError) {
+      console.warn(`Backend call failed for ${moduleName}, falling back to mock data:`, backendError);
+      // If backend fails, generate fallback data
+      const fallbackResult = await generateFallbackData(moduleName, sourceTable, requestData, moduleConfig, includeConfig);
+      return NextResponse.json(fallbackResult);
     }
 
     if (!response.ok) {
-      throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
+      console.warn(`Backend returned ${response.status} for ${moduleName}, falling back to mock data`);
+      const fallbackResult = await generateFallbackData(moduleName, sourceTable, requestData, moduleConfig, includeConfig);
+      return NextResponse.json(fallbackResult);
     }
 
     const rawData = await response.json();
@@ -178,12 +173,17 @@ async function handleModuleDataRequest(
     return NextResponse.json(result);
 
   } catch (error) {
-    console.error(`Error fetching data for module ${moduleName}:`, error);
+    console.error(`Error handling module data request for ${moduleName}:`, error);
     
-    // Fallback to mock/transformed data if backend is unavailable
+    // For fallback, we need to get the config again since it might be out of scope
     try {
-      const fallbackResult = await generateFallbackData(moduleName, sourceTable, requestData, moduleConfig, includeConfig);
-      return NextResponse.json(fallbackResult);
+      const fallbackConfig = await getModuleConfig(moduleName);
+      if (fallbackConfig) {
+        const fallbackResult = await generateFallbackData(moduleName, fallbackConfig.sourceTable, requestData, fallbackConfig, includeConfig);
+        return NextResponse.json(fallbackResult);
+      } else {
+        throw new Error('Module config not found for fallback');
+      }
     } catch (fallbackError) {
       return NextResponse.json(
         { 
@@ -194,41 +194,6 @@ async function handleModuleDataRequest(
       );
     }
   }
-}
-
-async function fetchFromGenericEndpoint(
-  backendUrl: string,
-  endpoint: string,
-  requestData: ModuleDataRequest,
-  request: NextRequest,
-  moduleConfig: any,
-  includeConfig: boolean
-) {
-  const apiUrl = `${backendUrl}${endpoint}`;
-  
-  const response = await fetch(apiUrl, {
-    method: 'GET',
-    headers: {
-      'cookie': request.headers.get('cookie') || '',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Generic endpoint error: ${response.status} ${response.statusText}`);
-  }
-
-  const rawData = await response.json();
-  
-  return NextResponse.json(
-    await formatModuleResponse(
-      endpoint.split('/').pop() || 'unknown',
-      moduleConfig.sourceTable,
-      rawData,
-      requestData,
-      moduleConfig,
-      includeConfig
-    )
-  );
 }
 
 async function formatModuleResponse(
@@ -398,24 +363,6 @@ async function generateFallbackData(
   }
 
   return formatModuleResponse(moduleName, sourceTable, mockData, requestData, moduleConfig, includeConfig);
-}
-
-function getTableNameFromModule(moduleName: string): string {
-  const MODULE_TABLE_MAPPING: Record<string, string> = {
-    'tenants': 'Tenant',
-    'users': 'User', 
-    'permissions': 'TenantPermission',
-    'roles': 'Role',
-    'impersonation': 'ImpersonationSession',
-    'access-logs': 'AccessLog'
-  };
-
-  const tableName = MODULE_TABLE_MAPPING[moduleName];
-  if (!tableName) {
-    throw new Error(`Module '${moduleName}' not found in mapping`);
-  }
-  
-  return tableName;
 }
 
 function evaluateFilterGroup(item: any, group: any): boolean {

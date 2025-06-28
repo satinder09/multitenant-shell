@@ -13,6 +13,120 @@ export type ColumnType =
   | 'string' | 'number' | 'boolean' | 'date' | 'datetime' 
   | 'enum' | 'json' | 'reference';
 
+// Filter Source Configuration for Dynamic Options
+export interface FilterSource {
+  type: 'static' | 'api' | 'query' | 'table' | 'function';
+  
+  // Static options (existing behavior)
+  options?: Array<{ value: any; label: string; color?: string }>;
+  
+  // API endpoint configuration
+  api?: {
+    url: string;                    // API endpoint URL
+    method?: 'GET' | 'POST';        // HTTP method (default: GET)
+    headers?: Record<string, string>; // Custom headers
+    params?: Record<string, any>;   // Query parameters
+    body?: Record<string, any>;     // Request body for POST
+    
+    // Field mapping for response data
+    mapping: {
+      value: string;                // Field name for option value (e.g., 'id', 'code')
+      label: string;                // Field name for option label (e.g., 'name', 'title')
+      color?: string;               // Optional field name for color
+      description?: string;         // Optional field name for description
+    };
+    
+    // Response structure
+    dataPath?: string;              // Path to data array in response (e.g., 'data.items', 'results')
+    totalPath?: string;             // Path to total count (e.g., 'data.total')
+    
+    // Caching
+    cache?: {
+      enabled: boolean;
+      ttl: number;                  // Time to live in milliseconds
+      key?: string;                 // Custom cache key
+    };
+    
+    // Search support
+    searchable?: {
+      enabled: boolean;
+      param: string;                // Search parameter name (e.g., 'search', 'q')
+      minLength?: number;           // Minimum search length
+      debounce?: number;            // Debounce delay in ms
+    };
+    
+    // Pagination support
+    pagination?: {
+      enabled: boolean;
+      pageParam: string;            // Page parameter name (e.g., 'page')
+      sizeParam: string;            // Size parameter name (e.g., 'limit', 'size')
+      defaultSize?: number;         // Default page size
+    };
+  };
+  
+  // Database query configuration
+  query?: {
+    sql: string;                    // Raw SQL query
+    params?: Record<string, any>;   // Query parameters
+    
+    // Field mapping for query results
+    mapping: {
+      value: string;                // Column name for option value
+      label: string;                // Column name for option label
+      color?: string;               // Optional column name for color
+      description?: string;         // Optional column name for description
+    };
+    
+    // Caching
+    cache?: {
+      enabled: boolean;
+      ttl: number;
+      key?: string;
+    };
+  };
+  
+  // Table-based configuration (simplified query)
+  table?: {
+    name: string;                   // Table name
+    valueColumn: string;            // Column for option value
+    labelColumn: string;            // Column for option label
+    colorColumn?: string;           // Optional column for color
+    descriptionColumn?: string;     // Optional column for description
+    
+    // Filtering
+    where?: Record<string, any>;    // WHERE conditions
+    orderBy?: string | string[];    // ORDER BY clause
+    limit?: number;                 // LIMIT clause
+    
+    // Caching
+    cache?: {
+      enabled: boolean;
+      ttl: number;
+      key?: string;
+    };
+  };
+  
+  // Function-based configuration (for complex logic)
+  function?: {
+    name: string;                   // Function name to call
+    params?: Record<string, any>;   // Function parameters
+    
+    // Caching
+    cache?: {
+      enabled: boolean;
+      ttl: number;
+      key?: string;
+    };
+  };
+  
+  // Transform function for post-processing
+  transform?: (data: any[]) => Array<{ value: any; label: string; color?: string; description?: string }>;
+  
+  // Error handling
+  fallback?: Array<{ value: any; label: string; color?: string; description?: string }>; // Fallback options on error
+  errorMessage?: string;          // Custom error message
+}
+
 // Auto-derive operators based on column type
 export function getOperatorsForColumnType(type: ColumnType, hasOptions?: boolean): FilterOperator[] {
   switch (type) {
@@ -135,11 +249,18 @@ export interface ColumnDefinition {
   
   // Validation & Options
   required?: boolean;
-  options?: Array<{ value: any; label: string; color?: string }>; // For dropdowns, enums, boolean fields
+  
+  // Filter Options Configuration
+  // Legacy support for simple static options
+  options?: Array<{ value: any; label: string; color?: string; description?: string }>; // For dropdowns, enums, boolean fields
   // Examples:
   // Boolean: [{ value: true, label: 'Active', color: 'green' }, { value: false, label: 'Inactive', color: 'gray' }]
   // Enum: [{ value: 'ADMIN', label: 'Administrator' }, { value: 'USER', label: 'Regular User' }]
   // Status: [{ value: 'pending', label: 'Pending', color: 'yellow' }, { value: 'completed', label: 'Completed', color: 'green' }]
+  
+  // Advanced Filter Source Configuration (NEW)
+  filterSource?: FilterSource; // Dynamic options from API, database, etc.
+  
   validation?: ValidationRule[];
   
   // Permissions
@@ -190,6 +311,10 @@ export interface ModuleConfig {
   // Source Configuration
   sourceTable: string;
   primaryKey?: string;
+  
+  // Backend Configuration (GENERIC APPROACH)
+  backendEndpoint?: string; // Custom backend endpoint (defaults to /api/{moduleName})
+  backendMethod?: 'GET' | 'POST'; // HTTP method for backend calls (defaults to POST)
   
   // Column Definitions - Single source of truth
   columns: ColumnDefinition[];

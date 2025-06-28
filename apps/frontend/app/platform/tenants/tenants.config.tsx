@@ -181,6 +181,10 @@ export const TenantsConfig: ModuleConfig = {
   // Source Configuration
   sourceTable: 'Tenant',
   primaryKey: 'id',
+
+  // GENERIC BACKEND CONFIGURATION
+  backendEndpoint: '/tenants/search',
+  backendMethod: 'POST',
   
   // Manual Column Definitions - Complete control
   columns: [
@@ -206,6 +210,42 @@ export const TenantsConfig: ModuleConfig = {
         field: 'name',
         operator: 'contains',
         label: 'Search Tenants'
+      },
+      // Dynamic filter source for tenant name options in generic filter dialog
+      filterSource: {
+        type: 'api',
+        api: {
+          url: '/api/filters/dropdown-options',
+          method: 'POST',
+          body: {
+            field: 'name',
+            module: 'tenants'
+          },
+          mapping: {
+            value: 'id',
+            label: 'name',
+            color: 'color',
+            description: 'description'
+          },
+          dataPath: 'data.options',
+          cache: {
+            enabled: true,
+            ttl: 300000, // 5 minutes
+            key: 'tenant-names'
+          },
+          searchable: {
+            enabled: true,
+            param: 'search',
+            minLength: 2,
+            debounce: 300
+          },
+          pagination: {
+            enabled: true,
+            pageParam: 'page',
+            sizeParam: 'limit',
+            defaultSize: 50
+          }
+        }
       },
       render: customRenderers.name,
       required: true,
@@ -272,6 +312,12 @@ export const TenantsConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
+      popular: true,
+      popularFilter: {
+        field: 'createdAt',
+        operator: 'between',
+        label: 'Created Date Range'
+      },
       render: customRenderers.createdAt,
       width: 120
     },

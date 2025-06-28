@@ -7,6 +7,7 @@ import { FilterDialog } from '@/components/generic-filter/FilterDialog';
 import { useGenericFilter } from '@/lib/hooks/useGenericFilter';
 import { getModuleConfig } from '@/lib/modules/module-registry';
 import { ModuleConfig } from '@/lib/modules/types';
+import { ComplexFilter } from '@/lib/types';
 import { SectionHeader } from '@/components/ui-kit/SectionHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,8 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [originalComplexFilter, setOriginalComplexFilter] = useState<ComplexFilter | null>(null);
 
   // Use provided config or loaded config
   const activeConfig = propConfig || config;
@@ -176,6 +179,36 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
     }
   };
 
+  // Checkbox header component
+  const CheckboxHeader = ({ table }: { table: any }) => {
+    const checkboxRef = React.useRef<HTMLInputElement>(null);
+    
+    React.useEffect(() => {
+      if (checkboxRef.current) {
+        checkboxRef.current.indeterminate = table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected();
+      }
+    }, [table.getIsSomePageRowsSelected(), table.getIsAllPageRowsSelected()]);
+    
+    return (
+      <input
+        ref={checkboxRef}
+        type="checkbox"
+        checked={table.getIsAllPageRowsSelected()}
+        onChange={(e) => {
+          if (e.target.checked) {
+            const allRows = data || [];
+            setSelectedRows(allRows);
+            table.toggleAllPageRowsSelected(true);
+          } else {
+            setSelectedRows([]);
+            table.toggleAllPageRowsSelected(false);
+          }
+        }}
+        className="rounded"
+      />
+    );
+  };
+
   // ALWAYS call useMemo - never conditionally
   // Generate table columns from config (TanStack Table format)
   const tableColumns = useMemo(() => {
@@ -186,23 +219,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
       dataColumns.push({
         id: 'select',
         accessorKey: 'select',
-        header: ({ table }: { table: any }) => (
-          <input
-            type="checkbox"
-            checked={table.getIsAllPageRowsSelected()}
-            onChange={(e) => {
-              if (e.target.checked) {
-                const allRows = data || [];
-                setSelectedRows(allRows);
-                table.toggleAllPageRowsSelected(true);
-              } else {
-                setSelectedRows([]);
-                table.toggleAllPageRowsSelected(false);
-              }
-            }}
-            className="rounded"
-          />
-        ),
+        header: CheckboxHeader,
         cell: ({ row }: { row: any }) => (
           <input
             type="checkbox"
@@ -210,8 +227,10 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
             onChange={(e) => {
               if (e.target.checked) {
                 setSelectedRows(prev => [...prev, row.original]);
+                row.toggleSelected(true);
               } else {
                 setSelectedRows(prev => prev.filter(selected => selected.id !== row.original.id));
+                row.toggleSelected(false);
               }
             }}
             className="rounded"
@@ -418,7 +437,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
               moduleName={moduleName}
               savedSearches={savedSearches}
               complexFilter={complexFilter || null}
-              searchValue=""
+              searchValue={(queryParams.filters as any)?.search || ''}
               onSearchChange={handleSearchChange}
               onFilterApply={(filter) => setComplexFilter(filter)}
               onSavedSearchLoad={() => {}}
@@ -476,8 +495,12 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
         {hasActiveFilters && (
           <ClickableFilterTags
             filter={complexFilter || null}
-            onEditFilter={(filter) => {
-              setComplexFilter(filter);
+            onEditFilter={(singleRuleFilter) => {
+              // Store the original filter and the rule being edited
+              const ruleToEdit = singleRuleFilter.rootGroup.rules[0];
+              setEditingRuleId(ruleToEdit.id);
+              setOriginalComplexFilter(complexFilter);
+              setComplexFilter(singleRuleFilter);
               setShowFilterDialog(true);
             }}
             onRemoveFilter={(ruleId) => {
@@ -551,13 +574,41 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
       {isAdvancedMode && (
         <FilterDialog
           open={showFilterDialog}
-          onOpenChange={setShowFilterDialog}
+          onOpenChange={(open) => {
+            setShowFilterDialog(open);
+            if (!open) {
+              // Reset editing state when dialog closes
+              setEditingRuleId(null);
+              setOriginalComplexFilter(null);
+            }
+          }}
           moduleName={moduleName}
           fieldDiscovery={fieldDiscovery}
           initialFilter={complexFilter || null}
+          config={activeConfig}
           onApply={(filter: any) => {
-            setComplexFilter(filter);
+            if (editingRuleId && originalComplexFilter) {
+              // We're editing an existing rule - merge it back into the original filter
+              const editedRule = filter?.rootGroup.rules[0];
+              if (editedRule) {
+                const updatedFilter = {
+                  ...originalComplexFilter,
+                  rootGroup: {
+                    ...originalComplexFilter.rootGroup,
+                    rules: originalComplexFilter.rootGroup.rules.map(rule => 
+                      rule.id === editingRuleId ? { ...editedRule, id: editingRuleId } : rule
+                    )
+                  }
+                };
+                setComplexFilter(updatedFilter);
+              }
+            } else {
+              // New filter or not editing
+              setComplexFilter(filter);
+            }
             setShowFilterDialog(false);
+            setEditingRuleId(null);
+            setOriginalComplexFilter(null);
           }}
         />
       )}

@@ -3,24 +3,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Search, 
   Filter, 
   Star, 
-  ChevronDown,
-  ChevronRight, 
-  Plus,
-  BarChart3,
-  Loader2,
+  Plus, 
+  ChevronDown, 
+  BarChart3, 
   Calendar,
-  RotateCcw
+  Shield,
+  Users
 } from 'lucide-react';
-import { 
-  ComplexFilter, 
-  SavedSearch
-} from '@/lib/types';
+import { ComplexFilter, ComplexFilterRule, SavedSearch } from '@/lib/types';
 import { ModuleConfig, ColumnDefinition } from '@/lib/modules/types';
 import { FilterDialog } from './FilterDialog';
+import { PopularFilterComponent, PopularFilterConfig } from './PopularFilterComponents';
 
 interface FilterDropdownMenuProps {
   moduleName: string;
@@ -34,15 +33,18 @@ interface FilterDropdownMenuProps {
   config?: ModuleConfig;
 }
 
-interface PopularFilter {
-  id: string;
-  label: string;
-  type: 'preloaded' | 'user_input';
-  field: string;
-  operator: string;
-  value?: any;
-  icon?: React.ReactNode;
-}
+  interface PopularFilter {
+    id: string;
+    label: string;
+    type: 'preloaded' | 'user_input' | 'dropdown' | 'date_presets' | 'date_picker' | 'date_range';
+    field: string;
+    operator: string;
+    value?: any;
+    icon?: React.ReactNode;
+    options?: { value: any; label: string; color?: string; description?: string }[];
+    placeholder?: string;
+    column?: ColumnDefinition;
+  }
 
 interface GroupByOption {
   id: string;
@@ -63,93 +65,77 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomFilterDialog, setShowCustomFilterDialog] = useState(false);
-  
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [showPopularFilter, setShowPopularFilter] = useState<PopularFilterConfig | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Generate popular filters from config
   const popularFilters: PopularFilter[] = React.useMemo(() => {
-    if (!config) {
-      return []; // Return empty if no config
-    }
-
-    const filters: PopularFilter[] = [];
-
-    // Get columns that have popular filters defined
-    config.columns
+    if (!config?.columns) return [];
+    
+    return config.columns
       .filter(col => col.popular && col.popularFilter)
-      .forEach(col => {
+      .map(col => {
         const popularFilter = col.popularFilter!;
         
-        filters.push({
-          id: `${col.field}-popular`,
+        // Determine filter type based on configuration
+        const filterType = (() => {
+          if (popularFilter.value !== undefined) return 'preloaded';
+          if (popularFilter.operator === 'preset') return 'date_presets';
+          
+          // For fields with options but no predefined value
+          if (col.options && col.options.length > 0) return 'dropdown';
+          
+          // For datetime fields
+          if (col.type === 'datetime') {
+            if (popularFilter.operator === 'between') return 'date_range';
+            if (popularFilter.operator === 'equals') return 'date_picker';
+          }
+          
+          // Default to user input for fields without predefined values
+          return 'user_input';
+        })();
+
+        return {
+          id: `popular-${col.field}`,
           label: popularFilter.label || col.display,
-          type: popularFilter.value !== undefined ? 'preloaded' : 'user_input',
-          field: popularFilter.field,
+          type: filterType,
+          field: col.field,
           operator: popularFilter.operator,
           value: popularFilter.value,
-          icon: getIconForColumn(col)
-        });
+          icon: getIconForColumn(col),
+          options: col.options,
+          placeholder: `Enter ${(popularFilter.label || col.display)?.toLowerCase() || 'value'}...`,
+          // Store the column for consistent field naming
+          column: col
+        };
       });
-
-    // Add common filters based on column types
-    config.columns
-      .filter(col => col.filterable && col.visible)
-      .forEach(col => {
-        // Add date range filters for date columns
-        if (col.type === 'date' || col.type === 'datetime') {
-          filters.push({
-            id: `${col.field}-range`,
-            label: `${col.display} Range`,
-            type: 'user_input',
-            field: col.field,
-            operator: 'between',
-            icon: <Calendar className="w-4 h-4" />
-          });
-        }
-
-        // Add boolean filters
-        if (col.type === 'boolean' && col.options) {
-          col.options.forEach(option => {
-            filters.push({
-              id: `${col.field}-${option.value}`,
-              label: `${col.display}: ${option.label}`,
-              type: 'preloaded',
-              field: col.field,
-              operator: 'equals',
-              value: option.value
-            });
-          });
-        }
-      });
-
-    return filters.slice(0, 8); // Limit to 8 popular filters
   }, [config]);
 
   // Generate group by options from config
   const groupByOptions: GroupByOption[] = React.useMemo(() => {
-    if (!config) {
-      return [];
-    }
-
+    if (!config?.columns) return [];
+    
     return config.columns
-      .filter(col => col.visible && (col.type === 'string' || col.type === 'enum'))
-      .slice(0, 5) // Limit to 5 group by options
+      .filter(col => col.visible && col.field !== 'id')
+      .slice(0, 3) // Limit to first 3 visible columns
       .map(col => ({
-        id: col.field,
+        id: `group-${col.field}`,
         label: col.display,
         field: col.field
       }));
   }, [config]);
 
-  // Helper function to get appropriate icon for column type
   function getIconForColumn(col: ColumnDefinition): React.ReactNode {
     switch (col.type) {
+      case 'string':
+        if (col.field.includes('name')) return <Users className="w-4 h-4" />;
+        return <Search className="w-4 h-4" />;
+      case 'boolean':
+        return <Shield className="w-4 h-4" />;
       case 'date':
       case 'datetime':
         return <Calendar className="w-4 h-4" />;
-      case 'boolean':
-        return <RotateCcw className="w-4 h-4" />;
       default:
         return undefined;
     }
@@ -158,27 +144,104 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
   // Handle filter application
   const handleFilterClick = (filter: PopularFilter) => {
     if (filter.type === 'preloaded') {
-      const complexFilter: ComplexFilter = {
-        rootGroup: {
-          id: Date.now().toString(),
-          logic: 'AND',
-          rules: [{
-            id: Date.now().toString(),
-            field: filter.field,
-            operator: filter.operator as any,
-            value: filter.value,
-            fieldPath: [filter.field],
-            label: filter.label
-          }],
-          groups: []
+      // Apply preloaded filter directly with additive logic
+      // Use the column display name for consistent field naming
+      const fieldName = filter.column?.display || filter.field;
+      const valueDisplay = typeof filter.value === 'boolean' 
+        ? (filter.value ? 'Yes' : 'No')
+        : String(filter.value);
+      
+      // Create a user-friendly label based on the operator
+      const createFilterLabel = (field: string, operator: string, value: string) => {
+        // Handle pipe operator for OR conditions (though rare for preloaded filters)
+        const hasPipeOperator = value.includes('|');
+        const displayValue = hasPipeOperator 
+          ? value.split('|').map(v => `"${v.trim()}"`).join(' or ')
+          : (typeof filter.value === 'boolean' ? value : `"${value}"`);
+        
+        switch (operator) {
+          case 'equals':
+            return typeof filter.value === 'boolean' 
+              ? `${field} is ${value}`
+              : `${field} equals ${displayValue}`;
+          case 'not_equals':
+            return typeof filter.value === 'boolean'
+              ? `${field} is not ${value}`
+              : `${field} does not equal ${displayValue}`;
+          case 'greater_than':
+            return `${field} > ${value}`;
+          case 'less_than':
+            return `${field} < ${value}`;
+          case 'greater_equal':
+            return `${field} >= ${value}`;
+          case 'less_equal':
+            return `${field} <= ${value}`;
+          default:
+            return `${field} ${operator} ${displayValue}`;
         }
       };
       
-      onFilterApply(complexFilter);
+      const newRule: ComplexFilterRule = {
+        id: Date.now().toString(),
+        field: filter.field,
+        operator: filter.operator as any,
+        value: filter.value,
+        fieldPath: [filter.field],
+        label: createFilterLabel(fieldName, filter.operator, valueDisplay)
+      };
+      
+      // Check if this exact filter already exists to prevent duplicates
+      const currentFilter = complexFilter;
+      const existingRule = currentFilter?.rootGroup.rules.find(rule => 
+        rule.field === newRule.field && 
+        rule.operator === newRule.operator && 
+        JSON.stringify(rule.value) === JSON.stringify(newRule.value)
+      );
+      
+      if (existingRule) {
+        // Filter already exists, don't add duplicate
+        setIsOpen(false);
+        return;
+      }
+      
+      // Apply as additive filter (AND logic)
+      if (!currentFilter) {
+        // Create new filter
+        const newComplexFilter: ComplexFilter = {
+          rootGroup: {
+            id: Date.now().toString(),
+            logic: 'AND',
+            rules: [newRule],
+            groups: []
+          }
+        };
+        onFilterApply(newComplexFilter);
+      } else {
+        // Add to existing filter
+        const updatedFilter: ComplexFilter = {
+          ...currentFilter,
+          rootGroup: {
+            ...currentFilter.rootGroup,
+            rules: [...currentFilter.rootGroup.rules, newRule]
+          }
+        };
+        onFilterApply(updatedFilter);
+      }
+      
       setIsOpen(false);
     } else {
-      // For user input filters, open custom filter dialog
-      setShowCustomFilterDialog(true);
+      // For all other filter types, show the appropriate filter component
+      const filterConfig: PopularFilterConfig = {
+        id: filter.id,
+        label: filter.label,
+        field: filter.field,
+        column: filter.column, // Pass the full column config for unified field names
+        type: filter.type,
+        operator: filter.operator,
+        options: filter.options,
+        placeholder: filter.placeholder
+      };
+      setShowPopularFilter(filterConfig);
       setIsOpen(false);
     }
   };
@@ -208,7 +271,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
-      {/* Search Input */}
+      {/* Main Search Input - this is the primary search interface */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input
@@ -231,10 +294,10 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
               <div className="p-3 border-b border-gray-100 bg-gray-50">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Filter className="w-4 h-4" />
-                  Filters
+                  Popular Filters
                 </div>
               </div>
-              <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+              <div className="p-2 space-y-1 max-h-80 overflow-y-auto">
                 {popularFilters.map((filter) => (
                   <button
                     key={filter.id}
@@ -242,9 +305,14 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                     className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
                   >
                     {filter.icon}
-                    {filter.label}
-                    {filter.type === 'user_input' && (
-                      <ChevronDown className="w-3 h-3 ml-auto text-gray-400" />
+                    <span className="flex-1">{filter.label}</span>
+                    {filter.type === 'preloaded' && filter.value !== undefined && (
+                      <Badge variant="secondary" className="text-xs">
+                        {typeof filter.value === 'boolean' 
+                          ? (filter.value ? 'Yes' : 'No')
+                          : String(filter.value)
+                        }
+                      </Badge>
                     )}
                   </button>
                 ))}
@@ -269,7 +337,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                   Group By
                 </div>
               </div>
-              <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+              <div className="p-2 space-y-1 max-h-80 overflow-y-auto">
                 {groupByOptions.map((option) => (
                   <button
                     key={option.id}
@@ -277,7 +345,6 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                     className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
                   >
                     {option.label}
-                    <ChevronDown className="w-3 h-3 ml-auto text-gray-400 inline-block" />
                   </button>
                 ))}
                 
@@ -287,7 +354,6 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                   >
                     <Plus className="w-4 h-4" />
                     Add Custom Group
-                    <ChevronDown className="w-3 h-3 ml-auto text-gray-400" />
                   </button>
                 </div>
               </div>
@@ -298,14 +364,14 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
               <div className="p-3 border-b border-gray-100 bg-gray-50">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Star className="w-4 h-4" />
-                  Favorites
+                  Saved Searches
                 </div>
               </div>
-              <div className="p-3 space-y-1 max-h-80 overflow-y-auto">
+              <div className="p-2 space-y-1 max-h-80 overflow-y-auto">
                 {savedSearches.length === 0 ? (
-                  <div className="text-center text-gray-500 text-sm py-8">
+                  <div className="text-center text-gray-500 text-sm py-6">
                     <div className="flex flex-col items-center gap-2">
-                      <Star className="w-8 h-8 text-gray-300" />
+                      <Star className="w-6 h-6 text-gray-300" />
                       <span>No saved searches yet</span>
                     </div>
                   </div>
@@ -328,7 +394,6 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                     <div className="border-t border-gray-100 pt-2 mt-2">
                       <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors">
                         Save current search
-                        <ChevronDown className="w-3 h-3 ml-auto text-gray-400 inline-block" />
                       </button>
                     </div>
                   </>
@@ -341,13 +406,60 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 
       {/* Custom Filter Dialog */}
       <FilterDialog
+        key={showCustomFilterDialog ? 'open' : 'closed'} // Force reset when dialog opens
         open={showCustomFilterDialog}
         onOpenChange={setShowCustomFilterDialog}
         moduleName={moduleName}
         fieldDiscovery={null}
-        initialFilter={null}
-        onApply={onFilterApply}
+        initialFilter={complexFilter}
+        config={config}
+        onApply={(newFilter) => {
+          // Apply the new filter - dialog handles proper merging/updating
+          onFilterApply(newFilter);
+        }}
       />
+
+      {/* Popular Filter Component Dialog */}
+      {showPopularFilter && (
+        <Popover open={!!showPopularFilter} onOpenChange={() => setShowPopularFilter(null)}>
+          <PopoverTrigger asChild>
+            <div />
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-0" align="start">
+            <PopularFilterComponent
+              filter={showPopularFilter}
+              onApply={(newFilter) => {
+                // Apply as additive filter instead of replacing
+                if (!complexFilter) {
+                  onFilterApply(newFilter);
+                } else {
+                  // Check for duplicate rules
+                  const newRule = newFilter.rootGroup.rules[0];
+                  const existingRule = complexFilter.rootGroup.rules.find(rule => 
+                    rule.field === newRule.field && 
+                    rule.operator === newRule.operator && 
+                    JSON.stringify(rule.value) === JSON.stringify(newRule.value)
+                  );
+                  
+                  if (!existingRule) {
+                    // Add to existing filter
+                    const updatedFilter: ComplexFilter = {
+                      ...complexFilter,
+                      rootGroup: {
+                        ...complexFilter.rootGroup,
+                        rules: [...complexFilter.rootGroup.rules, ...newFilter.rootGroup.rules]
+                      }
+                    };
+                    onFilterApply(updatedFilter);
+                  }
+                }
+                setShowPopularFilter(null);
+              }}
+              onClose={() => setShowPopularFilter(null)}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }; 

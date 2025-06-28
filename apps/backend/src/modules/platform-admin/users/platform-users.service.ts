@@ -8,6 +8,7 @@ import { MasterPrismaService } from '../../master-prisma/master-prisma.service';
 import { CreatePlatformUserDto } from './dto/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dto/update-platform-user.dto';
 import { GetPlatformUsersQueryDto } from './dto/get-platform-users-query.dto';
+import { QueryBuilderUtils, FieldMapping } from '../../../common/utils/query-builder.utils';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -312,59 +313,40 @@ export class PlatformUsersService {
   }
 
   async findWithComplexQuery(query: GetPlatformUsersQueryDto) {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      sortField = 'createdAt',
-      sortDirection = 'desc',
-      complexFilter
-    } = query;
+    const { search, sortField = 'createdAt', sortDirection = 'desc', ...queryOptions } = query;
 
-    this.logger.log(`Platform Users Query - Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}`);
+    this.logger.log(`Platform Users Query - Page: ${queryOptions.page || 1}, Limit: ${queryOptions.limit || 10}, Search: ${search || 'none'}`);
     
-    // Build base where clause
-    const where: Record<string, any> = {};
+    // Use shared utilities for query building
+    const fieldMappings = this.getFieldMappings();
+    const whereClause = QueryBuilderUtils.buildWhereClause(queryOptions.complexFilter, fieldMappings);
+    const orderBy = QueryBuilderUtils.buildOrderBy({ field: sortField, direction: sortDirection as 'asc' | 'desc' });
+    const pagination = QueryBuilderUtils.buildPagination(queryOptions.page, queryOptions.limit);
 
-    // Handle global search
+    // Handle global search separately
+    let finalWhere = whereClause;
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } }
-      ];
-    }
+      const searchWhere = {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } }
+        ]
+      };
 
-    // Handle complex filters
-    if (complexFilter && complexFilter.rootGroup && complexFilter.rootGroup.rules.length > 0) {
-      const filterWhere = this.buildWhereFromComplexFilter(complexFilter);
-      if (filterWhere) {
-        if (where.OR) {
-          where.AND = [{ OR: where.OR }, filterWhere];
-          delete where.OR;
-        } else {
-          Object.assign(where, filterWhere);
-        }
+      if (Object.keys(whereClause).length > 0) {
+        finalWhere = { AND: [searchWhere, whereClause] };
+      } else {
+        finalWhere = searchWhere;
       }
     }
 
-    // Build sort configuration
-    const orderBy: Record<string, any> = {};
-    if (sortField === 'role') {
-      // Special handling for role sorting since it's computed
-      orderBy.userRoles = {
-        _count: sortDirection
-      };
-    } else {
-      orderBy[sortField] = sortDirection;
-    }
-
-    this.logger.log(`Platform Users Query - Where: ${JSON.stringify(where, null, 2)}`);
+    this.logger.log(`Platform Users Query - Where: ${JSON.stringify(finalWhere, null, 2)}`);
     this.logger.log(`Platform Users Query - OrderBy: ${JSON.stringify(orderBy, null, 2)}`);
 
     // Execute queries in parallel
     const [users, totalCount] = await Promise.all([
       this.masterPrisma.user.findMany({
-        where,
+        where: finalWhere,
         select: {
           id: true,
           name: true,
@@ -389,10 +371,9 @@ export class PlatformUsersService {
           },
         },
         orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
+        ...pagination,
       }),
-      this.masterPrisma.user.count({ where })
+      this.masterPrisma.user.count({ where: finalWhere })
     ]);
 
     // Transform the data to match frontend expectations
@@ -412,20 +393,66 @@ export class PlatformUsersService {
       };
     });
 
-    const totalPages = Math.ceil(totalCount / limit);
-
     this.logger.log(`Platform Users Query - Found ${transformedUsers.length} users out of ${totalCount} total`);
 
+    // Use shared utility for response formatting
+    const response = QueryBuilderUtils.formatResponse(transformedUsers, totalCount, queryOptions);
+    
+    // Adjust response format to match expected structure
     return {
-      data: transformedUsers,
+      data: response.data,
       pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        page: response.pagination.page,
+        limit: response.pagination.limit,
+        totalCount: response.pagination.total,
+        totalPages: response.pagination.totalPages,
+        hasNextPage: response.pagination.hasNext,
+        hasPreviousPage: response.pagination.hasPrev,
       },
+    };
+  }
+
+  /**
+   * Get field mappings for platform user entity
+   */
+  private getFieldMappings(): Record<string, FieldMapping> {
+    return {
+      name: {
+        type: 'string',
+        operators: ['contains', 'equals', 'starts_with', 'ends_with', 'not_contains', 'not_equals', 'is_empty', 'is_not_empty']
+      },
+      email: {
+        type: 'string',
+        operators: ['contains', 'equals', 'starts_with', 'ends_with', 'not_contains', 'not_equals', 'is_empty', 'is_not_empty']
+      },
+      role: {
+        type: 'string',
+        operators: ['equals', 'not_equals', 'contains', 'in', 'not_in'],
+        relation: {
+          model: 'UserRole',
+          field: 'role.name'
+        }
+      },
+      isSuperAdmin: {
+        type: 'boolean',
+        operators: ['equals', 'not_equals']
+      },
+      isActive: {
+        type: 'boolean',
+        operators: ['equals', 'not_equals']
+      },
+      tenantCount: {
+        type: 'number',
+        operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal']
+      },
+      createdAt: {
+        type: 'date',
+        operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between', 'is_empty', 'is_not_empty', 'date_preset']
+      },
+      updatedAt: {
+        type: 'date',
+        operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between', 'is_empty', 'is_not_empty', 'date_preset']
+      }
     };
   }
 
@@ -482,6 +509,32 @@ export class PlatformUsersService {
   private buildStringCondition(field: string, operator: string, value: any): Record<string, any> | null {
     if (!value && !['is_empty', 'is_not_empty'].includes(operator)) return null;
 
+    // Handle pipe operator for OR conditions (e.g., "user1|user2|user3")
+    if (typeof value === 'string' && value.includes('|') && ['contains', 'equals', 'starts_with', 'ends_with'].includes(operator)) {
+      const values = value.split('|').map(v => v.trim()).filter(v => v.length > 0);
+      if (values.length > 1) {
+        this.logger.log(`🔄 Pipe operator detected: Converting "${value}" to OR conditions for ${field}`);
+        
+        const orConditions = values.map(val => {
+          switch (operator) {
+            case 'equals':
+              return { [field]: { equals: val, mode: 'insensitive' } };
+            case 'contains':
+              return { [field]: { contains: val, mode: 'insensitive' } };
+            case 'starts_with':
+              return { [field]: { startsWith: val, mode: 'insensitive' } };
+            case 'ends_with':
+              return { [field]: { endsWith: val, mode: 'insensitive' } };
+            default:
+              return { [field]: { contains: val, mode: 'insensitive' } };
+          }
+        });
+        
+        return { OR: orConditions };
+      }
+    }
+
+    // Standard single-value operations
     switch (operator) {
       case 'equals':
         return { [field]: { equals: value, mode: 'insensitive' } };

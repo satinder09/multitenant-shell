@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
   DATE_PRESETS, 
@@ -17,6 +17,8 @@ import {
   detectFieldType 
 } from '@/lib/filter-field-types';
 import { MultiValueSelector } from './MultiValueSelector';
+import { ColumnDefinition } from '@/lib/modules/types';
+import { filterSourceService, FilterOption } from '@/lib/services/filter-source.service';
 
 interface EnhancedValueInputProps {
   fieldName: string;
@@ -26,7 +28,8 @@ interface EnhancedValueInputProps {
   value: any;
   onChange: (value: any) => void;
   moduleName: string;
-  enumOptions?: Array<{ value: any; label: string }>;
+  enumOptions?: Array<{ value: any; label: string; color?: string; description?: string }>;
+  fieldConfig?: ColumnDefinition; // Add fieldConfig prop for filterSource support
 }
 
 export const EnhancedValueInput: React.FC<EnhancedValueInputProps> = ({
@@ -37,10 +40,52 @@ export const EnhancedValueInput: React.FC<EnhancedValueInputProps> = ({
   value,
   onChange,
   moduleName,
-  enumOptions = []
+  enumOptions = [],
+  fieldConfig
 }) => {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDatePreset, setSelectedDatePreset] = useState<string>('');
+  const [dynamicOptions, setDynamicOptions] = useState<FilterOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+
+  // Load dynamic options from filterSource
+  useEffect(() => {
+    const loadDynamicOptions = async () => {
+      if (!fieldConfig?.filterSource || enumOptions.length > 0) {
+        return; // Use provided enumOptions or no filterSource configured
+      }
+
+      setLoadingOptions(true);
+      setOptionsError(null);
+
+      try {
+        const response = await filterSourceService.loadFilterOptions(fieldConfig.filterSource);
+        
+        if (response.error) {
+          setOptionsError(response.error);
+        }
+        
+        setDynamicOptions(response.options);
+      } catch (error) {
+        console.error('Failed to load field options:', error);
+        setOptionsError('Failed to load options');
+        setDynamicOptions([]);
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+
+    loadDynamicOptions();
+  }, [fieldConfig?.filterSource, enumOptions.length]);
+
+  // Get effective options (prefer enumOptions, then dynamicOptions)
+  const getEffectiveOptions = (): FilterOption[] => {
+    if (enumOptions.length > 0) {
+      return enumOptions;
+    }
+    return dynamicOptions;
+  };
 
   // Don't render anything if operator doesn't require a value
   if (!operatorRequiresValue(operator, fieldType)) {
@@ -170,6 +215,8 @@ export const EnhancedValueInput: React.FC<EnhancedValueInputProps> = ({
 
   // Enum selector (single or multi-value)
   if (fieldType === 'enum') {
+    const effectiveOptions = getEffectiveOptions();
+    
     if (operatorSupportsMultiValue(operator, fieldType)) {
       return (
         <MultiValueSelector
@@ -187,19 +234,49 @@ export const EnhancedValueInput: React.FC<EnhancedValueInputProps> = ({
       );
     } else {
       return (
-        <Select value={value || ''} onValueChange={onChange}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Select value..." />
-          </SelectTrigger>
-          <SelectContent>
-            {enumOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
+        <div className="w-48">
+          <Select value={value || ''} onValueChange={onChange} disabled={loadingOptions}>
+            <SelectTrigger>
+              <SelectValue placeholder={
+                loadingOptions ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </div>
+                ) : (
+                  'Select value...'
+                )
+              } />
+            </SelectTrigger>
+            <SelectContent>
+              {effectiveOptions.map((option) => (
+                <SelectItem key={option.value} value={String(option.value)}>
+                  <div className="flex items-center gap-2">
+                    {option.color && (
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: option.color }}
+                      />
+                    )}
+                    <span>{option.label}</span>
+                    {option.description && (
+                      <span className="text-xs text-gray-500">({option.description})</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+              {effectiveOptions.length === 0 && !loadingOptions && (
+                <SelectItem value="" disabled>
+                  {optionsError || 'No options available'}
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+                     {optionsError && (
+             <p className="text-xs text-red-600 mt-1">{optionsError}</p>
+           )}
+         </div>
+        );
     }
   }
 
