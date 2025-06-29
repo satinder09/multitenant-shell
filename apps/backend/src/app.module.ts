@@ -4,18 +4,15 @@ import { ScheduleModule }      from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
-import { AppModule as XoroApp } from './app.module'; // if renamed
-import { MasterPrismaModule }   from './modules/master-prisma/master-prisma.module';
-import { TenantModule }         from './modules/tenant/tenant.module';
-import { PrismaTenantModule }   from './modules/prisma-tenant/prisma-tenant.module';
-import { AuthModule }           from './modules/auth/auth.module';
-import { RbacModule }           from './modules/rbac/rbac.module';
-import { PlatformAdminModule }  from './modules/platform-admin/platform-admin.module';
-import { EvictionScheduler }    from './modules/prisma-tenant/eviction-scheduler.service';
-import { TenantResolverMiddleware } from './middleware/tenant-resolver.middleware';
-import { SecurityLoggerMiddleware } from './middleware/security-logger.middleware';
-import { CsrfProtectionMiddleware } from './middleware/csrf-protection.middleware';
-import { SecurityHeadersMiddleware } from './middleware/security-headers.middleware';
+// New domain imports - CORE RESTRUCTURED DOMAINS ✅
+import { DatabaseModule } from './domains/database/database.module';
+import { AuthModule } from './domains/auth/auth.module';
+
+// Shared infrastructure imports ✅
+// import { TenantResolverMiddleware } from './shared/middleware/tenant-resolver.middleware';
+import { SecurityLoggerMiddleware } from './shared/middleware/security-logger.middleware';
+import { CsrfProtectionMiddleware } from './shared/middleware/csrf-protection.middleware';
+import { SecurityHeadersMiddleware } from './shared/middleware/security-headers.middleware';
 
 @Module({
   imports: [
@@ -32,16 +29,11 @@ import { SecurityHeadersMiddleware } from './middleware/security-headers.middlew
         limit: 20, // 20 requests per minute for sensitive endpoints
       }
     ]),
-    MasterPrismaModule,
-    TenantModule,
-    PrismaTenantModule.forRoot(),
-    AuthModule,  // <-- make sure AuthModule is here
-    RbacModule,  // <-- add RBAC module
-    PlatformAdminModule, // <-- add Platform Admin module
-    // ...your other feature modules
+    DatabaseModule,
+    AuthModule,
+    // TODO: Complete platform and tenant modules integration
   ],
   providers: [
-    EvictionScheduler,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

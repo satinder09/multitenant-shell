@@ -1,0 +1,67 @@
+# Multi-Tenant SaaS Project Rules
+
+## Folder Structure
+
+### Frontend Components
+```
+apps/frontend/
+├── components/
+│   ├── common/          # Reusable UI components
+│   ├── composite/       # Business logic components  
+│   ├── features/        # Feature-specific components
+│   ├── layouts/         # Layout and navigation components
+│   └── ui/             # ShadCN UI components only
+├── domains/
+│   ├── auth/           # Authentication domain
+│   ├── platform/       # Platform administration
+│   └── tenant/         # Tenant-specific functionality
+├── shared/
+│   ├── hooks/          # Reusable hooks
+│   ├── services/       # API clients and services
+│   ├── types/          # TypeScript interfaces
+│   └── utils/          # Helper functions
+└── app/
+    ├── platform/       # Platform admin pages
+    ├── (tenant)/       # Tenant-specific pages
+    └── api/            # API routes
+```
+
+## Naming Conventions
+
+### Files & Components
+- **Perfect Match**: `LoginForm.tsx` exports `LoginForm` (not `Login` or `LoginFormComponent`)
+- **PascalCase**: All component names in PascalCase
+- **Descriptive**: `UserManagementTable` not `AdvancedTable`
+- **No Generic Names**: Avoid `Advanced`, `Enhanced`, `Popular`, `Generic` prefixes
+
+### Properties & Interfaces
+- **filterPreset**: Use this for filter configurations (not `popularFilter` or `popular`)
+- **Boolean Prefixes**: `is`, `has`, `can`, `should` for booleans
+- **Consistent Terminology**: Same term throughout codebase
+
+### Page Routes
+- **Platform Admin**: `/platform/*` for platform administration
+- **Tenant Pages**: `/(tenant)/*` for tenant-specific functionality  
+- **API Routes**: `/api/platform/*` and `/api/tenant-access/*`
+
+## Technical Standards
+
+### Imports/Exports  
+- **Barrel Exports**: Maintain `index.ts` files with proper exports
+- **Domain Imports**: `from '@/domains/auth'` for domain-specific imports
+- **Consistent**: Use same import style throughout module
+
+### UI Components
+- **ShadCN First**: Use ShadCN components over custom implementations
+- **No Truncation**: Avoid `max-w-{size} truncate` that cuts off content
+- **Responsive**: Use `flex-wrap`, proper responsive classes
+
+### TypeScript
+- **Avoid `any`**: Use proper typing, create interfaces when needed
+- **Build Must Pass**: Zero critical TypeScript errors allowed
+- **Proper Unions**: Use union types with proper type guards
+
+## Layout System
+- **Single Layout**: Use ShadCN `SidebarProvider` + `AppSidebar` pattern
+- **Consistent Spacing**: `px-8 py-6` for platform layout padding
+- **Responsive Sidebar**: Use `collapsible="icon"` for proper behavior 
