@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModuleConfig } from '@/lib/modules/types';
+import { ModuleConfig } from '@/shared/modules/types';
 import { Building2, Shield, Eye, Edit, Trash, CheckCircle, XCircle, Download, Plus, Upload, RefreshCw, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 

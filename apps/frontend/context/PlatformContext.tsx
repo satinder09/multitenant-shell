@@ -1,6 +1,6 @@
 'use client';
 import React, { createContext, useContext, useMemo } from 'react';
-import { isPlatformHost, getTenantSubdomain } from '@/lib/contextUtils';
+import { isPlatformHost, getTenantSubdomain } from '@/shared/utils/contextUtils';
 
 interface PlatformContextType {
   isPlatform: boolean;

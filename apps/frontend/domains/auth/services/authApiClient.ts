@@ -1,6 +1,6 @@
 // Auth domain API client with typed methods
-import { BaseApiClient } from '@/lib/api/base-client';
-import { PaginatedResponse } from '@/lib/api/types';
+import { BaseApiClient } from '@/shared/services/api/base-client';
+import { PaginatedResponse } from '@/shared/services/api/types';
 import { 
   LoginCredentials, 
   LoginResponse, 

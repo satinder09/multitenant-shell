@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ConfigDrivenModulePage } from '@/lib/modules/ConfigDrivenModulePage';
+import { ConfigDrivenModulePage } from '@/shared/modules/ConfigDrivenModulePage';
 import CreateTenantDialog from './components/CreateTenantDialog';
 import { SecureLoginModal } from './components/SecureLoginModal';
 import { ImpersonationModal } from './components/ImpersonationModal';

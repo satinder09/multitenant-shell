@@ -16,10 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { toastNotify } from '@/utils/ui/toastNotify';
+import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/context/AuthContext';
-import { confirm } from '@/utils/ui/dialogUtils';
+import { confirm } from '@/shared/utils/ui/dialogUtils';
 import { AlertTriangle, Edit, Trash2, Plus, Key, Shield, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 

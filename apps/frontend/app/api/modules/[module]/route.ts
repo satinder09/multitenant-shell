@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateConfigFromSchema } from '@/lib/modules/schema-config-generator';
-import { serverGet, serverPost } from '@/lib/api/server-client';
-import { getModuleConfig, getRegisteredModules } from '@/lib/modules/module-registry';
+import { generateConfigFromSchema } from '@/shared/modules/schema-config-generator';
+import { serverGet, serverPost } from '@/shared/services/api/server-client';
+import { getModuleConfig, getRegisteredModules } from '@/shared/modules/module-registry';
 
 interface ModuleDataRequest {
   search?: string;

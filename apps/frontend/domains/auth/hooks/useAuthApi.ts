@@ -1,5 +1,5 @@
 // Auth domain API hooks
-import { useApiQuery } from '@/lib/api/hooks/useApiQuery';
+import { useApiQuery } from '@/shared/services/api/hooks/useApiQuery';
 import { authApiClient } from '../services/authApiClient';
 import { AuthUser } from '../types/auth.types';
 

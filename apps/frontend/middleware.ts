@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { decodeJwt } from 'jose';
-import { isPlatformHost, getTenantSubdomain } from './lib/contextUtils';
+import { isPlatformHost, getTenantSubdomain } from '@/shared/utils/contextUtils';
 
 interface JwtPayload {
   tenantContext?: string;

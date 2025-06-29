@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverPost } from '@/lib/api/server-client';
+import { serverPost } from '@/shared/services/api/server-client';
 
 export async function POST(req: NextRequest) {
   try {

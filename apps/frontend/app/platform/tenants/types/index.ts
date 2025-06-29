@@ -13,7 +13,7 @@ import {
   DynamicFieldDiscovery,
   AdvancedBaseFilters,
   UseGenericFilterReturn
-} from '@/lib/types';
+} from '@/shared/types/types';
 
 // Tenant domain model that combines base tenant data with access control
 export interface TenantModel extends GenericEntity {

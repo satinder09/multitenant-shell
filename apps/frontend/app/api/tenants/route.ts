@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet, serverPost } from '@/lib/api/server-client';
+import { serverGet, serverPost } from '@/shared/services/api/server-client';
 
 // Handler for GET /api/tenants (fetch all)
 export async function GET(req: NextRequest) {

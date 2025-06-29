@@ -15,20 +15,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { toastNotify } from '@/utils/ui/toastNotify';
+import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/context/AuthContext';
-import { confirm } from '@/utils/ui/dialogUtils';
+import { confirm } from '@/shared/utils/ui/dialogUtils';
 import { AlertTriangle, Edit, Trash2, Plus, Shield, Users, Settings, Key, MoreHorizontal, Download, Filter } from 'lucide-react';
-import ComboBoxTags from '@/components/ui-kit/ComboBoxTags';
+import ComboBoxTags from '@/components/composite/ComboBoxTags';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Import our enhanced UI components
-import { SectionHeader } from '@/components/ui-kit/SectionHeader';
-import { StatusBadge } from '@/components/ui-kit/StatusBadge';
-import { TabsBlock } from '@/components/ui-kit/TabsBlock';
-import { DataTable } from '@/components/ui-kit/DataTable';
+import { SectionHeader } from '@/components/composite/SectionHeader';
+import { StatusBadge } from '@/components/composite/StatusBadge';
+import { TabsBlock } from '@/components/composite/TabsBlock';
+import { DataTable } from '@/components/composite/DataTable';
 
 // Role interface
 interface PlatformRole {

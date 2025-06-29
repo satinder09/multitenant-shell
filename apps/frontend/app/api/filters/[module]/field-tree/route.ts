@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getModuleConfig } from '@/lib/modules/module-registry';
+import { getModuleConfig } from '@/shared/modules/module-registry';
 
 interface FieldNode {
   name: string;

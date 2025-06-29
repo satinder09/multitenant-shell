@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModuleConfig } from '@/lib/modules/types';
+import { ModuleConfig } from '@/shared/modules/types';
 import { Users, Shield, Edit, Trash, UserCheck, UserX, Download } from 'lucide-react';
 
 // Custom renderers for user fields

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet } from '@/lib/api/server-client';
+import { serverGet } from '@/shared/services/api/server-client';
 
 export async function GET(req: NextRequest) {
   try {

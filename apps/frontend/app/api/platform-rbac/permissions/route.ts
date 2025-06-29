@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBackendUrl } from '@/lib/api';
+import { getBackendUrl } from '@/shared/services/api';
 
 export async function GET(req: NextRequest) {
   const backendUrl = getBackendUrl(req);

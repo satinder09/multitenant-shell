@@ -10,7 +10,7 @@ import {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { LoginDto, login as loginApi, ApiError } from '@/lib/api';
+import { LoginDto, login as loginApi, ApiError } from '@/shared/services/api';
 import { Spinner } from '@/components/ui/spinner';
 
 interface UserProfile {

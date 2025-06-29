@@ -7,7 +7,7 @@ import {
   ServerDataTableProps,
   StatusFilter,
   ModuleFilters 
-} from '@/lib/types';
+} from '@/shared/types/types';
 
 // User domain model for platform users
 export interface PlatformUser {

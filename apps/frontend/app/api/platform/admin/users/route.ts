@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBackendUrl } from '@/lib/api';
+import { getBackendUrl } from '@/shared/services/api';
 
 // Handler for GET /api/platform/admin/users (fetch all platform users)
 export async function GET(req: NextRequest) {

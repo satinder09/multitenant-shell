@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getModuleConfig } from '@/lib/modules/module-registry';
-import { getEffectiveOperators } from '@/lib/modules/types';
+import { getModuleConfig } from '@/shared/modules/module-registry';
+import { getEffectiveOperators } from '@/shared/modules/types';
 
 // Convert operators from config format to API format
 function convertOperators(operators: any[]): string[] {

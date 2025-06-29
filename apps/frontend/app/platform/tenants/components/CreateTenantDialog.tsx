@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle } from 'lucide-react';
-import { toastNotify } from '@/utils/ui/toastNotify';
+import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { CreateTenantDialogProps } from '../types';
 import { createTenantAction } from '../utils/tenantHelpers';
 

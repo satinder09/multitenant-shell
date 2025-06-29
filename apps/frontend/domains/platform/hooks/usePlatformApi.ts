@@ -1,7 +1,7 @@
 // Platform domain API hooks
-import { useApiQuery } from '@/lib/api/hooks/useApiQuery';
+import { useApiQuery } from '@/shared/services/api/hooks/useApiQuery';
 import { platformApiClient } from '../services/platformApiClient';
-import { PaginatedResponse, QueryOptions } from '@/lib/api/types';
+import { PaginatedResponse, QueryOptions } from '@/shared/services/api/types';
 import { 
   PlatformStats,
   PlatformActivity,

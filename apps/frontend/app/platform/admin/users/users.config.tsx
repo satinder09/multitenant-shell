@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModuleConfig } from '@/lib/modules/types';
+import { ModuleConfig } from '@/shared/modules/types';
 import { Users, Eye, Edit, Trash, CheckCircle, Plus, RefreshCw, Calendar, Mail, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 

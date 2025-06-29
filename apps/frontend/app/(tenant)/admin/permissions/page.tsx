@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Edit, Trash2, Key, Shield, AlertTriangle } from 'lucide-react';
-import { toastNotify } from '@/utils/ui/toastNotify';
-import { confirm, DialogOverlay } from '@/utils/ui/dialogUtils';
+import { toastNotify } from '@/shared/utils/ui/toastNotify';
+import { confirm, DialogOverlay } from '@/shared/utils/ui/dialogUtils';
 import { usePlatform } from '@/context/PlatformContext';
 
 interface Permission {

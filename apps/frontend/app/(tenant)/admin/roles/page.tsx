@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import ComboBoxTags from '@/components/ui-kit/ComboBoxTags';
+import ComboBoxTags from '@/components/composite/ComboBoxTags';
 import { Plus, Edit, Trash2, Shield } from 'lucide-react';
-import { toastNotify } from '@/utils/ui/toastNotify';
-import { confirm, DialogOverlay } from '@/utils/ui/dialogUtils';
+import { toastNotify } from '@/shared/utils/ui/toastNotify';
+import { confirm, DialogOverlay } from '@/shared/utils/ui/dialogUtils';
 import { usePlatform } from '@/context/PlatformContext';
 
 interface Role {
