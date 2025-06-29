@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { TenantService } from '../domains/tenant/services/tenant.service';
 import { Request, Response, NextFunction } from 'express';
-import { TenantContext } from '../modules/prisma-tenant/tenant-context';
+import { TenantContext } from '../shared/types/tenant-context';
 
 @Injectable()
 export class TenantResolverMiddleware implements NestMiddleware {
