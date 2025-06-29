@@ -2,7 +2,7 @@ import { Injectable, NestMiddleware, ForbiddenException, Logger } from '@nestjs/
 import { Request, Response, NextFunction } from 'express';
 import * as crypto from 'crypto';
 
-interface RequestWithCsrf extends Request {
+interface RequestWithCsrf extends Omit<Request, 'csrfToken'> {
   csrfToken?: () => string;
   session?: any;
 }
@@ -30,7 +30,7 @@ export class CsrfProtectionMiddleware implements NestMiddleware {
 
     // For state-changing requests, verify the token
     if (!isSafeMethod) {
-      const providedToken = this.extractToken(req);
+      const providedToken = this.extractToken(req as Request);
       
       if (!providedToken || !this.verifyToken(req, providedToken)) {
         this.logger.warn('CSRF token validation failed', {

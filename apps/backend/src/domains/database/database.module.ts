@@ -1,16 +1,18 @@
 import { Global, Module } from '@nestjs/common';
 import { MasterDatabaseService } from './master/master-database.service';
-import { TenantDatabaseService } from './tenant/tenant-database.service';
+import { TenantDatabaseModule } from './tenant/tenant-database.module';
 
 @Global()
 @Module({
+  imports: [
+    TenantDatabaseModule.forRoot(),
+  ],
   providers: [
     MasterDatabaseService,
-    TenantDatabaseService,
   ],
   exports: [
     MasterDatabaseService,
-    TenantDatabaseService,
+    TenantDatabaseModule,
   ],
 })
 export class DatabaseModule {} 

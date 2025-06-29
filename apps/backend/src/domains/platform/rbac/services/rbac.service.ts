@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Inject, Scope } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Inject, Scope, Logger } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { TenantDatabaseService } from '../../../database/tenant/tenant-database.service';
@@ -9,40 +9,51 @@ import { AssignRoleDto } from '../dto/assign-role.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RbacService {
+  private readonly logger = new Logger(RbacService.name);
+
   constructor(
     private readonly tenantPrisma: TenantDatabaseService,
     @Inject(REQUEST) private readonly request: Request
   ) {}
 
   private checkTenantContext() {
-    console.log('[RBAC] checkTenantContext called');
+    this.logger.debug('Checking tenant context availability');
     
     try {
       // This will throw an error if no tenant context is available
       const db = this.tenantPrisma.db;
-      console.log('[RBAC] Tenant context is available, proceeding');
+      this.logger.debug('Tenant context is available, proceeding with operation');
       return; // Tenant context is available, all good
     } catch (error) {
-      console.log('[RBAC] No tenant context available, checking user privileges');
+      this.logger.debug('No tenant context available, validating user privileges');
       
       // No tenant context available, check if user has super admin privileges
       const user = (this.request as any).user;
       const tenant = (this.request as any).tenant;
       
-      console.log('[RBAC] User:', user ? { email: user.email, isSuperAdmin: user.isSuperAdmin, accessType: user.accessType } : 'null');
-      console.log('[RBAC] Tenant:', tenant ? { id: tenant.id } : 'null');
+      this.logger.debug('Context validation', { 
+        hasUser: !!user, 
+        isSuperAdmin: user?.isSuperAdmin,
+        accessType: user?.accessType,
+        hasTenant: !!tenant 
+      });
       
       if (user && user.isSuperAdmin && tenant) {
         // Super admin accessing from a tenant subdomain
         // The middleware has detected the tenant context, but the JWT doesn't have tenantContext
         // This is allowed for super admins - they can access any tenant's resources
-        console.log(`[RBAC] Super admin ${user.email} accessing tenant ${tenant.id} resources - ALLOWING ACCESS`);
+        this.logger.log(`Super admin cross-tenant access granted`, { 
+          adminEmail: user.email, 
+          tenantId: tenant.id 
+        });
         return; // Allow super admin access
       }
       
       if (user && (user.accessType === 'secure_login' || user.accessType === 'impersonation')) {
         // User is in a secure login or impersonation session but tenant context is missing
-        console.log('[RBAC] Secure login or impersonation session but no tenant context');
+        this.logger.warn('Secure access session missing tenant context', { 
+          accessType: user.accessType 
+        });
         throw new BadRequestException(
           'Secure login or impersonation session detected but tenant context is missing. Please try logging in again.'
         );
@@ -50,14 +61,14 @@ export class RbacService {
       
       if (user && user.isSuperAdmin && !tenant) {
         // Super admin on platform domain trying to access tenant resources
-        console.log('[RBAC] Super admin on platform domain');
+        this.logger.warn('Super admin attempting tenant operations from platform domain');
         throw new BadRequestException(
           'Super admin detected. Please use "Secure Login" or "Impersonation" from the platform tenant management, or access the tenant directly from its subdomain.'
         );
       }
       
       // Regular user without tenant context
-      console.log('[RBAC] Regular user without tenant context');
+      this.logger.warn('Regular user attempting tenant operations without context');
       throw new BadRequestException(
         'RBAC operations require a tenant context. Please access this endpoint from a tenant subdomain (e.g., tenant1.localhost:3000) rather than the root domain.'
       );

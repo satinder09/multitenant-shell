@@ -1,0 +1,181 @@
+config:
+  target: 'http://localhost:4000'
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    
+    # Ramp-up phase  
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp up load"
+    
+    # Sustained load phase
+    - duration: 300
+      arrivalRate: 50
+      name: "Sustained load"
+    
+    # Peak load phase
+    - duration: 120
+      arrivalRate: 50
+      rampTo: 100
+      name: "Peak load"
+    
+    # Stress test phase
+    - duration: 60
+      arrivalRate: 100
+      rampTo: 200
+      name: "Stress test"
+
+  variables:
+    testUserEmail: "perf-test-{{ $randomString() }}@example.com"
+    testPassword: "TestPassword123!"
+
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+
+scenarios:
+  # Authentication performance test
+  - name: "Authentication Flow"
+    weight: 30
+    flow:
+      - post:
+          url: "/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "admin123"
+          capture:
+            - json: "$.accessToken"
+              as: "authToken"
+          expect:
+            - statusCode: 201
+      
+      - get:
+          url: "/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+  # Platform user management
+  - name: "User Management"
+    weight: 25
+    flow:
+      # Login first
+      - post:
+          url: "/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "admin123"
+          capture:
+            - json: "$.accessToken"
+              as: "authToken"
+      
+      # Get users list
+      - get:
+          url: "/platform/users"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+      
+      # Get specific user
+      - get:
+          url: "/platform/users/{{ $randomString() }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 404]
+
+  # Health check endpoints
+  - name: "Health Checks"
+    weight: 15
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+      
+      - get:
+          url: "/health/database"
+          expect:
+            - statusCode: 200
+
+  # RBAC operations
+  - name: "RBAC Operations"
+    weight: 20
+    flow:
+      # Login with tenant context
+      - post:
+          url: "/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "admin123"
+          capture:
+            - json: "$.accessToken"
+              as: "authToken"
+      
+      # Get roles
+      - get:
+          url: "/platform/rbac/roles"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 400]
+      
+      # Get permissions
+      - get:
+          url: "/platform/rbac/permissions"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 400]
+
+  # Tenant operations
+  - name: "Tenant Operations"
+    weight: 10
+    flow:
+      # Login
+      - post:
+          url: "/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "admin123"
+          capture:
+            - json: "$.accessToken"
+              as: "authToken"
+      
+      # Get tenant access options
+      - get:
+          url: "/tenant-access/options"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+# Performance expectations
+expectations:
+  # Response time expectations
+  - http.response_time:
+      p95: 200  # 95% of requests should complete within 200ms
+      p99: 500  # 99% of requests should complete within 500ms
+  
+  # Success rate expectations  
+  - http.response_time.min: 10    # Minimum response time
+  - http.response_time.max: 2000  # Maximum acceptable response time
+  
+  # Error rate expectations
+  - http.request_rate: 50         # Minimum requests per second
+  - http.errors: 0                # No HTTP errors expected
+
+# Custom metrics to track
+metrics:
+  - name: "auth_performance"
+    unit: "milliseconds"
+  - name: "database_operations"
+    unit: "milliseconds"
+  - name: "concurrent_users"
+    unit: "count" 

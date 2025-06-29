@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -17,6 +18,8 @@ import { AccessType, ImpersonationStatus } from '../../../../generated/master-pr
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly masterPrisma: MasterDatabaseService,
     private readonly tenantPrisma: TenantDatabaseService,
@@ -52,7 +55,11 @@ export class AuthService {
         const accessToken = this.jwt.sign(payload);
         return { accessToken };
       } catch (error) {
-        console.error('Error accessing tenant database:', error);
+        this.logger.error('Failed to authenticate user in tenant database', { 
+          tenantId, 
+          email: dto.email,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
         throw new UnauthorizedException('Invalid tenant or credentials');
       }
     } else {

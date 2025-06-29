@@ -6,13 +6,19 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly config: ConfigService) {
+    const jwtSecret = config.get<string>('JWT_SECRET');
+    
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is required but not configured. Please set JWT_SECRET environment variable.');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: any) => req?.cookies?.Authentication,
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_SECRET'),
+      secretOrKey: jwtSecret,
     });
   }
 

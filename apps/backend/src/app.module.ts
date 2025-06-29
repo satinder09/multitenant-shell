@@ -2,7 +2,7 @@ import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule }        from '@nestjs/config';
 import { ScheduleModule }      from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 // New domain imports - CORE RESTRUCTURED DOMAINS ✅
 import { DatabaseModule } from './domains/database/database.module';
@@ -15,6 +15,20 @@ import { TenantModule } from './domains/tenant/tenant.module';
 import { SecurityLoggerMiddleware } from './shared/middleware/security-logger.middleware';
 import { CsrfProtectionMiddleware } from './shared/middleware/csrf-protection.middleware';
 import { SecurityHeadersMiddleware } from './shared/middleware/security-headers.middleware';
+
+// Monitoring infrastructure
+import { PerformanceMonitoringInterceptor } from './shared/interceptors/performance-monitoring.interceptor';
+import { MetricsService } from './infrastructure/monitoring/metrics.service';
+import { DatabasePerformanceService } from './infrastructure/performance/database.config';
+import { HealthController } from './infrastructure/health/health.controller';
+import { MetricsDashboardController } from './infrastructure/monitoring/metrics-dashboard.controller';
+import { RedisService } from './infrastructure/cache/redis.service';
+import { AuditService } from './infrastructure/audit/audit.service';
+
+// Performance optimization infrastructure
+import { DatabaseOptimizationService } from './infrastructure/performance/database-optimization.service';
+import { IntelligentCacheService } from './infrastructure/cache/intelligent-cache.service';
+import { PerformanceOptimizationController } from './infrastructure/performance/performance-optimization.controller';
 
 @Module({
   imports: [
@@ -36,11 +50,26 @@ import { SecurityHeadersMiddleware } from './shared/middleware/security-headers.
     PlatformModule,
     TenantModule,
   ],
+  controllers: [
+    HealthController,
+    MetricsDashboardController,
+    PerformanceOptimizationController,
+  ],
   providers: [
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PerformanceMonitoringInterceptor,
+    },
+    MetricsService,
+    DatabasePerformanceService,
+    RedisService,
+    DatabaseOptimizationService,
+    IntelligentCacheService,
+    AuditService,
   ],
 })
 export class AppModule {

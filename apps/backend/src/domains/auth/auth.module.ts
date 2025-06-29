@@ -5,9 +5,13 @@ import { JwtModule } from '@nestjs/jwt';
 
 import { AuthController } from './controllers/auth.controller';
 import { TenantAccessController } from './controllers/tenant-access.controller';
+import { SecurityController } from './controllers/security.controller';
 import { AuthService } from './services/auth.service';
+import { AuthSecurityService } from './services/auth-security.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { DatabaseModule } from '../database/database.module';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { MetricsService } from '../../infrastructure/monitoring/metrics.service';
 
 @Module({
   imports: [
@@ -23,10 +27,13 @@ import { DatabaseModule } from '../database/database.module';
     }),
     DatabaseModule,
   ],
-  controllers: [AuthController, TenantAccessController],
+  controllers: [AuthController, TenantAccessController, SecurityController],
   providers: [
     AuthService,
+    AuthSecurityService,
     JwtStrategy,
+    AuditService,
+    MetricsService,
   ],
   exports: [AuthService],
 })

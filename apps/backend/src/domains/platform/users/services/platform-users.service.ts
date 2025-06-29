@@ -11,6 +11,34 @@ import { GetPlatformUsersQueryDto } from '../dto/get-platform-users-query.dto';
 import { QueryBuilderUtils, FieldMapping } from '../../../../shared/utils/query-builder.utils';
 import * as bcrypt from 'bcrypt';
 
+// Type definitions for complex filters
+interface FilterRule {
+  field: string;
+  operator: string;
+  value: unknown;
+  type?: string;
+}
+
+interface FilterGroup {
+  operator: 'AND' | 'OR';
+  rules: (FilterRule | FilterGroup)[];
+}
+
+interface ComplexFilter {
+  rootGroup: FilterGroup;
+}
+
+interface UserResponse {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  lastLogin: string | null;
+  tenantCount: number;
+}
+
 @Injectable()
 export class PlatformUsersService {
   private readonly logger = new Logger(PlatformUsersService.name);
@@ -506,7 +534,7 @@ export class PlatformUsersService {
     }
   }
 
-  private buildStringCondition(field: string, operator: string, value: any): Record<string, any> | null {
+  private buildStringCondition(field: string, operator: string, value: unknown): Record<string, unknown> | null {
     if (!value && !['is_empty', 'is_not_empty'].includes(operator)) return null;
 
     // Handle pipe operator for OR conditions (e.g., "user1|user2|user3")
