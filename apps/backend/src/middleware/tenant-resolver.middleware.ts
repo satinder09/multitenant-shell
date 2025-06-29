@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
-import { TenantService } from '../modules/tenant/tenant.service';
+import { TenantService } from '../domains/tenant/services/tenant.service';
 import { Request, Response, NextFunction } from 'express';
 import { TenantContext } from '../modules/prisma-tenant/tenant-context';
 
