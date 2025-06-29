@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
 import ContextAwareLayout from './ContextAwareLayout';
 
-export default function ConditionalLayoutWrapper({ children }: { children: ReactNode }) {
+export default function ConditionalLayout({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const pathname = usePathname();
   

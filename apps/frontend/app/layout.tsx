@@ -10,8 +10,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { DialogOverlay } from '@/shared/utils/ui/dialogUtils';
 import { AppSheetOverlay } from '@/shared/utils/ui/sheetUtils';
 import { PlatformProvider } from '@/context/PlatformContext';
-import ConditionalLayoutWrapper from '@/components/layouts/ConditionalLayoutWrapper';
-import GlobalErrorBoundary from '@/components/common/GlobalErrorBoundary';
+import ConditionalLayout from '@/components/layouts/ConditionalLayout';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 
 interface RootLayoutProps {
@@ -22,18 +22,20 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${GeistSans.variable} ${GeistMono.variable}`}>
-        <GlobalErrorBoundary>
+        <ErrorBoundary>
           <ThemeProvider>
             <AuthProvider>
               <PlatformProvider>
-                <ConditionalLayoutWrapper>{children}</ConditionalLayoutWrapper>
+                <ConditionalLayout>
+                  {children}
+                </ConditionalLayout>
               </PlatformProvider>
             </AuthProvider>
             <DialogOverlay />
             <Toaster richColors position="top-right" />
             <AppSheetOverlay />
           </ThemeProvider>
-        </GlobalErrorBoundary>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
 // Layout components barrel file
 export { default as BaseLayout } from './BaseLayout';
-export { default as ConditionalLayoutWrapper } from './ConditionalLayoutWrapper';
+export { default as ConditionalLayout } from './ConditionalLayout';
 export { default as ContextAwareLayout } from './ContextAwareLayout';
 export { default as TenantLayout } from './TenantLayout';
 export { default as PlatformLayout } from './PlatformLayout';

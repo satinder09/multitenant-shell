@@ -1,7 +1,6 @@
 // Common components barrel file
 export { default as ThemeToggle } from './ThemeToggle';
-
-export { default as GlobalErrorBoundary } from './GlobalErrorBoundary';
+export { default as ErrorBoundary } from './ErrorBoundary';
 
 // Notification components
 export { NotificationCenter } from './notifications/NotificationCenter';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { AdvancedDataTable } from '@/components/composite/AdvancedDataTable';
+import { DataTable } from '@/components/composite/DataTable';
 import { FilterDropdownMenu } from '@/components/common/generic-filter/FilterDropdownMenu';
 import { FilterTags } from '@/components/common/generic-filter/FilterTags';
 import { FilterDialog } from '@/components/common/generic-filter/FilterDialog';
@@ -557,7 +557,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
           <div className="text-muted-foreground">Loading {module.title.toLowerCase()}...</div>
         </div>
       ) : (
-        <AdvancedDataTable
+        <DataTable
           data={data || []}
           columns={tableColumns}
           allowDrag={false}
@@ -567,6 +567,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
           enableSorting={true}
           enableFiltering={true}
           enableRowSelection={!!actions?.bulkActions?.length}
+          enablePagination={true}
         />
       )}
 
