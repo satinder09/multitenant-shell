@@ -10,7 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../auth';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RbacService } from '../services/rbac.service';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';

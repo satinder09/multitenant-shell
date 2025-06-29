@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Inject, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
-import { TenantDatabaseService } from '../../database';
+import { TenantDatabaseService } from '../../database/tenant/tenant-database.service';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
 import { CreatePermissionDto } from '../dto/create-permission.dto';

@@ -7,6 +7,8 @@ import { APP_GUARD } from '@nestjs/core';
 // New domain imports - CORE RESTRUCTURED DOMAINS ✅
 import { DatabaseModule } from './domains/database/database.module';
 import { AuthModule } from './domains/auth/auth.module';
+import { PlatformModule } from './domains/platform/platform.module';
+import { TenantModule } from './domains/tenant/tenant.module';
 
 // Shared infrastructure imports ✅
 // import { TenantResolverMiddleware } from './shared/middleware/tenant-resolver.middleware';
@@ -31,7 +33,8 @@ import { SecurityHeadersMiddleware } from './shared/middleware/security-headers.
     ]),
     DatabaseModule,
     AuthModule,
-    // TODO: Complete platform and tenant modules integration
+    PlatformModule,
+    TenantModule,
   ],
   providers: [
     {
@@ -43,7 +46,7 @@ import { SecurityHeadersMiddleware } from './shared/middleware/security-headers.
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(SecurityHeadersMiddleware, SecurityLoggerMiddleware, CsrfProtectionMiddleware, TenantResolverMiddleware)
+      .apply(SecurityHeadersMiddleware, SecurityLoggerMiddleware, CsrfProtectionMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }
