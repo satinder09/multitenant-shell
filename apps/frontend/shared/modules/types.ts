@@ -230,11 +230,11 @@ export interface ColumnDefinition {
   // Filter Properties
   filterable?: boolean;    // Show in filter dropdown
   popular?: boolean;       // Show in popular filters
-  popularFilter?: {        // Default popular filter configuration
+  filterPreset?: {         // Default filter preset configuration
     field: string;         // Field name (usually same as column field)
     operator: FilterOperator;
     value?: any;
-    label?: string;        // Custom label for popular filter
+    label?: string;        // Custom label for filter preset
   };
   operators?: FilterOperator[]; // Override auto-derived operators (auto-derived from type if not specified)
   
@@ -375,7 +375,7 @@ export interface FilterField {
   children?: FilterField[];
 }
 
-export interface PopularFilter {
+export interface FilterPreset {
   field: string;
   label: string;
   operator: FilterOperator;

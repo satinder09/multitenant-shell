@@ -93,18 +93,18 @@ export class GenericSystemValidator {
       const config = await getModuleConfig('users');
       if (config) {
         const filterableColumns = config.columns.filter(col => col.filterable !== false);
-        const popularFilters = config.columns.filter(col => col.popular && col.popularFilter);
+        const filterPresets = config.columns.filter(col => col.filterPreset);
         const hasStringFields = filterableColumns.some(col => col.type === 'string');
         const hasBooleanFields = filterableColumns.some(col => col.type === 'boolean');
         const hasDateFields = filterableColumns.some(col => col.type === 'datetime');
         
         results.push({
           testName: 'Filter Field Generation',
-          passed: filterableColumns.length > 0 && popularFilters.length > 0,
-          details: `Found ${filterableColumns.length} filterable columns, ${popularFilters.length} popular filters. Field types: string(${hasStringFields}), boolean(${hasBooleanFields}), datetime(${hasDateFields})`,
+          passed: filterableColumns.length > 0 && filterPresets.length > 0,
+          details: `Found ${filterableColumns.length} filterable columns, ${filterPresets.length} filter presets. Field types: string(${hasStringFields}), boolean(${hasBooleanFields}), datetime(${hasDateFields})`,
           data: {
             filterableCount: filterableColumns.length,
-            popularFilterCount: popularFilters.length,
+            filterPresetCount: filterPresets.length,
             fieldTypes: { hasStringFields, hasBooleanFields, hasDateFields }
           }
         });

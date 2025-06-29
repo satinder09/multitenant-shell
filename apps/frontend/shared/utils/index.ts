@@ -2,9 +2,12 @@
 
 // Re-export core utilities
 // Re-export core utilities (now local)
+export * from './utils';
 export * from './validation';
-export * from './date';
 export * from './security';
+
+// Note: './date' is not exported here to avoid formatDate conflict with utils.ts
+// If you need date utilities, import them directly from './date'
 
 // DOM and browser utilities
 export function getElement(selector: string): HTMLElement | null {

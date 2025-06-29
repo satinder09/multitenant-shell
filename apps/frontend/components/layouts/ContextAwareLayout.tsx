@@ -14,6 +14,9 @@ export default function ContextAwareLayout({ children }: { children: React.React
   // Pages that should not have the layout wrapper
   const publicPages = ['/login'];
   const isPublicPage = publicPages.includes(pathname);
+  
+  // Platform pages have their own ShadCN layout, so skip the old layout
+  const isPlatformPage = pathname.startsWith('/platform');
 
   console.log('[ContextAwareLayout] Rendering with state:', { 
     isPlatform, 
@@ -21,7 +24,8 @@ export default function ContextAwareLayout({ children }: { children: React.React
     isAuthenticated, 
     userEmail: user?.email,
     isSuperAdmin: user?.isSuperAdmin,
-    isPublicPage
+    isPublicPage,
+    isPlatformPage
   });
 
   useEffect(() => {
@@ -37,7 +41,13 @@ export default function ContextAwareLayout({ children }: { children: React.React
     return <>{children}</>;
   }
 
-  // For authenticated pages, use the unified layout
-  console.log('[ContextAwareLayout] Authenticated private page, rendering UnifiedLayout');
+  // If it's a platform page, skip the old layout (it has its own ShadCN layout)
+  if (isPlatformPage) {
+    console.log('[ContextAwareLayout] Platform page detected, skipping UnifiedLayout for ShadCN layout');
+    return <>{children}</>;
+  }
+
+  // For other authenticated pages (tenant pages), use the unified layout
+  console.log('[ContextAwareLayout] Non-platform authenticated page, rendering UnifiedLayout');
   return <UnifiedLayout>{children}</UnifiedLayout>;
-} 
+}

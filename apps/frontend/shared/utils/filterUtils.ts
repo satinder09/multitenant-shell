@@ -15,6 +15,35 @@ export const createFilterLabel = (
     if (typeof val === 'boolean') {
       return val ? 'Yes' : 'No';
     }
+
+    // Handle date range objects (from/to)
+    if (typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+      if (val.from && val.to) {
+        try {
+          const fromDate = new Date(val.from);
+          const toDate = new Date(val.to);
+          return `${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}`;
+        } catch {
+          return `${val.from} - ${val.to}`;
+        }
+      }
+      // For other objects, try to get a meaningful string representation
+      return JSON.stringify(val);
+    }
+
+    // Handle date objects
+    if (val instanceof Date) {
+      return val.toLocaleDateString();
+    }
+
+    // Handle date strings
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+      try {
+        return new Date(val).toLocaleDateString();
+      } catch {
+        return val;
+      }
+    }
     
     if (hasPipeOperator) {
       return value.split('|').map((v: string) => v.trim()).join(' or ');

@@ -116,8 +116,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: true,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'name',
         operator: 'contains',
         label: 'Search Users'
@@ -144,8 +143,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'role',
         operator: 'equals',
         value: 'administrator',

@@ -153,8 +153,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: true,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'name',
         operator: 'contains' as const,
         label: 'Search Users'
@@ -171,8 +170,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: true,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'email',
         operator: 'contains' as const,
         label: 'Search by Email'
@@ -189,8 +187,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'isSuperAdmin',
         operator: 'equals' as const,
         value: true,
@@ -211,8 +208,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'department',
         operator: 'equals' as const,
         label: 'Filter by Department'
@@ -234,8 +230,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'role',
         operator: 'equals' as const,
         label: 'Filter by Role'
@@ -286,8 +281,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'location',
         operator: 'equals' as const,
         label: 'Filter by Location'
@@ -325,8 +319,7 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'manager',
         operator: 'equals' as const,
         label: 'Filter by Manager'
@@ -375,11 +368,10 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'createdAt',
-        operator: 'preset' as const,
-        label: 'Created At Range'
+        operator: 'between' as const,
+        label: 'Created Date Range'
       },
       render: customRenderers.createdAt,
       width: 120
@@ -392,11 +384,10 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'lastLogin',
-        operator: 'equals' as const,
-        label: 'Last Login Date'
+        operator: 'between' as const,
+        label: 'Last Login Range'
       },
       width: 120
     },
@@ -408,11 +399,10 @@ export const UsersConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'activeRange',
         operator: 'between' as const,
-        label: 'Active Date Range'
+        label: 'Activity Date Range'
       },
       width: 120
     },

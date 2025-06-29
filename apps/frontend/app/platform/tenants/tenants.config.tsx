@@ -205,8 +205,7 @@ export const TenantsConfig: ModuleConfig = {
       sortable: true,
       searchable: true,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'name',
         operator: 'contains',
         label: 'Search Tenants'
@@ -270,8 +269,7 @@ export const TenantsConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'isActive',
         operator: 'equals',
         value: true,
@@ -312,8 +310,7 @@ export const TenantsConfig: ModuleConfig = {
       sortable: true,
       searchable: false,
       filterable: true,
-      popular: true,
-      popularFilter: {
+      filterPreset: {
         field: 'createdAt',
         operator: 'between',
         label: 'Created Date Range'

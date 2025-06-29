@@ -2,7 +2,7 @@ import React from 'react';
 import { FilterOperator } from '@/shared/types/types';
 
 // Core interfaces for the registration system
-export interface PopularFilterConfig {
+export interface FilterPresetConfig {
   id: string;
   label: string;
   type: 'preloaded' | 'user-input';
@@ -57,7 +57,7 @@ export interface CustomRelationshipDefinition {
 export interface ModuleFilterRegistration {
   moduleName: string;
   sourceTable: string;                    // 'tenants' or 'tenants_view'
-  popularFilters?: PopularFilterConfig[]; // Optional override
+  filterPresets?: FilterPresetConfig[];   // Changed from popularFilters to filterPresets
   fieldOverrides?: FieldOverrideConfig;   // Optional custom field definitions
   useAutoGeneration?: boolean;            // Default: true
   maxRelationshipDepth?: number;          // Default: 3

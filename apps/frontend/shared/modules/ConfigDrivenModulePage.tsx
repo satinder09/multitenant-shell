@@ -406,7 +406,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="w-full max-w-none space-y-6 min-w-0">
       {/* Module Header */}
       <SectionHeader
         title={module.title}

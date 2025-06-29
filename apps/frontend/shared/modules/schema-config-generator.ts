@@ -116,7 +116,7 @@ export class SchemaConfigGenerator {
           searchable: true,
           filterable: true,
           popular: true,
-          popularFilter: {
+          filterPreset: {
             field: 'name',
             operator: 'contains' as const,
             label: 'Search by Name'

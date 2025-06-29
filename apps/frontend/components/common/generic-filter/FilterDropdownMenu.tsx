@@ -34,10 +34,10 @@ interface FilterDropdownMenuProps {
   config?: ModuleConfig;
 }
 
-  interface PopularFilter {
+  interface FilterPreset {
     id: string;
     label: string;
-    type: 'preloaded' | 'user_input' | 'dropdown' | 'date_presets' | 'date_picker' | 'date_range';
+    type: 'predefined' | 'user_input' | 'dropdown' | 'date_presets' | 'date_picker' | 'date_range';
     field: string;
     operator: string;
     value?: any;
@@ -66,31 +66,34 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomFilterDialog, setShowCustomFilterDialog] = useState(false);
-  const [showPopularFilter, setShowPopularFilter] = useState<FilterPresetsConfig | null>(null);
+  const [showFilterPreset, setShowFilterPreset] = useState<FilterPresetsConfig | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Generate popular filters from config
-  const popularFilters: PopularFilter[] = React.useMemo(() => {
-    if (!config?.columns) return [];
+  const filterPresets: FilterPreset[] = React.useMemo(() => {
+    if (!config?.columns) {
+      console.log('FilterDropdownMenu: No config or columns found');
+      return [];
+    }
     
-    return config.columns
-      .filter(col => col.popular && col.popularFilter)
+    const presets = config.columns
+      .filter(col => col.filterPreset)  // Only check for filterPreset, not popular
       .map(col => {
-        const popularFilter = col.popularFilter!;
+        const filterPreset = col.filterPreset!;
         
         // Determine filter type based on configuration
-        const filterType = (() => {
-          if (popularFilter.value !== undefined) return 'preloaded';
-          if (popularFilter.operator === 'preset') return 'date_presets';
+        const filterType: 'predefined' | 'user_input' | 'dropdown' | 'date_presets' | 'date_picker' | 'date_range' = (() => {
+          if (filterPreset.value !== undefined) return 'predefined';
+          if (filterPreset.operator === 'preset') return 'date_presets';
           
           // For fields with options but no predefined value
           if (col.options && col.options.length > 0) return 'dropdown';
           
           // For datetime fields
           if (col.type === 'datetime') {
-            if (popularFilter.operator === 'between') return 'date_range';
-            if (popularFilter.operator === 'equals') return 'date_picker';
+            if (filterPreset.operator === 'between') return 'date_range';
+            if (filterPreset.operator === 'equals') return 'date_picker';
           }
           
           // Default to user input for fields without predefined values
@@ -99,18 +102,21 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 
         return {
           id: `popular-${col.field}`,
-          label: popularFilter.label || col.display,
+          label: filterPreset.label || col.display,
           type: filterType,
           field: col.field,
-          operator: popularFilter.operator,
-          value: popularFilter.value,
+          operator: filterPreset.operator,
+          value: filterPreset.value,
           icon: getIconForColumn(col),
           options: col.options,
-          placeholder: `Enter ${(popularFilter.label || col.display)?.toLowerCase() || 'value'}...`,
+          placeholder: `Enter ${(filterPreset.label || col.display)?.toLowerCase() || 'value'}...`,
           // Store the column for consistent field naming
           column: col
         };
       });
+    
+    console.log('FilterDropdownMenu: Generated filter presets:', presets);
+    return presets;
   }, [config]);
 
   // Generate group by options from config
@@ -143,8 +149,8 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
   }
 
   // Handle filter application
-  const handleFilterClick = (filter: PopularFilter) => {
-    if (filter.type === 'preloaded') {
+  const handleFilterClick = (filter: FilterPreset) => {
+    if (filter.type === 'predefined') {
       // Apply preloaded filter directly with additive logic
       // Use the column display name for consistent field naming
       const fieldName = filter.column?.display || filter.field;
@@ -207,7 +213,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
         options: filter.options,
         placeholder: filter.placeholder
       };
-      setShowPopularFilter(filterConfig);
+      setShowFilterPreset(filterConfig);
       setIsOpen(false);
     }
   };
@@ -264,32 +270,52 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                 </div>
               </div>
               <div className="p-2 space-y-1 max-h-80 overflow-y-auto">
-                {popularFilters.map((filter) => (
-                  <button
-                    key={filter.id}
-                    onClick={() => handleFilterClick(filter)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
-                  >
-                    {filter.icon}
-                    <span className="flex-1">{filter.label}</span>
-                    {filter.type === 'preloaded' && filter.value !== undefined && (
-                      <Badge variant="secondary" className="text-xs">
-                        {typeof filter.value === 'boolean' 
-                          ? (filter.value ? 'Yes' : 'No')
-                          : String(filter.value)
-                        }
-                      </Badge>
-                    )}
-                  </button>
-                ))}
+                {filterPresets.length === 0 ? (
+                  <div className="text-center text-gray-500 text-sm py-6">
+                    <div className="flex flex-col items-center gap-2">
+                      <Filter className="w-6 h-6 text-gray-300" />
+                      <span>No filter presets available</span>
+                    </div>
+                  </div>
+                ) : (
+                  filterPresets.map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => handleFilterClick(filter)}
+                      className="w-full text-left px-3 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-200 border border-transparent rounded-md transition-all duration-200 flex items-center gap-3 group"
+                    >
+                      <div className="flex-shrink-0 text-blue-600 group-hover:text-blue-700">
+                        {filter.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-900 group-hover:text-blue-900">
+                          {filter.label}
+                        </span>
+                        {filter.type !== 'predefined' && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Click to configure
+                          </div>
+                        )}
+                      </div>
+                      {filter.type === 'predefined' && filter.value !== undefined && (
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-200 flex-shrink-0">
+                          {typeof filter.value === 'boolean' 
+                            ? (filter.value ? 'Yes' : 'No')
+                            : String(filter.value)
+                          }
+                        </Badge>
+                      )}
+                    </button>
+                  ))
+                )}
                 
                 <div className="border-t border-gray-100 pt-2 mt-2">
                   <button
                     onClick={handleCustomFilterDialog}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 border border-dashed border-gray-300 hover:border-gray-400 rounded-md transition-all duration-200 flex items-center gap-3"
                   >
-                    <Plus className="w-4 h-4" />
-                    Add Custom Filter
+                    <Plus className="w-4 h-4 text-gray-400" />
+                    <span>Add Custom Filter</span>
                   </button>
                 </div>
               </div>
@@ -386,14 +412,14 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
       />
 
       {/* Popular Filter Component Dialog */}
-      {showPopularFilter && (
-        <Popover open={!!showPopularFilter} onOpenChange={() => setShowPopularFilter(null)}>
+      {showFilterPreset && (
+        <Popover open={!!showFilterPreset} onOpenChange={() => setShowFilterPreset(null)}>
           <PopoverTrigger asChild>
             <div />
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">
             <FilterPresets
-              filter={showPopularFilter}
+              filter={showFilterPreset}
               onApply={(newFilter) => {
                 // Apply as additive filter instead of replacing
                 if (!complexFilter) {
@@ -419,9 +445,9 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                     onFilterApply(updatedFilter);
                   }
                 }
-                setShowPopularFilter(null);
+                setShowFilterPreset(null);
               }}
-              onClose={() => setShowPopularFilter(null)}
+              onClose={() => setShowFilterPreset(null)}
             />
           </PopoverContent>
         </Popover>
