@@ -13,7 +13,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Spinner } from '@/components/ui/spinner';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
-import { rateLimiter, validateEmail, sanitizeInput } from '@/shared/utils/security';
+import { RateLimiter, isValidEmail, sanitizeInput } from '@/shared/utils/security';
+
+// Create rate limiter instance for login attempts
+const loginRateLimiter = new RateLimiter({ windowMs: 15 * 60 * 1000, maxRequests: 5 }); // 5 attempts per 15 minutes
 
 function LoginForm() {
   const router = useRouter();
@@ -38,7 +41,7 @@ function LoginForm() {
         setLockoutTime(lockoutTime);
       } else {
         localStorage.removeItem('loginLockout');
-        rateLimiter.reset('login');
+        loginRateLimiter.reset('login');
       }
     }
   }, []);
@@ -53,7 +56,7 @@ function LoginForm() {
         setIsLocked(false);
         setLockoutTime(null);
         localStorage.removeItem('loginLockout');
-        rateLimiter.reset('login');
+        loginRateLimiter.reset('login');
       }
     }, 1000);
 
@@ -70,7 +73,7 @@ function LoginForm() {
     const sanitizedPassword = sanitizeInput(password);
 
     // Client-side validation
-    if (!validateEmail(sanitizedEmail)) {
+    if (!isValidEmail(sanitizedEmail)) {
       setError('Please enter a valid email address');
       return;
     }
@@ -81,7 +84,8 @@ function LoginForm() {
     }
 
     // Rate limiting check
-    if (!rateLimiter.isAllowed('login')) {
+    const rateLimitResult = loginRateLimiter.checkLimit('login');
+    if (!rateLimitResult.allowed) {
       const lockoutEnd = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
       setIsLocked(true);
       setLockoutTime(lockoutEnd);
@@ -93,13 +97,13 @@ function LoginForm() {
     setIsLoading(true);
     try {
       await login({ email: sanitizedEmail, password: sanitizedPassword });
-      rateLimiter.reset('login');
+      loginRateLimiter.reset('login');
       
       // Redirect to root - middleware will handle the appropriate routing
       router.push('/');
     } catch (err: unknown) {
-      rateLimiter.recordFailure('login');
-      const remainingAttempts = rateLimiter.getRemainingAttempts('login');
+      const rateLimitCheck = loginRateLimiter.checkLimit('login');
+      const remainingAttempts = rateLimitCheck.remaining || 0;
       
       if (remainingAttempts <= 0) {
         setError('Too many failed attempts. Please try again in 15 minutes.');

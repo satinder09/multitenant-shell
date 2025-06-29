@@ -1,17 +1,14 @@
-// Platform domain module exports
-// Platform administration and multi-tenant management
+// Platform domain barrel file
 
-// Components
-// export * from './components'; // TODO: Add components when created
-
-// Hooks
-export * from './hooks';
+// Types (avoiding duplicates)
+export * from './types/tenant.types';
+export * from './types/user.types';
 
 // Services
-export * from './services';
+export { platformApiClient } from './services/platformApiClient';
 
-// Types
-export * from './types';
+// Utilities
+export * from './utils/tenantHelpers';
 
-// Utils
-// export * from './utils'; // TODO: Add utils when needed 
+// Hooks
+export * from './hooks/usePlatformApi'; 

@@ -1,4 +1,4 @@
-import { TenantModel, Tenant, TenantAccessInfo, TenantAccessOption } from '../types';
+import { TenantModel, Tenant, TenantAccessInfo, TenantAccessOption } from '@/domains/platform/types/tenant.types';
 
 // Utility function to get access level color
 export const getAccessLevelColor = (level: string): string => {

@@ -14,10 +14,10 @@ export type {
   ValidationError,
   LoginCredentials,
   AuthResponse,
-} from '../../../../libs/core';
+} from './common';
 
 // Import for local usage
-import type { User, LoginCredentials } from '../../../../libs/core';
+import type { User, LoginCredentials } from './common';
 
 // Frontend-specific UI types
 export interface UIState {

@@ -13,8 +13,8 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
-import { CreateTenantDialogProps } from '../types';
-import { createTenantAction } from '../utils/tenantHelpers';
+import { CreateTenantDialogProps } from '@/domains/platform/types/tenant.types';
+import { createTenantAction } from '@/domains/platform/utils/tenantHelpers';
 
 const CreateTenantDialog: React.FC<CreateTenantDialogProps> = ({
   open,

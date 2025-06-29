@@ -3,9 +3,9 @@ import React, { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthContext } from '../../context/AuthContext';
-import { PlatformContext } from '../../context/PlatformContext';
-import { ThemeProvider } from '../../context/theme-provider';
+import { AuthContext } from '@/context/AuthContext';
+import { PlatformContext } from '@/context/PlatformContext';
+import { ThemeProvider } from '@/context/theme-provider';
 
 // Mock data generators
 export class MockDataGenerator {

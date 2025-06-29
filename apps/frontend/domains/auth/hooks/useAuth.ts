@@ -2,7 +2,7 @@
 'use client';
 
 import { useAuth as useAuthContext } from '@/context/AuthContext';
-import { AuthContextType } from '../types/auth.types';
+import { AuthContextType } from '@/domains/auth/types/auth.types';
 
 // Re-export the main auth hook
 export const useAuth = useAuthContext;

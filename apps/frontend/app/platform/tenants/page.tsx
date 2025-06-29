@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { ConfigDrivenModulePage } from '@/shared/modules/ConfigDrivenModulePage';
-import CreateTenantDialog from './components/CreateTenantDialog';
-import { SecureLoginModal } from './components/SecureLoginModal';
-import { ImpersonationModal } from './components/ImpersonationModal';
-import type { TenantAccessOption } from './types';
+import CreateTenantDialog from '@/components/features/tenant-management/CreateTenantDialog';
+import { SecureLoginModal } from '@/components/features/tenant-management/SecureLoginModal';
+import { ImpersonationModal } from '@/components/features/tenant-management/ImpersonationModal';
+import type { TenantAccessOption } from '@/domains/platform/types/tenant.types';
 
 export default function TenantsPage() {
   // Modal states

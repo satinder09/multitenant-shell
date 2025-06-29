@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
-import { ProtectedRouteProps } from '../types/auth.types';
+import { ProtectedRouteProps } from '@/domains/auth/types/auth.types';
 
 interface ExtendedProtectedRouteProps extends ProtectedRouteProps {
   /**

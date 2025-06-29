@@ -9,7 +9,7 @@ import type {
   UserSortParams,
   UserListResponse,
   Role
-} from '../types';
+} from '@/domains/platform/types/user.types';
 
 const DEFAULT_LIMIT = 10;
 const DEFAULT_FILTERS: UserFilters = {

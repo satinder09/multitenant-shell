@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { Eye, EyeOff } from 'lucide-react';
-import { LoginFormProps, LoginFormData } from '../types/auth.types';
+import { LoginFormProps, LoginFormData } from '@/domains/auth/types/auth.types';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

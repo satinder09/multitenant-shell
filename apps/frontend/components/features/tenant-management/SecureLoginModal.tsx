@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Shield, Loader2 } from 'lucide-react';
-import { SecureLoginModalProps } from '../types';
+import { SecureLoginModalProps } from '@/domains/platform/types/tenant.types';
 
 export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModalProps) {
   const [duration, setDuration] = useState(60);

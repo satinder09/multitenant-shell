@@ -1,7 +1,7 @@
 // Auth domain API hooks
 import { useApiQuery } from '@/shared/services/api/hooks/useApiQuery';
-import { authApiClient } from '../services/authApiClient';
-import { AuthUser } from '../types/auth.types';
+import { authApiClient } from '@/domains/auth/services/authApiClient';
+import { AuthUser } from '@/domains/auth/types/auth.types';
 
 export function useCurrentUser() {
   return useApiQuery<AuthUser>(

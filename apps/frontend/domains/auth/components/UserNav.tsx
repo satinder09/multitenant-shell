@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, User, Settings } from 'lucide-react';
-import { UserNavProps } from '../types/user.types';
+import { UserNavProps } from '@/domains/auth/types/user.types';
 
 interface ExtendedUserNavProps extends Partial<UserNavProps> {
   showSettings?: boolean;

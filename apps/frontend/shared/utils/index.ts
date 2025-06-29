@@ -1,9 +1,10 @@
 // Frontend-specific utility functions
 
 // Re-export core utilities
-export * from '../../../../libs/core/utils/validation';
-export * from '../../../../libs/core/utils/date';
-export * from '../../../../libs/core/utils/security';
+// Re-export core utilities (now local)
+export * from './validation';
+export * from './date';
+export * from './security';
 
 // DOM and browser utilities
 export function getElement(selector: string): HTMLElement | null {

@@ -1,5 +1,5 @@
 // Authentication service
-import { LoginCredentials, LoginResponse, AuthUser } from '../types/auth.types';
+import { LoginCredentials, LoginResponse, AuthUser } from '@/domains/auth/types/auth.types';
 
 class AuthService {
   private baseUrl = '/api/auth';

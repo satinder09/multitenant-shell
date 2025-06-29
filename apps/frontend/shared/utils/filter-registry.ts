@@ -1,5 +1,5 @@
 import React from 'react';
-import { FilterOperator } from '../types/types';
+import { FilterOperator } from '@/shared/types/types';
 
 // Core interfaces for the registration system
 export interface PopularFilterConfig {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { storage, debounce, throttle } from '../utils';
+import { storage, debounce, throttle } from '@/shared/utils';
 import type { 
   UIState, 
   TableState, 

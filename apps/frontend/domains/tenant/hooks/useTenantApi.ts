@@ -1,6 +1,6 @@
 // Tenant domain API hooks
 import { useApiQuery } from '@/shared/services/api/hooks/useApiQuery';
-import { tenantApiClient } from '../services/tenantApiClient';
+import { tenantApiClient } from '@/domains/tenant/services/tenantApiClient';
 import { PaginatedResponse, QueryOptions } from '@/shared/services/api/types';
 import { 
   Tenant,

@@ -1,5 +1,5 @@
 // Authentication utility functions
-import { AuthUser } from '../types/auth.types';
+import { AuthUser } from '@/domains/auth/types/auth.types';
 
 export function getUserDisplayName(user: AuthUser | null): string {
   if (!user) return 'Guest';
