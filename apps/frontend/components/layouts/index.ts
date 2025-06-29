@@ -10,5 +10,4 @@ export { default as Sidebar } from './Sidebar';
 export { default as TenantSidebar } from './TenantSidebar';
 export { default as PlatformSidebar } from './PlatformSidebar';
 export { default as SubSidebar } from './SubSidebar';
-export { default as TopBar } from './TopBar';
 export { default as Header } from './Header'; 

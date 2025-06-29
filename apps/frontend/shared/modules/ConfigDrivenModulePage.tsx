@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { AdvancedDataTable } from '@/components/composite/AdvancedDataTable';
 import { FilterDropdownMenu } from '@/components/common/generic-filter/FilterDropdownMenu';
-import { ClickableFilterTags } from '@/components/common/generic-filter/ClickableFilterTags';
+import { FilterTags } from '@/components/common/generic-filter/FilterTags';
 import { FilterDialog } from '@/components/common/generic-filter/FilterDialog';
 import { useGenericFilter } from '@/shared/hooks/useGenericFilter';
 import { getModuleConfig } from '@/shared/modules/module-registry';
@@ -493,7 +493,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
 
         {/* Active Filters Display */}
         {hasActiveFilters && (
-          <ClickableFilterTags
+          <FilterTags
             filter={complexFilter || null}
             onEditFilter={(singleRuleFilter) => {
               // Store the original filter and the rule being edited

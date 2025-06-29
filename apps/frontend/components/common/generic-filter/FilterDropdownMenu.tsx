@@ -19,7 +19,7 @@ import {
 import { ComplexFilter, ComplexFilterRule, SavedSearch } from '@/shared/types/types';
 import { ModuleConfig, ColumnDefinition } from '@/shared/modules/types';
 import { FilterDialog } from './FilterDialog';
-import { PopularFilterComponent, PopularFilterConfig } from './PopularFilterComponents';
+import { FilterPresets, FilterPresetsConfig } from './FilterPresets';
 import { createComplexFilterRule } from '@/shared/utils/filterUtils';
 
 interface FilterDropdownMenuProps {
@@ -66,7 +66,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomFilterDialog, setShowCustomFilterDialog] = useState(false);
-  const [showPopularFilter, setShowPopularFilter] = useState<PopularFilterConfig | null>(null);
+  const [showPopularFilter, setShowPopularFilter] = useState<FilterPresetsConfig | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -197,7 +197,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
       setIsOpen(false);
     } else {
       // For all other filter types, show the appropriate filter component
-      const filterConfig: PopularFilterConfig = {
+      const filterConfig: FilterPresetsConfig = {
         id: filter.id,
         label: filter.label,
         field: filter.field,
@@ -392,7 +392,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
             <div />
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">
-            <PopularFilterComponent
+            <FilterPresets
               filter={showPopularFilter}
               onApply={(newFilter) => {
                 // Apply as additive filter instead of replacing

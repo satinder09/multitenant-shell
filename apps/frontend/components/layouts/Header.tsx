@@ -1,6 +1,6 @@
 'use client'
 
-import { UserNav } from '@/components/common/UserNav'
+import { UserNav } from '@/domains/auth/components/UserNav'
 import ThemeToggle from '@/components/common/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

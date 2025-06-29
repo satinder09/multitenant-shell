@@ -20,7 +20,7 @@ import {
   getOperatorsForFieldType, 
   getDefaultValueForFieldType 
 } from '@/shared/utils/filter-field-types';
-import { EnhancedValueInput } from './EnhancedValueInputs';
+import { DynamicInput } from './DynamicInputs';
 import { NestedFieldSelector } from './NestedFieldSelector';
 import { createFilterLabel } from '@/shared/utils/filterUtils';
 
@@ -319,7 +319,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                   {/* Value Input */}
                   {rule.field && (
                     <div className="flex-1">
-                      <EnhancedValueInput
+                      <DynamicInput
                         fieldName={rule.field}
                         fieldPath={rule.fieldPath}
                         fieldType={rule.fieldType}

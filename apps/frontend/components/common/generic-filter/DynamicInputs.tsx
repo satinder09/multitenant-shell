@@ -20,7 +20,7 @@ import { MultiValueSelector } from './MultiValueSelector';
 import { ColumnDefinition } from '@/shared/modules/types';
 import { filterSourceService, FilterOption } from '@/shared/services/core/filter-source.service';
 
-interface EnhancedValueInputProps {
+interface DynamicInputProps {
   fieldName: string;
   fieldPath: string[];
   fieldType: string;
@@ -32,7 +32,7 @@ interface EnhancedValueInputProps {
   fieldConfig?: ColumnDefinition; // Add fieldConfig prop for filterSource support
 }
 
-export const EnhancedValueInput: React.FC<EnhancedValueInputProps> = ({
+export const DynamicInput: React.FC<DynamicInputProps> = ({
   fieldName,
   fieldPath,
   fieldType,

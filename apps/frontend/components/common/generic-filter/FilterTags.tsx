@@ -8,14 +8,14 @@ import { ComplexFilter, ComplexFilterRule } from '@/shared/types/types';
 import { DATE_PRESETS } from '@/shared/utils/filter-field-types';
 import { format } from 'date-fns';
 
-interface ClickableFilterTagsProps {
+interface FilterTagsProps {
   filter: ComplexFilter | null;
   onEditFilter: (filter: ComplexFilter) => void;
   onRemoveFilter: (ruleId: string) => void;
   onClearAll: () => void;
 }
 
-export const ClickableFilterTags: React.FC<ClickableFilterTagsProps> = ({
+export const FilterTags: React.FC<FilterTagsProps> = ({
   filter,
   onEditFilter,
   onRemoveFilter,

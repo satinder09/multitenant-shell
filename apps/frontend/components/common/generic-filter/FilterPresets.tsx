@@ -15,13 +15,13 @@ import { FilterSource } from '@/shared/modules/types';
 import { generateId } from '@/shared/utils/utils';
 import { createComplexFilterRule } from '@/shared/utils/filterUtils';
 
-interface PopularFilterComponentProps {
-  filter: PopularFilterConfig;
+interface FilterPresetsProps {
+  filter: FilterPresetsConfig;
   onApply: (filter: ComplexFilter) => void;
   onClose: () => void;
 }
 
-export interface PopularFilterConfig {
+export interface FilterPresetsConfig {
   id: string;
   label: string;
   field: string;
@@ -57,7 +57,7 @@ const DATE_PRESETS = [
 ];
 
 // Predefined Filter Component
-export const PredefinedFilter: React.FC<PopularFilterComponentProps> = ({ filter, onApply, onClose }) => {
+export const PredefinedFilter: React.FC<FilterPresetsProps> = ({ filter, onApply, onClose }) => {
   const handleApply = () => {
     // Use column display name for proper labeling, fallback to field name
     const fieldName = filter.column?.display || filter.field;
@@ -101,7 +101,7 @@ export const PredefinedFilter: React.FC<PopularFilterComponentProps> = ({ filter
 };
 
 // User Input Filter Component
-export const UserInputFilter: React.FC<PopularFilterComponentProps> = ({ filter, onApply, onClose }) => {
+export const UserInputFilter: React.FC<FilterPresetsProps> = ({ filter, onApply, onClose }) => {
   const [value, setValue] = useState('');
 
   const handleApply = () => {
@@ -149,7 +149,7 @@ export const UserInputFilter: React.FC<PopularFilterComponentProps> = ({ filter,
 };
 
 // Dropdown Filter Component
-export const DropdownFilter: React.FC<PopularFilterComponentProps> = ({ filter, onApply, onClose }) => {
+export const DropdownFilter: React.FC<FilterPresetsProps> = ({ filter, onApply, onClose }) => {
   const [selectedValue, setSelectedValue] = useState<string>('');
   const [options, setOptions] = useState<FilterOption[]>(filter.options || []);
   const [loading, setLoading] = useState(false);
@@ -321,7 +321,7 @@ export const DropdownFilter: React.FC<PopularFilterComponentProps> = ({ filter, 
 };
 
 // Date Picker Filter Component
-export const DatePickerFilter: React.FC<PopularFilterComponentProps> = ({ filter, onApply, onClose }) => {
+export const DatePickerFilter: React.FC<FilterPresetsProps> = ({ filter, onApply, onClose }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -402,7 +402,7 @@ export const DatePickerFilter: React.FC<PopularFilterComponentProps> = ({ filter
 };
 
 // Date Range Filter Component
-export const DateRangeFilter: React.FC<PopularFilterComponentProps> = ({ filter, onApply, onClose }) => {
+export const DateRangeFilter: React.FC<FilterPresetsProps> = ({ filter, onApply, onClose }) => {
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined
@@ -483,7 +483,7 @@ export const DateRangeFilter: React.FC<PopularFilterComponentProps> = ({ filter,
 };
 
 // Date Presets Filter Component
-export const DatePresetsFilter: React.FC<PopularFilterComponentProps> = ({ filter, onApply, onClose }) => {
+export const DatePresetsFilter: React.FC<FilterPresetsProps> = ({ filter, onApply, onClose }) => {
   const [selectedPreset, setSelectedPreset] = useState<string>('');
 
   const handleApply = () => {
@@ -540,7 +540,7 @@ export const DatePresetsFilter: React.FC<PopularFilterComponentProps> = ({ filte
 };
 
 // Main Popular Filter Component
-export const PopularFilterComponent: React.FC<PopularFilterComponentProps> = ({ filter, onApply, onClose }) => {
+export const FilterPresets: React.FC<FilterPresetsProps> = ({ filter, onApply, onClose }) => {
   switch (filter.type) {
     case 'predefined':
       return <PredefinedFilter filter={filter} onApply={onApply} onClose={onClose} />;
