@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { ReactNode } from 'react'
-import AppSheet from '@/components/composite/AppSheet'
+import { AppSheet } from '@/components/composite/AppSheet'
 
 type SheetConfig = {
   open: boolean

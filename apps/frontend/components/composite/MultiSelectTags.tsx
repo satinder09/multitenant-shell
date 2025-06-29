@@ -25,7 +25,7 @@ interface Option {
   description?: string
 }
 
-interface ComboBoxTagsProps {
+interface MultiSelectTagsProps {
   label?: string
   placeholder?: string
   searchPlaceholder?: string
@@ -36,7 +36,7 @@ interface ComboBoxTagsProps {
   className?: string
 }
 
-export default function ComboBoxTags({
+export function MultiSelectTags({
   label,
   placeholder = 'Select items...',
   searchPlaceholder = 'Search...',
@@ -45,7 +45,7 @@ export default function ComboBoxTags({
   options,
   disabled = false,
   className,
-}: ComboBoxTagsProps) {
+}: MultiSelectTagsProps) {
   const [open, setOpen] = React.useState(false)
 
   const selectedOptions = options.filter(option => selected.includes(option.value))

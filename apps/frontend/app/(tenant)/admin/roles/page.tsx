@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import ComboBoxTags from '@/components/composite/ComboBoxTags';
+import { MultiSelectTags } from '@/components/composite';
 import { Plus, Edit, Trash2, Shield } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { confirm, DialogOverlay } from '@/shared/utils/ui/dialogUtils';
@@ -404,8 +404,6 @@ export default function AdminRolesPage() {
         </Card>
       )}
 
-
-
       {/* Create Role Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent>
@@ -427,7 +425,7 @@ export default function AdminRolesPage() {
             </div>
             <div>
               <Label>Permissions</Label>
-              <ComboBoxTags
+              <MultiSelectTags
                 placeholder="Select permissions..."
                 options={safePermissions.map(permission => ({
                   value: permission.id,
@@ -476,7 +474,7 @@ export default function AdminRolesPage() {
             </div>
             <div>
               <Label>Permissions</Label>
-              <ComboBoxTags
+              <MultiSelectTags
                 placeholder="Select permissions..."
                 options={safePermissions.map(permission => ({
                   value: permission.id,

@@ -20,9 +20,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/context/AuthContext';
 import { confirm } from '@/shared/utils/ui/dialogUtils';
 import { AlertTriangle, Edit, Trash2, Plus, Shield, Users, Settings, Key, MoreHorizontal, Download, Filter } from 'lucide-react';
-import ComboBoxTags from '@/components/composite/ComboBoxTags';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MultiSelectTags } from '@/components/composite';
 
 // Import our enhanced UI components
 import { SectionHeader } from '@/components/composite/SectionHeader';
@@ -267,7 +267,7 @@ export default function PlatformRolesPage() {
     setEditDialogOpen(open);
   };
 
-  // Transform permissions for ComboBoxTags
+  // Transform permissions for MultiSelectTags
   const permissionOptions = permissions.map(p => ({
     value: p.id,
     label: p.name,
@@ -472,7 +472,7 @@ export default function PlatformRolesPage() {
                       Permissions
                     </Label>
                     <div className="col-span-3">
-                    <ComboBoxTags
+                    <MultiSelectTags
                       options={permissionOptions}
                       selected={selectedPermissions}
                       onChange={setSelectedPermissions}
@@ -536,7 +536,7 @@ export default function PlatformRolesPage() {
                   Permissions
                 </Label>
                 <div className="col-span-3">
-                <ComboBoxTags
+                <MultiSelectTags
                   options={permissionOptions}
                   selected={editSelectedPermissions}
                   onChange={setEditSelectedPermissions}

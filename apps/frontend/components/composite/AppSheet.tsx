@@ -21,7 +21,7 @@ interface AppSheetProps {
   className?: string
 }
 
-export default function AppSheet({
+export function AppSheet({
   open,
   onClose,
   title,

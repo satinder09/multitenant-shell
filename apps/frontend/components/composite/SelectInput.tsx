@@ -19,7 +19,7 @@ interface SelectInputProps {
   disabled?: boolean
 }
 
-export default function SelectInput({
+export function SelectInput({
   id,
   label,
   value,

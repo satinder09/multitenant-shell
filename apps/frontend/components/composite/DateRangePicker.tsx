@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { format } from 'date-fns'
 
-export default function DateRangePicker({
+export function DateRangePicker({
   date,
   setDate,
 }: {

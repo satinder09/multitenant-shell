@@ -1,47 +1,43 @@
 'use client';
 import { usePlatform } from '@/context/PlatformContext';
 import { useAuth } from '@/context/AuthContext';
-import PlatformLayout from './PlatformLayout';
-import TenantLayout from './TenantLayout';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import UnifiedLayout from './UnifiedLayout';
 
 export default function ContextAwareLayout({ children }: { children: React.ReactNode }) {
   const { isPlatform, tenantSubdomain } = usePlatform();
   const { user, isAuthenticated } = useAuth();
+  const pathname = usePathname();
   const router = useRouter();
+
+  // Pages that should not have the layout wrapper
+  const publicPages = ['/login'];
+  const isPublicPage = publicPages.includes(pathname);
 
   console.log('[ContextAwareLayout] Rendering with state:', { 
     isPlatform, 
     tenantSubdomain, 
     isAuthenticated, 
     userEmail: user?.email,
-    isSuperAdmin: user?.isSuperAdmin 
+    isSuperAdmin: user?.isSuperAdmin,
+    isPublicPage
   });
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isPublicPage) {
       console.log('[ContextAwareLayout] User not authenticated, redirecting to login');
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isPublicPage, router]);
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    console.log('[ContextAwareLayout] Not authenticated, returning null');
-    return null;
+  // If it's a public page or user is not authenticated, render without layout
+  if (isPublicPage || !isAuthenticated) {
+    console.log('[ContextAwareLayout] Public page or not authenticated, rendering children directly');
+    return <>{children}</>;
   }
 
-  // Render appropriate layout based on context
-  if (isPlatform) {
-    console.log('[ContextAwareLayout] Platform context detected, rendering PlatformLayout');
-    return (
-      <PlatformLayout>{children}</PlatformLayout>
-    );
-  } else {
-    console.log('[ContextAwareLayout] Tenant context detected, rendering TenantLayout');
-    return (
-      <TenantLayout>{children}</TenantLayout>
-    );
-  }
+  // For authenticated pages, use the unified layout
+  console.log('[ContextAwareLayout] Authenticated private page, rendering UnifiedLayout');
+  return <UnifiedLayout>{children}</UnifiedLayout>;
 } 

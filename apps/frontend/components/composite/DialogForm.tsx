@@ -19,7 +19,7 @@ interface DialogFormProps {
   onSubmit?: () => void
 }
 
-export default function DialogForm({
+export function DialogForm({
   triggerLabel,
   title,
   description,
