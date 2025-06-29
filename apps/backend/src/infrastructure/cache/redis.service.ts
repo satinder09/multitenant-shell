@@ -23,6 +23,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: any; // Redis client (will be imported dynamically)
   private isConnected = false;
+  private connectionAttempted = false;
+  private redisAvailable = false;
 
   constructor(private configService: ConfigService) {}
 
@@ -35,6 +37,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async connect(): Promise<void> {
+    if (this.connectionAttempted) return;
+    this.connectionAttempted = true;
+
     try {
       // Dynamic import to avoid dependency issues if Redis is not available
       const Redis = await import('ioredis').then(m => m.default).catch(() => null);
@@ -60,23 +65,52 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         password: config.password,
         db: config.db,
         keyPrefix: config.keyPrefix,
-        maxRetriesPerRequest: 3,
         lazyConnect: true,
+        enableOfflineQueue: false, // Disable offline queue
+        connectTimeout: 5000, // 5 second timeout
+        maxRetriesPerRequest: null, // Disable retries completely
       });
 
       this.client.on('connect', () => {
-        this.logger.log('Connected to Redis');
+        this.logger.log('✅ Connected to Redis');
         this.isConnected = true;
+        this.redisAvailable = true;
       });
 
       this.client.on('error', (error: Error) => {
-        this.logger.error('Redis connection error:', error);
+        if (!this.redisAvailable) {
+          // Only log the first error, then stay silent
+          this.logger.warn('Redis not available - using in-memory cache fallback');
+        }
         this.isConnected = false;
       });
 
-      await this.client.connect();
+      this.client.on('close', () => {
+        this.isConnected = false;
+      });
+
+      // Try to connect once with timeout
+      await Promise.race([
+        this.client.connect(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout')), 5000)
+        )
+      ]);
+
     } catch (error) {
-      this.logger.error('Failed to initialize Redis:', error);
+      this.logger.warn('Redis connection failed - using in-memory cache fallback');
+      this.isConnected = false;
+      this.redisAvailable = false;
+      
+      // Clean up client to prevent further connection attempts
+      if (this.client) {
+        try {
+          this.client.disconnect();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        this.client = null;
+      }
     }
   }
 

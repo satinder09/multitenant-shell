@@ -64,15 +64,24 @@ export class DatabaseOptimizationService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('🚀 Initializing Database Optimization Service...');
-    
-    // Start performance monitoring
-    this.startPerformanceMonitoring();
-    
-    // Apply critical optimizations on startup
-    await this.applyCriticalOptimizations();
-    
-    this.logger.log('✅ Database Optimization Service initialized');
+    try {
+      this.logger.log('🚀 Initializing Database Optimization Service...');
+      
+      // Apply optimizations in the background without blocking startup
+      setTimeout(async () => {
+        try {
+          await this.applyCriticalOptimizations();
+          this.startPerformanceMonitoring();
+        } catch (error) {
+          this.logger.warn('Database optimization failed during background initialization:', error instanceof Error ? error.message : String(error));
+          this.logger.log('Application will continue running - optimizations can be triggered manually via /performance/optimize endpoint');
+        }
+      }, 5000); // Wait 5 seconds after startup
+      
+    } catch (error) {
+      this.logger.error('Database Optimization Service initialization error:', error);
+      // Don't throw - let the application continue starting
+    }
   }
 
   /**
@@ -276,11 +285,11 @@ export class DatabaseOptimizationService implements OnModuleInit {
         };
       }
 
-      // Create the index
-      const columnsList = columns.join(', ');
-      const indexQuery = `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${indexName}" ON "${table}" (${columnsList})`;
+      // Create the index with properly quoted column names
+      const quotedColumns = columns.map((col: string) => `"${col}"`).join(', ');
+      const indexQuery = `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${indexName}" ON "${table}" (${quotedColumns})`;
       
-      this.logger.log(`Creating performance index: ${indexName} on ${table}(${columnsList})`);
+      this.logger.log(`Creating performance index: ${indexName} on ${table}(${columns.join(', ')})`);
       
       // Use raw query to create index
       await this.masterDb.$executeRawUnsafe(indexQuery);
@@ -397,7 +406,16 @@ export class DatabaseOptimizationService implements OnModuleInit {
         WHERE datname = current_database()
       ` as any[];
 
-      const stats = connectionStats[0] || {};
+      const rawStats = connectionStats[0] || {};
+      
+      // Convert all BigInt values to numbers immediately
+      const stats = {
+        total_connections: Number(rawStats.total_connections) || 0,
+        active_connections: Number(rawStats.active_connections) || 0,
+        idle_connections: Number(rawStats.idle_connections) || 0,
+        idle_in_transaction: Number(rawStats.idle_in_transaction) || 0,
+        long_running_queries: Number(rawStats.long_running_queries) || 0,
+      };
       
       const recommendations: string[] = [];
 
@@ -419,10 +437,10 @@ export class DatabaseOptimizationService implements OnModuleInit {
       }
 
       return {
-        currentConnections: parseInt(stats.total_connections) || 0,
+        currentConnections: stats.total_connections,
         maxConnections: 100, // This would come from PostgreSQL settings
-        idleConnections: parseInt(stats.idle_connections) || 0,
-        longRunningQueries: parseInt(stats.long_running_queries) || 0,
+        idleConnections: stats.idle_connections,
+        longRunningQueries: stats.long_running_queries,
         recommendations,
       };
 
