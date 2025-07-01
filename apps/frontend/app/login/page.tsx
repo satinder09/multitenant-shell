@@ -9,22 +9,28 @@ import { usePlatform } from '@/context/PlatformContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { ProtectedRoute } from '@/domains/auth/components/ProtectedRoute';
-import { Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { RateLimiter, isValidEmail, sanitizeInput } from '@/shared/utils/security';
+import { cn } from '@/shared/utils/utils';
 
 // Create rate limiter instance for login attempts
 const loginRateLimiter = new RateLimiter({ windowMs: 15 * 60 * 1000, maxRequests: 5 }); // 5 attempts per 15 minutes
 
-function LoginForm() {
+function LoginForm({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   const router = useRouter();
   const { login } = useAuth();
   const { isPlatform, tenantSubdomain } = usePlatform();
   const loginInProgress = useRef(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +94,8 @@ function LoginForm() {
     return () => clearInterval(timer);
   }, [isLocked, lockoutTime]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
     console.log('🔔 handleSubmit called');
     if (isLocked || loginInProgress.current) return;
     
@@ -163,7 +170,7 @@ function LoginForm() {
         }
       }
 
-      await login({ email: sanitizedEmail, password: sanitizedPassword }, destination);
+      await login({ email: sanitizedEmail, password: sanitizedPassword, rememberMe }, destination);
       loginRateLimiter.reset('login');
       // Clear login attempt data on successful login
       sessionStorage.removeItem('login-attempt-data');
@@ -193,14 +200,6 @@ function LoginForm() {
     }
   };
 
-  // Handle Enter key press
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !isLoading && !isLocked) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
   const formatTimeRemaining = (): string => {
     if (!lockoutTime) return '';
     
@@ -216,110 +215,146 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-          <CardHeader className="space-y-1 text-center">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Lock className="w-6 h-6 text-primary" />
-            </div>
-            <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-            <CardDescription>
-              Enter your credentials to access your account
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email address
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="pl-10 pr-4"
-                    placeholder="Enter your email"
-                    disabled={isLoading || isLocked}
-                  />
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm overflow-hidden p-0">
+        <CardContent className="grid p-0 md:grid-cols-2">
+          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col items-center text-center">
+                <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
                 </div>
+                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <p className="text-muted-foreground text-balance">
+                  {isPlatform ? 'Login to your platform account' : `Login to your ${tenantSubdomain || 'tenant'} account`}
+                </p>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </Label>
+              <div className="grid gap-3">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="m@example.com"
+                  disabled={isLoading || isLocked}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-3">
+                <div className="flex items-center">
+                  <Label htmlFor="password">Password</Label>
+                  <button
+                    type="button"
+                    className="ml-auto text-sm underline-offset-2 hover:underline"
+                    disabled={isLoading || isLocked}
+                  >
+                    Forgot your password?
+                  </button>
+                </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="pl-10 pr-10"
+                    className="pr-10"
                     placeholder="Enter your password"
                     disabled={isLoading || isLocked}
+                    required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     disabled={isLoading || isLocked}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </button>
                 </div>
               </div>
 
-              {error && (
-                <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                  <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              {isLocked && lockoutTime && (
-                <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    Account temporarily locked. Try again in: {formatTimeRemaining()}
-                  </p>
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(!!checked)}
+                  disabled={isLoading || isLocked}
+                />
+                <Label
+                  htmlFor="rememberMe"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Remember me
+                </Label>
+              </div>
 
               <Button
-                type="button"
-                onClick={handleSubmit}
+                type="submit"
                 className="w-full"
                 disabled={isLoading || isLocked}
               >
                 {isLoading ? (
                   <>
-                    <Spinner className="mr-2" size="sm" />
-                    Signing in...
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Please wait
                   </>
                 ) : (
-                  'Sign in'
+                  'Login'
                 )}
               </Button>
-            </div>
+              
+              {error && (
+                <div className="flex items-center justify-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              )}
 
-            <div className="mt-6 text-center">
-              <p className="text-xs text-muted-foreground">
-                By signing in, you agree to our terms of service and privacy policy.
-              </p>
+              {isLocked && lockoutTime && (
+                <div className="text-sm text-amber-600 text-center">
+                  Account temporarily locked. Try again in: {formatTimeRemaining()}
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </form>
+          <div className="bg-muted relative hidden md:block">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-indigo-600/15 to-purple-600/10 flex items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-200">Multitenant Shell</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">
+                  Secure, scalable enterprise platform management solution
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <div className="text-muted-foreground text-center text-xs text-balance">
+        By clicking continue, you agree to our{" "}
+        <a href="#" className="underline underline-offset-4 hover:text-primary">
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a href="#" className="underline underline-offset-4 hover:text-primary">
+          Privacy Policy
+        </a>
+        .
       </div>
     </div>
   );
@@ -328,7 +363,11 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <ProtectedRoute requireAuth={false}>
-      <LoginForm />
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
+        <div className="w-full max-w-sm md:max-w-3xl">
+          <LoginForm />
+        </div>
+      </div>
     </ProtectedRoute>
   );
 }
