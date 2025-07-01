@@ -1,16 +1,11 @@
-import { IsString, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsBoolean } from 'class-validator';
 
 export class UpdateTenantDto {
-  @IsString()
   @IsOptional()
+  @IsString()
   name?: string;
 
-  @IsString()
   @IsOptional()
-  @IsIn(['active', 'inactive', 'evicted'])
-  status?: string;
-
-  @IsString()
-  @IsOptional()
-  planType?: string;
+  @IsBoolean()
+  isActive?: boolean;
 }

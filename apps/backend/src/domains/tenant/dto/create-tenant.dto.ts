@@ -7,8 +7,8 @@ export class CreateTenantDto {
   name: string;
 
   @IsString()
-  @IsNotEmpty()
-  dbName: string; // Or schemaName, depending on your multi-tenancy strategy
+  @IsOptional()
+  dbName?: string; // Optional: will be auto-generated if not provided
 
   @IsString()
   @IsOptional()

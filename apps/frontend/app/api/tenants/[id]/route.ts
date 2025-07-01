@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerApiClient } from '@/shared/services/api-client';
 
 // Handler for DELETE /api/tenants/[id]
 export async function DELETE(
@@ -6,22 +7,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const apiUrl = `${backendUrl}/tenants/${id}`;
+  // Use unified server API client to automatically forward cookies & CSRF
+  const api = createServerApiClient(req);
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'DELETE',
-      headers: {
-        'cookie': req.headers.get('cookie') || '',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return NextResponse.json(error, { status: response.status });
+    const backendResponse = await api.delete(`/tenants/${id}`);
+    if (!backendResponse.success) {
+      return NextResponse.json({ message: backendResponse.error || 'Failed to delete tenant' }, { status:  backendResponse.error ? 400 : 500 });
     }
 
+    // Return 204 No Content on success
     // Return a success response, often with no body for DELETE
     return new NextResponse(null, { status: 204 });
   } catch (error) {
@@ -36,26 +31,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const apiUrl = `${backendUrl}/tenants/${id}`;
+  // Parse incoming request body (expects `isActive` boolean)
   const body = await req.json();
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'cookie': req.headers.get('cookie') || '',
-      },
-      body: JSON.stringify(body),
-    });
-
-    const responseData = await response.json();
-    if (!response.ok) {
-      return NextResponse.json(responseData, { status: response.status });
+    const api = createServerApiClient(req);
+    const backendResponse = await api.patch(`/tenants/${id}`, body);
+    if (!backendResponse.success) {
+      return NextResponse.json({ message: backendResponse.error || 'Failed to update tenant' }, { status: 400 });
     }
 
-    return NextResponse.json(responseData);
+    // Return the updated tenant data
+    return NextResponse.json(backendResponse.data);
   } catch (error) {
     console.error(`API proxy error for PATCH /tenants/${id}:`, error);
     return NextResponse.json({ message: 'API proxy error' }, { status: 500 });

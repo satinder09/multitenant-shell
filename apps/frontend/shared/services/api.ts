@@ -2,6 +2,7 @@
 
 import { NextRequest } from 'next/server';
 import { securityFetch } from '@/domains/auth/services/csrfService';
+import { browserApi } from '@/shared/services/api-client';
 
 // Input sanitization functions (from core utilities)
 function sanitizeInput(input: string): string {
@@ -34,7 +35,9 @@ export interface ApiError {
   code?: string;
 }
 
-// Enhanced fetch with timeout and better error handling
+/**
+ * @deprecated Use browserApi.get/post/etc instead for unified API calls
+ */
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 10000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -109,14 +112,9 @@ export async function login(dto: LoginDto): Promise<LoginResponse> {
 // Utility function to check if user is authenticated
 export async function checkAuth(): Promise<boolean> {
   try {
-    const res = await fetchWithTimeout('/api/auth/me', {
-      credentials: 'include',
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    }, 5000);
-    
-    return res.ok;
+    // Use unified browserApi client instead of low-level fetch
+    await browserApi.get('/api/auth/me', undefined, { timeout: 5000 });
+    return true;
   } catch {
     return false;
   }
@@ -139,31 +137,36 @@ export interface CreateTenantDto {
   dbName: string;
 }
 
+/**
+ * @deprecated Use browserApi.get('/api/tenants') instead
+ */
 async function fetchTenants(): Promise<Tenant[]> {
-  const res = await fetchWithTimeout('/api/tenants', {
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to fetch tenants');
-  return res.json();
+  const response = await browserApi.get<Tenant[]>('/api/tenants');
+  if (!response.success) {
+    throw new Error('Failed to fetch tenants');
+  }
+  return response.data;
 }
 
+/**
+ * @deprecated Use browserApi.post('/api/tenants', dto) instead
+ */
 async function createTenant(dto: CreateTenantDto): Promise<Tenant> {
-  const res = await securityFetch('/api/tenants', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(dto),
-  });
-  if (!res.ok) throw new Error('Failed to create tenant');
-  return res.json();
+  const response = await browserApi.post<Tenant>('/api/tenants', dto);
+  if (!response.success) {
+    throw new Error('Failed to create tenant');
+  }
+  return response.data;
 }
 
+/**
+ * @deprecated Use browserApi.delete(`/api/tenants/${id}`) instead
+ */
 async function deleteTenant(id: string): Promise<void> {
-  const res = await securityFetch(`/api/tenants/${id}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to delete tenant');
+  const response = await browserApi.delete<void>(`/api/tenants/${id}`);
+  if (!response.success) {
+    throw new Error('Failed to delete tenant');
+  }
 }
 
 export const tenants = {

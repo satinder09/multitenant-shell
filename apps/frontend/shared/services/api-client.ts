@@ -286,21 +286,19 @@ export class ApiClient {
     });
   }
 
-  async patch<T = unknown>(url: string, data?: unknown, config?: Partial<RequestConfig>): Promise<ApiResponse<T>> {
-    return this.request<T>({
+  async patch<T = unknown>(url: string, data?: unknown, config: Partial<RequestConfig> = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(Object.assign({
       method: 'PATCH',
       url,
       data: data as JsonData | FormData,
-      ...config,
-    });
+    }, config));
   }
 
-  async delete<T = unknown>(url: string, config?: Partial<RequestConfig>): Promise<ApiResponse<T>> {
-    return this.request<T>({
+  async delete<T = unknown>(url: string, config: Partial<RequestConfig> = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(Object.assign({
       method: 'DELETE',
       url,
-      ...config,
-    });
+    }, config));
   }
 }
 
@@ -362,4 +360,61 @@ export function getDefaultApiClient(): ApiClient {
 // Reset default client (useful for testing)
 export function resetDefaultApiClient(): void {
   defaultClient = null;
+}
+
+// Preconfigured API clients for convenience
+/**
+ * Browser API client for client-side code.
+ */
+export const browserApi: ApiClient = getDefaultApiClient();
+
+/**
+ * Server API client for server-side code (e.g. Next.js routes).
+ * You can forward Next.js request headers via a custom request interceptor if needed.
+ */
+export const serverApi: ApiClient = createApiClient({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000'),
+  credentials: 'include',
+});
+
+// Factory for a server-side ApiClient that forwards Next.js request cookies
+import type { NextRequest } from 'next/server';
+/**
+ * Creates a server-side ApiClient bound to a NextRequest.
+ * Automatically forwards cookies for session/CSRF.
+ */
+export function createServerApiClient(req: NextRequest): ApiClient {
+  // Determine backend base URL
+  const baseURL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000');
+  const client = createApiClient({ baseURL, credentials: 'include' });
+  client.addRequestInterceptor((config) => {
+    const cookie = req.headers.get('cookie') || '';
+    // Forward cookie header for session
+    config.headers = { ...(config.headers || {}), Cookie: cookie };
+    return config;
+  });
+  // CSRF token fetch for state-changing requests
+  client.addRequestInterceptor(async (config) => {
+    const method = config.method?.toUpperCase();
+    if (method && method !== 'GET') {
+      try {
+        // Fetch fresh CSRF token
+        const tokenRes = await fetch(`${baseURL}/auth/csrf-token`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Cookie: req.headers.get('cookie') || '' },
+        });
+        if (tokenRes.ok) {
+          const csrfToken = tokenRes.headers.get('X-CSRF-Token') || tokenRes.headers.get('x-csrf-token');
+          if (csrfToken) {
+            config.headers = { ...(config.headers || {}), 'X-CSRF-Token': csrfToken };
+          }
+        }
+      } catch {
+        // Ignore CSRF fetch errors; backend will reject if invalid token
+      }
+    }
+    return config;
+  });
+  return client;
 } 

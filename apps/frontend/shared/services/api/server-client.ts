@@ -201,22 +201,37 @@ class ServerApiClient {
 const serverApiClient = new ServerApiClient();
 
 // Export convenience functions
+/**
+ * @deprecated Use createServerApiClient(req).get(endpoint) or serverApi.get(endpoint) instead
+ */
 export async function serverGet(endpoint: string, options?: ServerApiOptions, request?: NextRequest): Promise<Response> {
   return serverApiClient.get(endpoint, options, request);
 }
 
+/**
+ * @deprecated Use createServerApiClient(req).post(endpoint, data, options) or serverApi.post(endpoint, data, options) instead
+ */
 export async function serverPost(endpoint: string, data?: any, options?: ServerApiOptions, request?: NextRequest): Promise<Response> {
   return serverApiClient.post(endpoint, data, options, request);
 }
 
+/**
+ * @deprecated Use createServerApiClient(req).put(endpoint, data, options) or serverApi.put(endpoint, data, options) instead
+ */
 export async function serverPut(endpoint: string, data?: any, options?: ServerApiOptions, request?: NextRequest): Promise<Response> {
   return serverApiClient.put(endpoint, data, options, request);
 }
 
+/**
+ * @deprecated Use createServerApiClient(req).patch(endpoint, data, options) or serverApi.patch(endpoint, data, options) instead
+ */
 export async function serverPatch(endpoint: string, data?: any, options?: ServerApiOptions, request?: NextRequest): Promise<Response> {
   return serverApiClient.patch(endpoint, data, options, request);
 }
 
+/**
+ * @deprecated Use createServerApiClient(req).delete(endpoint, options) or serverApi.delete(endpoint, options) instead
+ */
 export async function serverDelete(endpoint: string, options?: ServerApiOptions, request?: NextRequest): Promise<Response> {
   return serverApiClient.delete(endpoint, options, request);
 }

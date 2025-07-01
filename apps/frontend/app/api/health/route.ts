@@ -1,14 +1,14 @@
 // Health check API route that proxies to backend
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet } from '@/shared/services/api/server-client';
+import { createServerApiClient } from '@/shared/services/api-client';
 
 export async function GET(req: NextRequest) {
   try {
-    // Proxy health check to backend
-    const backendRes = await serverGet('/health', { skipCSRF: true }, req);
-    
-    // Create response with backend data
-    const healthData = await backendRes.json();
+    // Proxy health check to backend using per-request server API client
+    const api = createServerApiClient(req);
+    const backendResponse = await api.get<Record<string, any>>('/health');
+    // Extract backend data
+    const healthData = backendResponse.data;
     
     return NextResponse.json({
       ...healthData,
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
         version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
       }
     }, {
-      status: backendRes.status,
+      status: 200,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',

@@ -2,6 +2,7 @@ import React from 'react';
 import { ModuleConfig } from '@/shared/modules/types';
 import { Building2, Shield, Eye, Edit, Trash, CheckCircle, XCircle, Download, Plus, Upload, RefreshCw, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { confirm } from '@/shared/utils/ui/dialogUtils';
 
 // Manual tenant actions (no external dependencies)
 const tenantActions = {
@@ -29,18 +30,40 @@ const tenantActions = {
   },
 
   toggleStatus: async (tenant: any) => {
-    try {
-      await fetch(`/api/tenants/${tenant.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !tenant.isActive })
+    if (tenant.isActive) {
+      // Confirm before deactivating
+      confirm({
+        title: 'Deactivate Tenant',
+        description: `Are you sure you want to deactivate tenant "${tenant.name}"?`,
+        variant: 'critical',
+        confirmLabel: 'Deactivate',
+        cancelLabel: 'Cancel',
+        onConfirm: async () => {
+          try {
+            await fetch(`/api/tenants/${tenant.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ isActive: false }),
+            });
+            // Refresh data after success
+            window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
+          } catch (error) {
+            console.error('Deactivate failed:', error);
+          }
+        },
       });
-      // Trigger refresh
-      window.dispatchEvent(new CustomEvent('refresh-module-data', {
-        detail: { moduleName: 'tenants' }
-      }));
-    } catch (error) {
-      console.error('Toggle status failed:', error);
+    } else {
+      // Activate without confirmation
+      try {
+        await fetch(`/api/tenants/${tenant.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isActive: true }),
+        });
+        window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
+      } catch (error) {
+        console.error('Activate failed:', error);
+      }
     }
   },
 
@@ -62,7 +85,7 @@ const tenantActions = {
       await fetch('/api/tenants/bulk-update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, data: { isActive: true } })
+        body: JSON.stringify({ ids, data: { status: 'active' } })
       });
       window.dispatchEvent(new CustomEvent('refresh-module-data', {
         detail: { moduleName: 'tenants' }
@@ -78,7 +101,7 @@ const tenantActions = {
       await fetch('/api/tenants/bulk-update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, data: { isActive: false } })
+        body: JSON.stringify({ ids, data: { status: 'inactive' } })
       });
       window.dispatchEvent(new CustomEvent('refresh-module-data', {
         detail: { moduleName: 'tenants' }
