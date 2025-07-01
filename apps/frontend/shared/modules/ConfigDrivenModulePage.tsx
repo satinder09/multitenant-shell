@@ -524,16 +524,26 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
           {selectedRows.length > 0 && actions?.bulkActions && (
             <>
               {/* Full-width background bar that extends beyond container */}
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-screen bg-muted/50 border-b h-12 z-[1]" />
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-screen bg-accent/80 backdrop-blur-sm border-b border-border/50 h-14 z-[1]" />
               
-              {/* Content bar - only covers the left side with bulk actions */}
-              <div className="absolute top-0 left-0 z-10 px-4 py-2 h-12">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground font-medium">
-                    {selectedRows.length} selected
-                  </span>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-1">
+              {/* Content bar - enhanced with proper ShadCN styling */}
+              <div className="absolute top-0 left-0 z-10 px-6 py-3 h-14">
+                <div className="flex items-center gap-4">
+                                     {/* Selection indicator with badge styling */}
+                   <div className="flex items-center gap-2">
+                     <div className="flex items-center justify-center w-6 h-6 rounded-md bg-accent text-accent-foreground text-xs font-medium border border-border/40">
+                       {selectedRows.length}
+                     </div>
+                     <span className="text-sm font-medium text-foreground">
+                       {selectedRows.length === 1 ? 'item selected' : 'items selected'}
+                     </span>
+                   </div>
+                  
+                  {/* Separator */}
+                  <div className="h-6 w-px bg-border" />
+                  
+                  {/* Actions container with proper spacing */}
+                  <div className="flex items-center gap-2">
                   {(() => {
                     const availableActions = actions.bulkActions.filter(action => !action.condition || action.condition(selectedRows));
                     
@@ -547,42 +557,42 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                     
                     return (
                       <>
-                        {/* Icon Actions */}
+                        {/* Icon Actions - Enhanced with better styling */}
                         {iconActions.map(action => (
                           <Button
                             key={action.key}
                             variant="ghost"
                             size="sm"
                             onClick={() => executeBulkAction(action.key, selectedRows)}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+                            className="h-8 w-8 p-0 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground border border-border/30 hover:border-border/60 shadow-sm"
                             title={action.label}
                           >
                             {action.icon && React.createElement(action.icon, { className: "h-4 w-4" })}
                           </Button>
                         ))}
                         
-                        {/* Dropdown Actions */}
+                        {/* Dropdown Actions - Enhanced with better styling */}
                         {dropdownActions.length > 0 && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                className="h-8 px-3 bg-muted/50 hover:bg-muted text-foreground font-medium border border-border/30 hover:border-border/60 shadow-sm"
                               >
                                 Actions
                                 <ChevronDown className="ml-1 h-3 w-3" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuContent align="start" className="w-52 shadow-lg border-border/60">
                               {dropdownActions.map(action => (
                                 <DropdownMenuItem
                                   key={action.key}
                                   onClick={() => executeBulkAction(action.key, selectedRows)}
-                                  className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
+                                  className="flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer hover:bg-accent/50 focus:bg-accent/50"
                                 >
-                                  {action.icon && React.createElement(action.icon, { className: "h-4 w-4" })}
-                                  <span>{action.label}</span>
+                                  {action.icon && React.createElement(action.icon, { className: "h-4 w-4 text-muted-foreground" })}
+                                  <span className="font-medium">{action.label}</span>
                                 </DropdownMenuItem>
                               ))}
                             </DropdownMenuContent>
@@ -598,7 +608,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
           )}
           
           {/* Table with conditional top margin for bulk actions */}
-          <div className={selectedRows.length > 0 && actions?.bulkActions ? "mt-12" : ""}>
+          <div className={selectedRows.length > 0 && actions?.bulkActions ? "mt-14" : ""}>
             <DataTable
               data={data || []}
               columns={tableColumns}
