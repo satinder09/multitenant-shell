@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, Clock, User, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { AuthCache } from '@/shared/utils/authCache';
 
 export default function ImpersonationBanner() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { tenantSubdomain } = usePlatform();
   const router = useRouter();
   const [isReturning, setIsReturning] = useState(false);
@@ -43,6 +44,11 @@ export default function ImpersonationBanner() {
   const handleReturnToPlatform = async () => {
     setIsReturning(true);
     try {
+      console.log('🔄 Returning to platform, clearing auth state...');
+      
+      // Clear auth cache immediately
+      AuthCache.clear();
+      
       if (isImpersonation && user.impersonationSessionId) {
         // End impersonation session
         await fetch('/api/auth/impersonation/end', {
@@ -52,20 +58,58 @@ export default function ImpersonationBanner() {
           body: JSON.stringify({ sessionId: user.impersonationSessionId })
         });
       } else if (isSecureLogin) {
-        // For secure login, just logout from tenant
+        // For secure login, logout from tenant
         await fetch('/api/auth/logout', {
           method: 'POST',
           credentials: 'include'
         });
       }
       
-      // Redirect to platform
+      // Additional cleanup - clear all session data
+      await fetch('/api/auth/clear-session', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      // Force refresh user state to clear any cached auth data
+      await refreshUser(true);
+      
+      // Small delay to ensure cookies are cleared
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Redirect to platform with a clean slate
+      const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me';
+      const frontendPort = process.env.NEXT_PUBLIC_FRONTEND_PORT || '3000';
+      const platformUrl = `http://${baseDomain}:${frontendPort}/platform`;
+      
+      console.log('🔄 Redirecting to platform:', platformUrl);
+      
+      // Use window.location.href for complete page reload to ensure clean state
+      window.location.href = platformUrl;
+    } catch (error) {
+      console.error('Error returning to platform:', error);
+      
+      // Even if logout fails, clear local state and redirect
+      AuthCache.clear();
+      
+      // Try clearing session as fallback
+      try {
+        await fetch('/api/auth/clear-session', {
+          method: 'POST',
+          credentials: 'include'
+        });
+      } catch (clearError) {
+        console.error('Error clearing session:', clearError);
+      }
+      
+      await refreshUser(true);
+      
+      // Force redirect anyway
       const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me';
       const frontendPort = process.env.NEXT_PUBLIC_FRONTEND_PORT || '3000';
       window.location.href = `http://${baseDomain}:${frontendPort}/platform`;
-    } catch (error) {
-      console.error('Error returning to platform:', error);
-      setIsReturning(false);
+    } finally {
+      // Don't reset isReturning since we're redirecting
     }
   };
 

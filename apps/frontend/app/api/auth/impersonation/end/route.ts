@@ -18,9 +18,25 @@ export async function POST(request: NextRequest) {
     if (response.status === 200) {
       const data = await response.json();
       
-      // Clear the authentication cookie
+      // Clear all authentication cookies
       const nextResponse = NextResponse.json(data);
-      nextResponse.cookies.delete('Authentication');
+      
+      const cookiesToClear = ['Authentication', 'auth-token', 'refresh-token', 'session', 'connect.sid'];
+      
+      cookiesToClear.forEach(cookieName => {
+        nextResponse.cookies.delete(cookieName);
+        // Also clear for the main domain
+        nextResponse.cookies.set(cookieName, '', {
+          expires: new Date(0),
+          path: '/',
+          domain: process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me'
+        });
+        // Clear for subdomain as well
+        nextResponse.cookies.set(cookieName, '', {
+          expires: new Date(0),
+          path: '/'
+        });
+      });
       
       return nextResponse;
     } else {
@@ -31,9 +47,27 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error ending impersonation:', error);
-    return NextResponse.json(
+    
+    // Even if backend fails, clear cookies on frontend
+    const nextResponse = NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
+    
+    const cookiesToClear = ['Authentication', 'auth-token', 'refresh-token', 'session', 'connect.sid'];
+    cookiesToClear.forEach(cookieName => {
+      nextResponse.cookies.delete(cookieName);
+      nextResponse.cookies.set(cookieName, '', {
+        expires: new Date(0),
+        path: '/',
+        domain: process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me'
+      });
+      nextResponse.cookies.set(cookieName, '', {
+        expires: new Date(0),
+        path: '/'
+      });
+    });
+    
+    return nextResponse;
   }
 } 
