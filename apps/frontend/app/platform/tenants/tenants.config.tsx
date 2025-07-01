@@ -104,6 +104,24 @@ const tenantActions = {
     }
   },
 
+  // Bulk Toggle Status: toggles activation state for selected tenants
+  bulkToggleStatus: async (tenants: any[]) => {
+    const toActivate = tenants.filter(t => !t.isActive).map(t => t.id);
+    const toDeactivate = tenants.filter(t => t.isActive).map(t => t.id);
+    try {
+      if (toActivate.length > 0) {
+        await browserApi.patch('/api/tenants/bulk-update', { ids: toActivate, data: { isActive: true } });
+      }
+      if (toDeactivate.length > 0) {
+        await browserApi.patch('/api/tenants/bulk-update', { ids: toDeactivate, data: { isActive: false } });
+      }
+      toastNotify({ variant: 'success', title: 'Tenant statuses toggled' });
+      window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
+    } catch (error: any) {
+      toastNotify({ variant: 'error', title: 'Bulk toggle status failed', description: error?.message || 'Unknown error' });
+    }
+  },
+
   bulkExport: async (tenants: any[]) => {
     const csv = tenants.map(t => `${t.id},${t.name},${t.subdomain},${t.isActive}`).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -431,19 +449,19 @@ export const TenantsConfig: ModuleConfig = {
         condition: (tenants) => tenants.some(t => !t.isActive)
       },
       {
-        key: 'deactivate',
-        label: 'Deactivate Selected',
-        icon: XCircle,
-        onClick: tenantActions.bulkDeactivate,
-        variant: 'secondary',
-        condition: (tenants) => tenants.some(t => t.isActive)
+        key: 'toggle-status',
+        label: 'Toggle Status',
+        icon: CheckCircle,
+        onClick: tenantActions.bulkToggleStatus,
+        variant: 'secondary'
       },
       {
         key: 'export',
         label: 'Export Selected',
         icon: Download,
         onClick: tenantActions.bulkExport,
-        variant: 'outline'
+        variant: 'outline',
+        displayMode: 'icon'
       },
       {
         key: 'delete',

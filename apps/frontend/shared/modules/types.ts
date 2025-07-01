@@ -297,6 +297,7 @@ export interface BulkActionConfig {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   condition?: (records: any[]) => boolean;
   confirmMessage?: string;
+  displayMode?: 'icon' | 'dropdown'; // How to display the action: as icon button or in dropdown menu
 }
 
 export interface HeaderActionConfig {

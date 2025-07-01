@@ -1,5 +1,5 @@
 ---
-description: Create a new page or updating exisiting
+description: 
 globs: 
 alwaysApply: false
 ---
@@ -60,6 +60,37 @@ _Last updated: 2025-07-01_
 - **Authentication:**  
   - Ensure the frontend is logged in and cookies are forwarded for all protected endpoints.
 
+## 6. **UI Component Best Practices**
+
+- **Checkbox Styling:**  
+  - Always use ShadCN `Checkbox` component instead of HTML `<input type="checkbox">`.
+  - Properly handle indeterminate state for "select all" checkboxes.
+  - Use `onCheckedChange` instead of `onChange` for ShadCN checkboxes.
+- **Search Inputs:**  
+  - Avoid duplicate search inputs - use either DataTable's built-in search OR FilterDropdownMenu, not both.
+  - Set `searchable={false}` on DataTable when using FilterDropdownMenu.
+  - Set `enableFiltering={false}` on DataTable to disable its search functionality.
+- **Bulk Actions:**  
+  - Use descriptive labels like "Toggle Status" instead of "Deactivate" for actions that can work both ways.
+  - Handle mixed selections (e.g., both active and inactive items) with user confirmation.
+  - Use proper confirm dialogs with `confirm()` function instead of browser `confirm()`.
+  - Always refresh data after bulk operations using `refresh-module-data` event.
+
+## 7. **Data Table Configuration**
+
+- **Column Visibility:**  
+  - Set `enableColumnVisibility={true}` to allow users to show/hide columns.
+  - Use `defaultColumns` in config to specify which columns are visible by default.
+- **Row Selection:**  
+  - Set `enableRowSelection={!!actions?.bulkActions?.length}` to enable checkboxes only when bulk actions exist.
+  - Properly sync checkbox state between DataTable and local state.
+- **Sorting:**  
+  - Set `enableSorting={true}` for server-side sorting support.
+  - Use `externalSorting` and `onSortingChange` props for server-side sorting.
+  - Convert TanStack Table sorting to API format: `{ field: sort.id, direction: sort.desc ? 'desc' : 'asc' }`.
+  - Ensure backend properly handles sort parameters in `QueryBuilderUtils.buildOrderBy()`.
+  - Initialize table sorting state from query params for consistency.
+
 ---
 
 ## **How to Update This File**
@@ -69,5 +100,3 @@ _Last updated: 2025-07-01_
 - Date and describe each major update.
 
 ---
-
-

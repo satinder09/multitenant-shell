@@ -63,6 +63,7 @@ import {
   Plus
 } from "lucide-react"
 import { cn } from "@/shared/utils/utils"
+import { SortParams } from "@/shared/types/types"
 
 // Legacy simple column interface for backwards compatibility
 interface SimpleColumn {
@@ -103,6 +104,7 @@ interface DataTableProps<TData = any> {
   enableFiltering?: boolean;
   enableRowSelection?: boolean;
   enablePagination?: boolean;
+  onSortChange?: (sort: SortParams<TData>) => void;
 }
 
 // Table state management hook with persistence
@@ -122,7 +124,7 @@ function useTableState(
             sorting: parsedState.sorting || [],
             columnFilters: parsedState.columnFilters || [],
             pagination: parsedState.pagination || { pageIndex: 0, pageSize: defaultPageSize },
-            rowSelection: parsedState.rowSelection || {}
+            rowSelection: {}
           }
         }
       } catch (error) {
@@ -266,6 +268,7 @@ export function DataTable<TData>({
   enableFiltering = true,
   enableRowSelection = false,
   enablePagination = false,
+  onSortChange,
 }: DataTableProps<TData>) {
   const [internalData, setInternalData] = React.useState(() => data)
   const [searchTerm, setSearchTerm] = React.useState('')
@@ -325,7 +328,27 @@ export function DataTable<TData>({
       columnFilters: [],
       pagination: { pageIndex: 0, pageSize: enablePagination ? defaultPageSize : internalData.length },
     },
-    onSortingChange: persistenceKey && enableSorting ? tableActions.setSorting : undefined,
+    onSortingChange: enableSorting
+      ? (updater: SortingState | ((old: SortingState) => SortingState)) => {
+          // Determine new sorting state from updater and current tableState
+          const newSorting: SortingState = typeof updater === 'function'
+            ? (updater as (old: SortingState) => SortingState)(tableState.sorting)
+            : updater;
+          // Invoke external sort handler if provided
+          if (onSortChange) {
+            if (newSorting.length > 0) {
+              onSortChange({ field: newSorting[0].id as keyof TData, direction: newSorting[0].desc ? 'desc' : 'asc' });
+            } else {
+              // No sorting selected - clear
+              onSortChange({ field: '' as any, direction: 'asc' });
+            }
+          }
+          // Persist internal state if persistenceKey is set
+          if (persistenceKey) {
+            tableActions.setSorting(updater as SortingState);
+          }
+        }
+      : undefined,
     onColumnVisibilityChange: persistenceKey && enableColumnVisibility ? tableActions.setColumnVisibility : undefined,
     onRowSelectionChange: persistenceKey && enableRowSelection ? tableActions.setRowSelection : undefined,
     onColumnFiltersChange: persistenceKey && enableFiltering ? tableActions.setColumnFilters : undefined,

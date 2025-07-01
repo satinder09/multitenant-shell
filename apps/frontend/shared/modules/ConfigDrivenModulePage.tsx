@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown } from 'lucide-react';
 import { DataTable } from '@/components/composite/DataTable';
 import { FilterDropdownMenu } from '@/components/common/generic-filter/FilterDropdownMenu';
 import { FilterTags } from '@/components/common/generic-filter/FilterTags';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Filter, Save, X, AlertCircle, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ConfigDrivenModulePageProps {
   moduleName: string;
@@ -82,6 +83,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
     setSearch,
     setPage,
     setLimit,
+    setSort,
     refetch,
     clearFilters
   } = useGenericFilter(moduleName, stableConfig, { 
@@ -183,21 +185,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
 
   // Checkbox header component
   const CheckboxHeader = ({ table }: { table: any }) => {
-    const checkboxRef = React.useRef<HTMLInputElement>(null);
-    
-    React.useEffect(() => {
-      if (checkboxRef.current) {
-        checkboxRef.current.indeterminate = table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected();
-      }
-    }, [table.getIsSomePageRowsSelected(), table.getIsAllPageRowsSelected()]);
-    
     return (
-      <input
-        ref={checkboxRef}
-        type="checkbox"
+      <Checkbox
         checked={table.getIsAllPageRowsSelected()}
-        onChange={(e) => {
-          if (e.target.checked) {
+        onCheckedChange={(value: boolean) => {
+          if (value) {
             const allRows = data || [];
             setSelectedRows(allRows);
             table.toggleAllPageRowsSelected(true);
@@ -206,7 +198,6 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
             table.toggleAllPageRowsSelected(false);
           }
         }}
-        className="rounded"
       />
     );
   };
@@ -223,11 +214,10 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
         accessorKey: 'select',
         header: CheckboxHeader,
         cell: ({ row }: { row: any }) => (
-          <input
-            type="checkbox"
+          <Checkbox
             checked={selectedRows.some(selected => selected.id === row.original.id)}
-            onChange={(e) => {
-              if (e.target.checked) {
+            onCheckedChange={(value: boolean) => {
+              if (value) {
                 setSelectedRows(prev => [...prev, row.original]);
                 row.toggleSelected(true);
               } else {
@@ -235,7 +225,6 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                 row.toggleSelected(false);
               }
             }}
-            className="rounded"
           />
         ),
         enableSorting: false,
@@ -524,56 +513,108 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
         )}
       </div>
 
-      {/* Bulk Actions */}
-      {selectedRows.length > 0 && actions?.bulkActions && (
-        <div className="flex flex-col gap-3 p-3 bg-muted rounded-lg sm:flex-row sm:items-center sm:justify-between sm:p-4">
-          <div className="text-sm font-medium">
-            {selectedRows.length} item{selectedRows.length > 1 ? 's' : ''} selected
-          </div>
-          <div className="flex items-center gap-2 justify-end">
-            {actions.bulkActions
-              .filter(action => !action.condition || action.condition(selectedRows))
-              .map(action => (
-                <Button
-                  key={action.key}
-                  variant={action.variant || 'outline'}
-                  size="sm"
-                  onClick={() => executeBulkAction(action.key, selectedRows)}
-                >
-                  {action.icon && React.createElement(action.icon, { className: "mr-2 h-4 w-4" })}
-                  {action.label}
-                </Button>
-              ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedRows([])}
-            >
-              <X className="w-4 h-4" />
-              Clear Selection
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Data Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-muted-foreground">Loading {module.title.toLowerCase()}...</div>
         </div>
       ) : (
-        <DataTable
-          data={data || []}
-          columns={tableColumns}
-          allowDrag={false}
-          persistenceKey={`${moduleName}-table`}
-          defaultPageSize={display?.pageSize || 10}
-          enableColumnVisibility={true}
-          enableSorting={true}
-          enableFiltering={true}
-          enableRowSelection={!!actions?.bulkActions?.length}
-          enablePagination={true}
-        />
+        <div className="relative">
+          {/* Gmail-style Bulk Actions Bar */}
+          {selectedRows.length > 0 && actions?.bulkActions && (
+            <>
+              {/* Full-width background bar that extends beyond container */}
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-screen bg-muted/50 border-b h-12 z-[1]" />
+              
+              {/* Content bar - only covers the left side with bulk actions */}
+              <div className="absolute top-0 left-0 z-10 px-4 py-2 h-12">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground font-medium">
+                    {selectedRows.length} selected
+                  </span>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-1">
+                  {(() => {
+                    const availableActions = actions.bulkActions.filter(action => !action.condition || action.condition(selectedRows));
+                    
+                    // Separate actions based on displayMode or key
+                    const iconActions = availableActions.filter(action => 
+                      action.displayMode === 'icon' || ['export', 'download'].includes(action.key)
+                    );
+                    const dropdownActions = availableActions.filter(action => 
+                      action.displayMode !== 'icon' && !['export', 'download'].includes(action.key)
+                    );
+                    
+                    return (
+                      <>
+                        {/* Icon Actions */}
+                        {iconActions.map(action => (
+                          <Button
+                            key={action.key}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => executeBulkAction(action.key, selectedRows)}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+                            title={action.label}
+                          >
+                            {action.icon && React.createElement(action.icon, { className: "h-4 w-4" })}
+                          </Button>
+                        ))}
+                        
+                        {/* Dropdown Actions */}
+                        {dropdownActions.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent"
+                              >
+                                Actions
+                                <ChevronDown className="ml-1 h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-48">
+                              {dropdownActions.map(action => (
+                                <DropdownMenuItem
+                                  key={action.key}
+                                  onClick={() => executeBulkAction(action.key, selectedRows)}
+                                  className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer"
+                                >
+                                  {action.icon && React.createElement(action.icon, { className: "h-4 w-4" })}
+                                  <span>{action.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+            </>
+          )}
+          
+          {/* Table with conditional top margin for bulk actions */}
+          <div className={selectedRows.length > 0 && actions?.bulkActions ? "mt-12" : ""}>
+            <DataTable
+              data={data || []}
+              columns={tableColumns}
+              allowDrag={false}
+              persistenceKey={`${moduleName}-table`}
+              defaultPageSize={display?.pageSize || 10}
+              searchable={false}
+              enableColumnVisibility={true}
+              enableSorting={true}
+              enableFiltering={true}
+              enableRowSelection={!!actions?.bulkActions?.length}
+              enablePagination={true}
+              onSortChange={setSort}
+            />
+          </div>
+        </div>
       )}
 
       {/* Advanced Filter Dialog (only shown when advanced filters are available) */}
