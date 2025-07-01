@@ -1,35 +1,39 @@
 'use client';
 
 import { usePlatform } from '@/context/PlatformContext';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import PlatformSidebar from './PlatformSidebar';
 import TenantSidebar from './TenantSidebar';
-import Header from './Header';
+import PlatformHeader from './PlatformHeader';
+import TenantHeader from './TenantHeader';
 
 interface UnifiedLayoutProps {
   children: React.ReactNode;
 }
 
 export default function UnifiedLayout({ children }: UnifiedLayoutProps) {
-  const { isPlatform, tenantSubdomain } = usePlatform();
+  const { isPlatform } = usePlatform();
 
-  // Dynamically choose sidebar based on context
-  const Sidebar = isPlatform ? PlatformSidebar : TenantSidebar;
+  // Dynamically choose components based on context
+  const SidebarComponent = isPlatform ? PlatformSidebar : TenantSidebar;
+  const HeaderComponent = isPlatform ? PlatformHeader : TenantHeader;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Context-aware Sidebar */}
-      <Sidebar />
-      
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        
-        <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "16rem",
+          "--sidebar-width-icon": "3rem",
+        } as React.CSSProperties
+      }
+    >
+      <SidebarComponent />
+      <SidebarInset className="flex flex-col min-h-screen">
+        <HeaderComponent />
+        <div className="flex flex-1 flex-col gap-4 px-8 py-6 min-w-0">
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 } 

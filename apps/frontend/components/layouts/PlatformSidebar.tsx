@@ -1,154 +1,143 @@
-'use client';
+"use client"
 
-import { Home, Building2, Shield, Key, Users, Settings, MoreHorizontal } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/shared/utils/utils';
-import { Button } from '@/components/ui/button';
+import * as React from "react"
+import Link from "next/link"
+import { ComponentType } from "react"
+import {
+  IconBuilding,
+  IconDashboard,
+  IconDatabase,
+  IconFileDescription,
+  IconHelp,
+  IconKey,
+  IconReport,
+  IconSearch,
+  IconSettings,
+  IconShield,
+  IconUsers,
+  IconSparkles,
+} from "@tabler/icons-react"
 
-function SidebarLink({ 
-  icon, 
-  text, 
-  href, 
-  isActive = false 
-}: { 
-  icon: React.ReactNode; 
-  text: string; 
-  href: string;
-  isActive?: boolean;
-}) {
+import { NavDocuments } from "@/components/layouts/nav-documents"
+import { NavMain } from "@/components/layouts/nav-main"
+import { NavSecondary } from "@/components/layouts/nav-secondary"
+import { NavUser } from "@/components/layouts/nav-user"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
+import { useAuth } from "@/context/AuthContext"
+
+export default function PlatformSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth()
+
+  // Navigation data with dynamic visibility based on user permissions
+  const navMain = [
+    {
+      title: "Dashboard",
+      url: "/platform",
+      icon: IconDashboard as ComponentType<any>,
+    },
+    {
+      title: "Tenants",
+      url: "/platform/tenants",
+      icon: IconBuilding as ComponentType<any>,
+    },
+  ]
+
+  const navAdmin = [
+    {
+      title: "Users",
+      icon: IconUsers as ComponentType<any>,
+      isActive: false,
+      url: "/platform/admin/users",
+    },
+    {
+      title: "Roles",
+      icon: IconShield as ComponentType<any>,
+      url: "/platform/admin/roles",
+    },
+    {
+      title: "Permissions",
+      icon: IconKey as ComponentType<any>,
+      url: "/platform/admin/permissions",
+    },
+  ]
+
+  const navSecondary = [
+    {
+      title: "Settings",
+      url: "/platform/settings",
+      icon: IconSettings as ComponentType<any>,
+    },
+    {
+      title: "Get Help",
+      url: "#",
+      icon: IconHelp as ComponentType<any>,
+    },
+    {
+      title: "Search",
+      url: "#",
+      icon: IconSearch as ComponentType<any>,
+    },
+  ]
+
+  const documents = [
+    {
+      name: "Data Library",
+      url: "#",
+      icon: IconDatabase as ComponentType<any>,
+    },
+    {
+      name: "Reports",
+      url: "/platform/reports",
+      icon: IconReport as ComponentType<any>,
+    },
+    {
+      name: "Documentation",
+      url: "/platform/docs",
+      icon: IconFileDescription as ComponentType<any>,
+    },
+  ]
+
   return (
-    <Link href={href}>
-      <Button
-        variant="ghost"
-        className={cn(
-          "w-full justify-start gap-3 h-8 px-3 font-normal text-sm rounded-md",
-          isActive 
-            ? "bg-gray-900 text-white hover:bg-gray-800 hover:text-white" 
-            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-        )}
-      >
-        <span className="w-4 h-4 flex-shrink-0">{icon}</span>
-        <span className="truncate">{text}</span>
-      </Button>
-    </Link>
-  );
-}
-
-function SidebarSection({ title, children }: { title?: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      {title && (
-        <div className="px-3 py-2">
-          <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-            {title}
-          </h2>
-        </div>
-      )}
-      <div className="space-y-1 px-2">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-export default function PlatformSidebar() {
-  const pathname = usePathname();
-
-  console.log('[PlatformSidebar] Rendering PlatformSidebar with pathname:', pathname);
-
-  const isActive = (path: string) => {
-    // Only treat root path as active on exact match; other paths match prefixes
-    if (path === '/') {
-      return pathname === '/';
-    }
-    return pathname === path || pathname.startsWith(path);
-  };
-
-  return (
-    <aside className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col min-h-screen">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white">
-            <div className="w-4 h-4 bg-white rounded-full"></div>
-          </div>
-          <span className="font-semibold text-lg text-gray-900">Platform Admin</span>
-        </div>
-      </div>
-
-      {/* Quick Create Button */}
-      <div className="p-4">
-        <Button className="w-full justify-start gap-3 bg-gray-900 text-white hover:bg-gray-800 h-9 rounded-md font-medium">
-          <div className="w-4 h-4 bg-white rounded-full"></div>
-          Quick Create
-        </Button>
-      </div>
-
-      {/* Navigation */}
-      <div className="flex-1 px-4 pb-4 space-y-6">
-        <SidebarSection>
-          <SidebarLink 
-            icon={<Home />} 
-            text="Dashboard" 
-            href="/"
-            isActive={isActive('/')}
-          />
-          <SidebarLink 
-            icon={<Building2 />} 
-            text="Tenants" 
-            href="/platform/tenants"
-            isActive={isActive('/platform/tenants')}
-          />
-        </SidebarSection>
-
-        <SidebarSection title="Administration">
-          <SidebarLink 
-            icon={<Users />} 
-            text="Users" 
-            href="/platform/admin/users"
-            isActive={isActive('/platform/admin/users')}
-          />
-          <SidebarLink 
-            icon={<Shield />} 
-            text="Roles" 
-            href="/platform/admin/roles"
-            isActive={isActive('/platform/admin/roles')}
-          />
-          <SidebarLink 
-            icon={<Key />} 
-            text="Permissions" 
-            href="/platform/admin/permissions"
-            isActive={isActive('/platform/admin/permissions')}
-          />
-        </SidebarSection>
-      </div>
-
-      {/* Bottom Section */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="space-y-1">
-          <SidebarLink 
-            icon={<Settings />} 
-            text="Settings" 
-            href="/platform/settings"
-            isActive={isActive('/platform/settings')}
-          />
-        </div>
+    <Sidebar collapsible="icon" className="border-r" {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              className="data-[slot=sidebar-menu-button]:!p-1.5"
+            >
+              <Link href="/platform">
+                <IconSparkles className="!size-5" />
+                <span className="text-base font-semibold">
+                  {user?.isSuperAdmin ? 'Platform Admin' : 'Platform'}
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <NavMain items={navMain} />
         
-        {/* User Profile */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-gray-100 cursor-pointer">
-            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-gray-700">S</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">shadcn</div>
-              <div className="text-xs text-gray-500 truncate">m@example.com</div>
-            </div>
-            <MoreHorizontal className="w-4 h-4 text-gray-400" />
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
+        {/* Only show admin section for super admins */}
+        {user?.isSuperAdmin && (
+          <NavMain title="Administration" items={navAdmin} />
+        )}
+        
+        <NavDocuments items={documents} />
+        <NavSecondary items={navSecondary} className="mt-auto" />
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser />
+      </SidebarFooter>
+    </Sidebar>
+  )
 } 
