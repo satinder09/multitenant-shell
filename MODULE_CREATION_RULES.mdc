@@ -1,0 +1,71 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 📦 MultiTenant Shell: Module Creation Rules
+
+_Last updated: 2025-07-01_
+
+## 1. **Module Structure**
+
+- Each module lives under `src/domains/{module}/` (backend) and `app/{domain}/{module}/` (frontend).
+- Follows **domain-driven design**: controllers, services, DTOs, interfaces, and tests are grouped by domain.
+- Use clear, consistent naming: `tenant`, `user`, `platform`, etc.
+
+## 2. **Backend (NestJS) Best Practices**
+
+- **Controller Route Order:**  
+  Always place specific routes (e.g., `/bulk`) **before** generic parameterized routes (e.g., `/:id`) to avoid route conflicts.
+- **DTO Validation:**  
+  - Use `class-validator` and `class-transformer` for all DTOs.
+  - Enable `forbidNonWhitelisted: true` and `whitelist: true` in the global `ValidationPipe`.
+- **Authentication & Security:**  
+  - Use `@UseGuards(JwtAuthGuard)` for all protected routes.
+  - Ensure CSRF protection is enabled for all state-changing endpoints.
+- **Service Layer:**  
+  - Keep business logic in services, not controllers.
+  - Use dependency injection for all services.
+- **Error Handling:**  
+  - Throw meaningful exceptions (`NotFoundException`, `BadRequestException`, etc.).
+  - Log errors with context.
+
+## 3. **Frontend (Next.js) Best Practices**
+
+- **API Routes:**  
+  - Use `serverPatch`, `serverPost`, etc. for all server-to-backend communication.
+  - Always forward cookies and CSRF tokens.
+  - Handle errors and propagate meaningful messages to the UI.
+- **UI/UX:**  
+  - Use confirm dialogs for destructive actions.
+  - Show toasts for success and error feedback.
+  - Keep bulk and individual actions consistent in UX.
+- **Types:**  
+  - Define shared types/interfaces in `shared/types/` and import them in both UI and API routes.
+
+## 4. **Testing & Validation**
+
+- **E2E and Unit Tests:**  
+  - Write tests for all controllers and services.
+  - Test both happy and error paths.
+- **Manual Verification:**  
+  - Always test new endpoints via both API (Postman/curl) and UI.
+
+## 5. **Common Pitfalls & Learnings**
+
+- **Route Order Matters:**  
+  - Always put specific routes before generic ones to avoid validation errors.
+- **Rebuild After DTO Changes:**  
+  - Always recompile the backend after changing DTOs or controller signatures.
+- **Authentication:**  
+  - Ensure the frontend is logged in and cookies are forwarded for all protected endpoints.
+
+---
+
+## **How to Update This File**
+
+- As you learn new best practices or encounter new pitfalls, add them here.
+- Use clear, actionable language.
+- Date and describe each major update.
+
+---

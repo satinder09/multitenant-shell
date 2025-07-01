@@ -209,6 +209,25 @@ export class TenantService {
     });
   }
 
+  /**
+   * Bulk update tenants by IDs
+   */
+  bulkUpdate(ids: string[], data: UpdateTenantDto) {
+    return this.masterPrisma.tenant.updateMany({
+      where: { id: { in: ids } },
+      data,
+    });
+  }
+
+  /**
+   * Bulk delete tenants by IDs
+   */
+  bulkDelete(ids: string[]) {
+    return this.masterPrisma.tenant.deleteMany({
+      where: { id: { in: ids } },
+    });
+  }
+
   async findBySubdomain(subdomain: string) {
     const tenant = await this.masterPrisma.tenant.findUnique({
       where: { subdomain },

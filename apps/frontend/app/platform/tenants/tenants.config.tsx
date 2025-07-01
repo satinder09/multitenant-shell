@@ -3,6 +3,8 @@ import { ModuleConfig } from '@/shared/modules/types';
 import { Building2, Shield, Eye, Edit, Trash, CheckCircle, XCircle, Download, Plus, Upload, RefreshCw, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { confirm } from '@/shared/utils/ui/dialogUtils';
+import { toastNotify } from '@/shared/utils/ui/toastNotify';
+import { browserApi } from '@/shared/services/api-client';
 
 // Manual tenant actions (no external dependencies)
 const tenantActions = {
@@ -80,34 +82,25 @@ const tenantActions = {
 
   // Bulk Actions
   bulkActivate: async (tenants: any[]) => {
+    const ids = tenants.map(t => t.id);
     try {
-      const ids = tenants.map(t => t.id);
-      await fetch('/api/tenants/bulk-update', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, data: { status: 'active' } })
-      });
-      window.dispatchEvent(new CustomEvent('refresh-module-data', {
-        detail: { moduleName: 'tenants' }
-      }));
-    } catch (error) {
-      console.error('Bulk activate failed:', error);
+      // Disable UI (optional: set a local state)
+      await browserApi.patch('/api/tenants/bulk-update', { ids, data: { isActive: true } });
+      toastNotify({ variant: 'success', title: 'Tenants activated' });
+      window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
+    } catch (error: any) {
+      toastNotify({ variant: 'error', title: 'Bulk activate failed', description: error?.message || 'Unknown error' });
     }
   },
 
   bulkDeactivate: async (tenants: any[]) => {
+    const ids = tenants.map(t => t.id);
     try {
-      const ids = tenants.map(t => t.id);
-      await fetch('/api/tenants/bulk-update', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, data: { status: 'inactive' } })
-      });
-      window.dispatchEvent(new CustomEvent('refresh-module-data', {
-        detail: { moduleName: 'tenants' }
-      }));
-    } catch (error) {
-      console.error('Bulk deactivate failed:', error);
+      await browserApi.patch('/api/tenants/bulk-update', { ids, data: { isActive: false } });
+      toastNotify({ variant: 'success', title: 'Tenants deactivated' });
+      window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
+    } catch (error: any) {
+      toastNotify({ variant: 'error', title: 'Bulk deactivate failed', description: error?.message || 'Unknown error' });
     }
   },
 
@@ -122,19 +115,23 @@ const tenantActions = {
   },
 
   bulkDelete: async (tenants: any[]) => {
-    try {
-      const ids = tenants.map(t => t.id);
-      await fetch('/api/tenants/bulk-delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids })
-      });
-      window.dispatchEvent(new CustomEvent('refresh-module-data', {
-        detail: { moduleName: 'tenants' }
-      }));
-    } catch (error) {
-      console.error('Bulk delete failed:', error);
-    }
+    const ids = tenants.map(t => t.id);
+    confirm({
+      title: 'Delete Tenants',
+      description: `Are you sure you want to delete ${ids.length} tenants? This action cannot be undone.`,
+      variant: 'critical',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await browserApi.delete('/api/tenants/bulk-delete', { data: { ids } });
+          toastNotify({ variant: 'success', title: 'Tenants deleted' });
+          window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
+        } catch (error: any) {
+          toastNotify({ variant: 'error', title: 'Bulk delete failed', description: error?.message || 'Unknown error' });
+        }
+      },
+    });
   },
 
   // Header Actions

@@ -16,6 +16,8 @@ import { GetTenantsQueryDto } from '../dto/get-tenants-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { User } from '../../../../generated/master-prisma';
 import { AuthUser } from '../../../shared/decorators/auth-user.decorator';
+import { BulkUpdateTenantsDto } from '../dto/bulk-update-tenants.dto';
+import { BulkDeleteTenantsDto } from '../dto/bulk-delete-tenants.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('tenants')
@@ -37,6 +39,18 @@ export class TenantController {
   searchWithComplexFilters(@Body() queryDto: GetTenantsQueryDto) {
     console.log('🚀 POST /tenants/search - Complex search request received');
     return this.tenantService.findWithComplexQuery(queryDto);
+  }
+
+  // Bulk update tenant statuses or other fields - MUST come before :id route
+  @Patch('bulk')
+  bulkUpdate(@Body() dto: BulkUpdateTenantsDto) {
+    return this.tenantService.bulkUpdate(dto.ids, dto.data);
+  }
+
+  // Bulk delete tenants - MUST come before :id route
+  @Delete('bulk')
+  bulkDelete(@Body() dto: BulkDeleteTenantsDto) {
+    return this.tenantService.bulkDelete(dto.ids);
   }
 
   @Get(':id')
