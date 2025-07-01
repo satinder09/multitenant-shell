@@ -96,11 +96,28 @@ function LoginForm() {
 
     setIsLoading(true);
     try {
-      await login({ email: sanitizedEmail, password: sanitizedPassword });
+      // Smart redirect: remember where user was trying to go
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect');
+      
+      // Determine smart redirect based on domain context
+      let destination = redirectTo;
+      if (!destination) {
+        const hostname = window.location.hostname;
+        if (hostname === 'lvh.me' || hostname.includes('localhost')) {
+          destination = '/platform';
+        } else if (hostname.includes('.lvh.me')) {
+          // Tenant domain - go to tenant home  
+          destination = '/';
+        } else {
+          destination = '/platform'; // fallback
+        }
+      }
+
+      await login({ email: sanitizedEmail, password: sanitizedPassword }, destination);
       loginRateLimiter.reset('login');
       
-      // Redirect to platform page to use proper layout with sidebar
-      router.push('/platform');
+      // The login function now handles the redirect, so we don't need router.push here
     } catch (err: unknown) {
       const rateLimitCheck = loginRateLimiter.checkLimit('login');
       const remainingAttempts = rateLimitCheck.remaining || 0;

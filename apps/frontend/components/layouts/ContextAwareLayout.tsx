@@ -2,52 +2,61 @@
 import { usePlatform } from '@/context/PlatformContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
+import { Spinner } from '@/components/ui/spinner';
 import UnifiedLayout from './UnifiedLayout';
 
 export default function ContextAwareLayout({ children }: { children: React.ReactNode }) {
   const { isPlatform, tenantSubdomain } = usePlatform();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading, isLoggingOut } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const hasRedirected = useRef(false);
 
-  // Pages that should not have the layout wrapper
-  const publicPages = ['/login'];
-  const isPublicPage = publicPages.includes(pathname);
+  // Memoize public pages check for performance
+  const isPublicPage = useMemo(() => {
+    const publicPages = ['/login'];
+    return publicPages.includes(pathname);
+  }, [pathname]);
 
-  console.log('[ContextAwareLayout] Rendering with state:', { 
-    isPlatform, 
-    tenantSubdomain, 
-    isAuthenticated, 
-    userEmail: user?.email,
-    isSuperAdmin: user?.isSuperAdmin,
-    isPublicPage,
-    pathname
-  });
-
+  // Handle authentication redirects efficiently
   useEffect(() => {
-    // Only redirect if user is not authenticated and not on a public page
-    // Use ref to prevent multiple redirects
-    if (!isAuthenticated && !isPublicPage && !hasRedirected.current) {
-      console.log('[ContextAwareLayout] User not authenticated, redirecting to login');
+    // Skip redirect logic during loading, logging out, or on public pages
+    if (isLoading || isLoggingOut || isPublicPage) return;
+
+    // Only redirect if user is not authenticated and not already redirecting
+    if (!isAuthenticated && !hasRedirected.current) {
       hasRedirected.current = true;
       router.push('/login');
+      return;
     }
     
     // Reset redirect flag when user becomes authenticated
     if (isAuthenticated) {
       hasRedirected.current = false;
     }
-  }, [isAuthenticated, isPublicPage, router]);
+  }, [isAuthenticated, isPublicPage, isLoading, isLoggingOut, router]);
 
-  // If it's a public page or user is not authenticated, render without layout
-  if (isPublicPage || !isAuthenticated) {
-    console.log('[ContextAwareLayout] Public page or not authenticated, rendering children directly');
+  // Show loading during auth transitions or logout (but don't block if just logging out)
+  if (isLoading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // If it's a public page render without layout
+  if (isPublicPage) {
     return <>{children}</>;
   }
 
-  // For all authenticated pages, use the unified layout
-  console.log('[ContextAwareLayout] Authenticated page, rendering UnifiedLayout');
-  return <UnifiedLayout>{children}</UnifiedLayout>;
+  // During logout, keep the layout visible until navigation completes
+  // OR if user is authenticated, show the layout
+  if (isLoggingOut || isAuthenticated) {
+    return <UnifiedLayout>{children}</UnifiedLayout>;
+  }
+
+  // Only for non-authenticated, non-logout states, render without layout
+  return <>{children}</>;
 }

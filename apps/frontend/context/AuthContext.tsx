@@ -8,11 +8,14 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
+  useMemo,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { LoginDto, login as loginApi, ApiError } from '@/shared/services/api';
 import { Spinner } from '@/components/ui/spinner';
 import { initializeCsrfProtection } from '@/domains/auth/services/csrfService';
+import { AuthCache } from '@/shared/utils/authCache';
 
 interface UserProfile {
   id: string;
@@ -36,7 +39,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   tenantId: string | null;
-  login: (dto: LoginDto) => Promise<void>;
+  isLoading: boolean;
+  isLoggingOut: boolean;
+  login: (dto: LoginDto, redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -46,13 +51,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Export the context for testing
 export { AuthContext };
 
+// Helper to determine smart redirect destination
+function getSmartRedirectPath(hostname: string, isSuperAdmin: boolean): string {
+  // If on platform domain (lvh.me), go to platform
+  if (hostname === 'lvh.me' || hostname.includes('localhost')) {
+    return '/platform';
+  }
+  
+  // If on tenant domain and super admin, they likely want platform access
+  if (isSuperAdmin && hostname.includes('.lvh.me')) {
+    return '/platform';
+  }
+  
+  // For tenant domain, go to home
+  return '/';
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isFetchingInitialUser, setIsFetchingInitialUser] = useState(true);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async (forceRefresh = false) => {
+    // Try cache first unless force refresh
+    if (!forceRefresh) {
+      const cachedUser = AuthCache.get();
+      if (cachedUser) {
+        setUser(cachedUser);
+        return cachedUser;
+      }
+    }
+
     try {
       const response = await fetch('/api/auth/me', { 
         credentials: 'include',
@@ -64,37 +96,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const profile = await response.json();
         setUser(profile);
+        AuthCache.set(profile);
+        return profile;
       } else {
         setUser(null);
+        AuthCache.clear();
+        return null;
       }
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
       setUser(null);
-    } finally {
-      setIsFetchingInitialUser(false);
+      AuthCache.clear();
+      return null;
     }
-  };
-
-  // Handle client-side hydration
-  useEffect(() => {
-    setIsHydrated(true);
-    // Initialize CSRF protection when the app starts
-    initializeCsrfProtection();
   }, []);
 
-  // Fetch current profile on mount (client-side only)
+  // Initialize auth state on mount
   useEffect(() => {
-    if (isHydrated) {
-      refreshUser();
+    let mounted = true;
+    
+    const initializeAuth = async () => {
+      // Initialize CSRF protection
+      initializeCsrfProtection();
+      
+      // Check current auth state (use cache if available)
+      await refreshUser(false);
+      
+      if (mounted) {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAuth();
+    return () => { mounted = false; };
+  }, [refreshUser]);
+
+  const login = useCallback(async (dto: LoginDto, redirectTo?: string) => {
+    setIsLoading(true);
+    try {
+      await loginApi(dto);
+      const profile = await refreshUser(true); // Force refresh after login
+      
+      if (profile) {
+        // Smart redirect logic
+        const destination = redirectTo || getSmartRedirectPath(
+          window.location.hostname, 
+          profile.isSuperAdmin
+        );
+        
+        // Optimistic navigation - don't wait for render
+        setTimeout(() => router.push(destination), 0);
+      }
+    } finally {
+      setIsLoading(false);
     }
-  }, [isHydrated]);
+  }, [refreshUser, router]);
 
-  const login = async (dto: LoginDto) => {
-    await loginApi(dto);
-    await refreshUser();
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
+    setIsLoggingOut(true);
+    
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
@@ -102,25 +162,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      // Clear user state and reset loading state
-      setUser(null);
-      setIsFetchingInitialUser(false);
-      router.push('/login');
     }
-  };
+    
+    // Clear cache immediately but keep user state for smooth transition
+    AuthCache.clear();
+    
+    // Start navigation immediately while keeping user state
+    const redirectUrl = pathname.startsWith('/platform') ? '/login' : '/login';
+    router.push(redirectUrl);
+    
+    // Clear user state after a short delay to allow navigation to start
+    setTimeout(() => {
+      setUser(null);
+      setIsLoggingOut(false);
+    }, 100);
+  }, [router, pathname]);
+
+  // Memoized context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    isAuthenticated: !!user,
+    isSuperAdmin: !!user?.isSuperAdmin,
+    tenantId: user?.tenantId || null,
+    isLoading,
+    isLoggingOut,
+    login,
+    logout,
+    refreshUser
+  }), [user, isLoading, isLoggingOut, login, logout, refreshUser]);
+
+  // Show minimal loading only for initial load
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user,
-      isSuperAdmin: !!user?.isSuperAdmin,
-      tenantId: user?.tenantId || null,
-      login, 
-      logout,
-      refreshUser 
-    }}>
-      {(!isHydrated || isFetchingInitialUser) ? <div className="min-h-screen w-full flex items-center justify-center"><Spinner size="lg" /></div> : children}
+    <AuthContext.Provider value={contextValue}>
+      {children}
     </AuthContext.Provider>
   );
 }

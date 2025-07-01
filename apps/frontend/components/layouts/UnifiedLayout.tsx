@@ -2,6 +2,7 @@
 
 import { usePlatform } from '@/context/PlatformContext';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { memo } from 'react';
 import PlatformSidebar from './PlatformSidebar';
 import TenantSidebar from './TenantSidebar';
 import PlatformHeader from './PlatformHeader';
@@ -11,7 +12,7 @@ interface UnifiedLayoutProps {
   children: React.ReactNode;
 }
 
-export default function UnifiedLayout({ children }: UnifiedLayoutProps) {
+const UnifiedLayout = memo(function UnifiedLayout({ children }: UnifiedLayoutProps) {
   const { isPlatform } = usePlatform();
 
   // Dynamically choose components based on context
@@ -36,4 +37,6 @@ export default function UnifiedLayout({ children }: UnifiedLayoutProps) {
       </SidebarInset>
     </SidebarProvider>
   );
-} 
+});
+
+export default UnifiedLayout; 
