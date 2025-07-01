@@ -321,7 +321,7 @@ export class WebSocketClient extends EventEmitter {
 
 // Default configuration
 export const defaultWebSocketConfig: WebSocketConfig = {
-  url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/ws',
+        url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000/ws',
   reconnectInterval: 1000,
   maxReconnectAttempts: 10,
   heartbeatInterval: 30000,

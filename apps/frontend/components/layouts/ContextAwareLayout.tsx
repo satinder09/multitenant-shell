@@ -2,7 +2,7 @@
 import { usePlatform } from '@/context/PlatformContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import UnifiedLayout from './UnifiedLayout';
 
 export default function ContextAwareLayout({ children }: { children: React.ReactNode }) {
@@ -10,6 +10,7 @@ export default function ContextAwareLayout({ children }: { children: React.React
   const { user, isAuthenticated } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const hasRedirected = useRef(false);
 
   // Pages that should not have the layout wrapper
   const publicPages = ['/login'];
@@ -25,13 +26,22 @@ export default function ContextAwareLayout({ children }: { children: React.React
     userEmail: user?.email,
     isSuperAdmin: user?.isSuperAdmin,
     isPublicPage,
-    isPlatformPage
+    isPlatformPage,
+    pathname
   });
 
   useEffect(() => {
-    if (!isAuthenticated && !isPublicPage) {
+    // Only redirect if user is not authenticated and not on a public page
+    // Use ref to prevent multiple redirects
+    if (!isAuthenticated && !isPublicPage && !hasRedirected.current) {
       console.log('[ContextAwareLayout] User not authenticated, redirecting to login');
+      hasRedirected.current = true;
       router.push('/login');
+    }
+    
+    // Reset redirect flag when user becomes authenticated
+    if (isAuthenticated) {
+      hasRedirected.current = false;
     }
   }, [isAuthenticated, isPublicPage, router]);
 

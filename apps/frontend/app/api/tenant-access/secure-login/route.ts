@@ -1,33 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { serverPost } from '@/shared/services/api/server-client';
 
 export async function POST(request: NextRequest) {
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const authToken = request.cookies.get('Authentication')?.value;
     const body = await request.json();
 
-    if (!authToken) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const response = await fetch(`${backendUrl}/tenant-access/secure-login`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    // Use server-side client with automatic CSRF protection
+    const response = await serverPost('/tenant-access/secure-login', body, {
+      timeout: 10000
+    }, request);
 
     if (!response.ok) {
-      const errorText = await response.text();
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       return NextResponse.json(
         { 
           error: 'Failed to perform secure login',
-          details: errorText
+          details: errorData
         },
         { status: response.status }
       );

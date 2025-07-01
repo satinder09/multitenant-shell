@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { LoginDto, login as loginApi, ApiError } from '@/shared/services/api';
 import { Spinner } from '@/components/ui/spinner';
+import { initializeCsrfProtection } from '@/domains/auth/services/csrfService';
 
 interface UserProfile {
   id: string;
@@ -77,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Handle client-side hydration
   useEffect(() => {
     setIsHydrated(true);
+    // Initialize CSRF protection when the app starts
+    initializeCsrfProtection();
   }, []);
 
   // Fetch current profile on mount (client-side only)

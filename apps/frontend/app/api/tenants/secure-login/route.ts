@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { serverPost } from '@/shared/services/api/server-client';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const response = await fetch(`${process.env.BACKEND_URL}/tenants/secure-login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': request.headers.get('cookie') || '',
-      },
-      body: JSON.stringify(body),
-    });
+    // Use server-side client with automatic CSRF protection
+    const response = await serverPost('/tenants/secure-login', body, {
+      timeout: 10000
+    }, request);
 
     if (!response.ok) {
       const error = await response.json();

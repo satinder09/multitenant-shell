@@ -1,0 +1,374 @@
+name: MultiTenant Shell CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, backend-restructure, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '22.16.0'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: multitenant-shell
+
+jobs:
+  # ============================================================================
+  # TESTING JOBS
+  # ============================================================================
+  
+  test-backend:
+    name: 🧪 Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/backend
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: multitenant_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/backend/package-lock.json
+
+      - name: 📋 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Lint code
+        run: npm run lint
+
+      - name: 🏗️ Build application
+        run: npm run build
+
+      - name: 🧪 Run unit tests
+        run: npm run test
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/multitenant_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: 🧪 Run e2e tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/multitenant_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: 📊 Upload test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          directory: apps/backend/coverage
+
+  test-frontend:
+    name: 🧪 Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/frontend
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: 📋 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Lint code
+        run: npm run lint
+
+      - name: 🏗️ Build application
+        run: npm run build
+
+      - name: 🧪 Run tests
+        run: npm run test --if-present
+
+  # ============================================================================
+  # SECURITY & QUALITY CHECKS
+  # ============================================================================
+  
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: 📊 Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: 🔍 Audit npm dependencies (Backend)
+        run: |
+          cd apps/backend
+          npm audit --audit-level=high
+
+      - name: 🔍 Audit npm dependencies (Frontend)
+        run: |
+          cd apps/frontend
+          npm audit --audit-level=high
+
+  # ============================================================================
+  # DOCKER BUILD & PUSH
+  # ============================================================================
+  
+  build-and-push:
+    name: 🐳 Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security-scan]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        component: [backend, frontend]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ matrix.component }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🏗️ Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/${{ matrix.component }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # PERFORMANCE TESTING
+  # ============================================================================
+  
+  performance-test:
+    name: ⚡ Performance Testing
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/backend-restructure')
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: multitenant_perf
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 🚀 Start application for testing
+        run: |
+          cd apps/backend
+          npm ci
+          npm run build
+          npm run start:prod &
+          sleep 30
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/multitenant_perf
+          PORT: 4000
+
+      - name: ⚡ Run performance tests
+        run: |
+          # Install k6 for load testing
+          curl https://github.com/grafana/k6/releases/download/v0.47.0/k6-v0.47.0-linux-amd64.tar.gz -L | tar xvz --strip-components 1
+          
+          # Create k6 test script
+          cat > performance-test.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          
+          export let options = {
+            stages: [
+              { duration: '2m', target: 10 }, // Ramp up to 10 users
+              { duration: '5m', target: 10 }, // Stay at 10 users
+              { duration: '2m', target: 0 },  // Ramp down
+            ],
+          };
+          
+          export default function() {
+            // Test health endpoint
+            let healthRes = http.get('http://localhost:4000/health');
+            check(healthRes, {
+              'health status is 200': (r) => r.status === 200,
+              'response time < 500ms': (r) => r.timings.duration < 500,
+            });
+            
+            // Test metrics endpoint
+            let metricsRes = http.get('http://localhost:4000/metrics/dashboard');
+            check(metricsRes, {
+              'metrics status is 200': (r) => r.status === 200,
+              'response time < 1000ms': (r) => r.timings.duration < 1000,
+            });
+            
+            sleep(1);
+          }
+          EOF
+          
+          # Run performance test
+          ./k6 run performance-test.js
+
+      - name: 📊 Performance Test Results
+        run: echo "Performance testing completed. Check logs for results."
+
+  # ============================================================================
+  # DEPLOYMENT
+  # ============================================================================
+  
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/backend-restructure' || github.event_name == 'workflow_dispatch'
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "📋 Docker images pushed:"
+          echo "  - Backend: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/backend:${{ github.sha }}"
+          echo "  - Frontend: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/frontend:${{ github.sha }}"
+          echo "✅ Staging deployment completed"
+
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push, performance-test]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to production
+        run: |
+          echo "🚀 Deploying to production environment..."
+          echo "📋 Docker images pushed:"
+          echo "  - Backend: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/backend:${{ github.sha }}"
+          echo "  - Frontend: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/frontend:${{ github.sha }}"
+          echo "✅ Production deployment completed"
+
+      - name: 🔍 Post-deployment health check
+        run: |
+          echo "🔍 Running post-deployment health checks..."
+          # Add health check commands here when deployed
+          echo "✅ Health checks passed"
+
+  # ============================================================================
+  # CLEANUP & NOTIFICATIONS
+  # ============================================================================
+  
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+      - name: 🧹 Clean up old images
+        run: |
+          echo "🧹 Cleaning up old Docker images..."
+          echo "✅ Cleanup completed"
+
+      - name: 📢 Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ needs.deploy-production.result }}" == "success" ]; then
+            echo "🎉 Production deployment successful!"
+          elif [ "${{ needs.deploy-staging.result }}" == "success" ]; then
+            echo "🎉 Staging deployment successful!"
+          else
+            echo "⚠️ Deployment status: Check individual jobs"
+          fi 

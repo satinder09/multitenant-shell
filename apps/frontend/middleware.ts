@@ -8,11 +8,11 @@ interface JwtPayload {
   isSuperAdmin?: boolean;
 }
 
-
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host')!;
+
+  console.log(`[Middleware] Processing request: ${hostname}${pathname}`);
 
   // Allow requests for static files and API routes to pass through
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/static') || /\..*$/.test(pathname)) {
@@ -23,32 +23,45 @@ export async function middleware(request: NextRequest) {
   const isPlatform = isPlatformHost(hostname);
   const tenantSubdomain = getTenantSubdomain(hostname);
 
+  console.log(`[Middleware] Domain analysis:`, {
+    hostname,
+    isPlatform,
+    tenantSubdomain,
+    pathname,
+    hasCookie: !!cookie
+  });
+
   // If there's no auth cookie, redirect to login for any protected path
   if (!cookie && pathname !== '/login') {
+    console.log(`[Middleware] No auth cookie, redirecting to login`);
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
 
   // If accessing login page, allow it regardless of auth status
-  // This prevents redirect loops during logout
   if (pathname === '/login') {
+    console.log(`[Middleware] Login page access allowed`);
     return NextResponse.next();
   }
 
   if (cookie) {
     try {
       const payload = decodeJwt<JwtPayload>(cookie.value);
-      
-      // Extract tenant ID from either tenantContext or tenantId field
       const tenantId = payload.tenantContext || payload.tenantId;
+
+      console.log(`[Middleware] Token analysis:`, {
+        tenantId: tenantId || 'none',
+        isSuperAdmin: payload.isSuperAdmin,
+        isPlatform,
+        pathname
+      });
 
       // SCENARIO 1: Logged into a TENANT session.
       if (tenantId) {
         // If they have a tenant token but try to access the PLATFORM domain, log them out.
         if (isPlatform) {
-          console.log('Tenant session trying to access platform domain. Denying.');
+          console.log('[Middleware] Tenant session on platform domain - clearing session');
           const loginUrl = new URL('/login', request.url);
-          // By clearing the cookie and redirecting, we force a clean login.
           const response = NextResponse.redirect(loginUrl);
           response.cookies.delete('Authentication');
           return response;
@@ -56,7 +69,7 @@ export async function middleware(request: NextRequest) {
         
         // Block access to platform routes from tenant subdomains
         if (pathname.startsWith('/platform')) {
-          console.log(`[Middleware] Blocking platform route ${pathname} from tenant subdomain`);
+          console.log(`[Middleware] Blocking platform route ${pathname} from tenant subdomain - redirecting to /`);
           const url = request.nextUrl.clone();
           url.pathname = '/';
           return NextResponse.redirect(url);
@@ -64,19 +77,28 @@ export async function middleware(request: NextRequest) {
       } 
       // SCENARIO 2: Logged into a PLATFORM/MASTER session.
       else {
+        console.log(`[Middleware] Platform session detected`);
+        
         // If they have a platform token and are NOT a super admin, block access to tenant domains.
         if (!isPlatform && !payload.isSuperAdmin) {
-          console.log('Non-superadmin platform session trying to access tenant domain. Denying.');
+          console.log('[Middleware] Non-superadmin platform session on tenant domain - clearing session');
           const loginUrl = new URL('/login', request.url);
           const response = NextResponse.redirect(loginUrl);
           response.cookies.delete('Authentication');
           return response;
         }
+
+        // CRITICAL FIX: Platform users should go directly to /platform, not stay on /
+        if (isPlatform && payload.isSuperAdmin && pathname === '/') {
+          console.log('[Middleware] Platform admin on root route - redirecting to /platform');
+          const url = request.nextUrl.clone();
+          url.pathname = '/platform';
+          return NextResponse.redirect(url);
+        }
       }
       
     } catch (error) {
-      // If token is invalid or expired, clear it and redirect to login
-      console.error('Invalid token, redirecting to login:', error);
+      console.error('[Middleware] Invalid token, redirecting to login:', error);
       const loginUrl = new URL('/login', request.url);
       const response = NextResponse.redirect(loginUrl);
       response.cookies.delete('Authentication');
@@ -84,6 +106,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  console.log(`[Middleware] Request allowed to proceed`);
   return NextResponse.next();
 }
 

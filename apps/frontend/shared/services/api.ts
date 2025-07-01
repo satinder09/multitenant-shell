@@ -169,7 +169,7 @@ export function getBackendUrl(req: Request | NextRequest) {
   // Fallback to dynamic construction if no environment variable is set
   const host = req.headers.get('host');
   const frontendPort = process.env.NEXT_PUBLIC_FRONTEND_PORT || '3000';
-  const backendPort = process.env.BACKEND_PORT || '3001'; // Changed from PORT to BACKEND_PORT
+  const backendPort = process.env.BACKEND_PORT || '4000'; // Fixed to match backend default port
   
   let backendHost = host;
   if (host && frontendPort !== backendPort) {

@@ -31,14 +31,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/context/AuthContext"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth()
+
+  // Navigation data with dynamic visibility based on user permissions
+  const navMain = [
     {
       title: "Dashboard",
       url: "/platform",
@@ -49,8 +48,9 @@ const data = {
       url: "/platform/tenants",
       icon: IconBuilding as ComponentType<any>,
     },
-  ],
-  navAdmin: [
+  ]
+
+  const navAdmin = [
     {
       title: "Users",
       icon: IconUsers as ComponentType<any>,
@@ -67,8 +67,9 @@ const data = {
       icon: IconKey as ComponentType<any>,
       url: "/platform/admin/permissions",
     },
-  ],
-  navSecondary: [
+  ]
+
+  const navSecondary = [
     {
       title: "Settings",
       url: "/platform/settings",
@@ -84,8 +85,9 @@ const data = {
       url: "#",
       icon: IconSearch as ComponentType<any>,
     },
-  ],
-  documents: [
+  ]
+
+  const documents = [
     {
       name: "Data Library",
       url: "#",
@@ -93,18 +95,16 @@ const data = {
     },
     {
       name: "Reports",
-      url: "#",
+      url: "/platform/reports",
       icon: IconReport as ComponentType<any>,
     },
     {
       name: "Documentation",
-      url: "#",
+      url: "/platform/docs",
       icon: IconFileDescription as ComponentType<any>,
     },
-  ],
-}
+  ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" className="border-r" {...props}>
       <SidebarHeader>
@@ -116,20 +116,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <Link href="/platform">
                 <IconSparkles className="!size-5" />
-                <span className="text-base font-semibold">Platform Admin</span>
+                <span className="text-base font-semibold">
+                  {user?.isSuperAdmin ? 'Platform Admin' : 'Platform'}
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavMain title="Administration" items={data.navAdmin} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain items={navMain} />
+        
+        {/* Only show admin section for super admins */}
+        {user?.isSuperAdmin && (
+          <NavMain title="Administration" items={navAdmin} />
+        )}
+        
+        <NavDocuments items={documents} />
+        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )

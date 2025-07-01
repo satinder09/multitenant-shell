@@ -17,8 +17,8 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
   const handleSecureLogin = async () => {
     setLoading(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const response = await fetch(`${backendUrl}/tenant-access/secure-login`, {
+      // Use frontend API route which handles CSRF protection
+      const response = await fetch('/api/tenant-access/secure-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

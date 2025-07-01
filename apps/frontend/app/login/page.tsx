@@ -99,8 +99,8 @@ function LoginForm() {
       await login({ email: sanitizedEmail, password: sanitizedPassword });
       loginRateLimiter.reset('login');
       
-      // Redirect to root - middleware will handle the appropriate routing
-      router.push('/');
+      // Redirect to platform page to use proper layout with sidebar
+      router.push('/platform');
     } catch (err: unknown) {
       const rateLimitCheck = loginRateLimiter.checkLimit('login');
       const remainingAttempts = rateLimitCheck.remaining || 0;
