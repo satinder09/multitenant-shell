@@ -247,47 +247,47 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
     <div className="relative w-full" ref={dropdownRef}>
       {/* Main Search Input - this is the primary search interface */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           ref={inputRef}
           placeholder={placeholder}
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
-          className="pl-10 pr-16 h-9 sm:h-10 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className="pl-10 pr-16 h-9 sm:h-10"
         />
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
           {filterCount > 0 && (
-            <Badge variant="secondary" className="text-xs h-5 px-1.5 bg-blue-100 text-blue-800 border-blue-200">
+            <Badge variant="secondary" className="text-xs h-5 px-1.5">
               {filterCount}
             </Badge>
           )}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-0.5 hover:bg-gray-100 rounded transition-colors"
+            className="p-0.5 hover:bg-accent rounded transition-colors"
           >
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden w-full sm:min-w-[700px]">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden w-full sm:min-w-[700px]">
           <div className="flex flex-col sm:flex-row">
             {/* Filters Section */}
-            <div className="flex-1 border-b sm:border-b-0 sm:border-r border-gray-200 sm:min-w-[250px]">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <div className="flex-1 border-b sm:border-b-0 sm:border-r border-border sm:min-w-[250px]">
+              <div className="px-4 py-3 border-b border-border bg-muted/50">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <Filter className="w-4 h-4" />
                   Popular Filters
                 </div>
               </div>
               <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
                 {filterPresets.length === 0 ? (
-                  <div className="text-center text-gray-500 text-sm py-8">
+                  <div className="text-center text-muted-foreground text-sm py-8">
                     <div className="flex flex-col items-center gap-2">
-                      <Filter className="w-6 h-6 text-gray-300" />
+                      <Filter className="w-6 h-6 text-muted-foreground/50" />
                       <span>No filter presets available</span>
                     </div>
                   </div>
@@ -296,23 +296,23 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                     <button
                       key={filter.id}
                       onClick={() => handleFilterClick(filter)}
-                      className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-200 border border-transparent rounded-lg transition-all duration-200 flex items-center gap-3 group"
+                      className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground border border-transparent rounded-lg transition-all duration-200 flex items-center gap-3 group"
                     >
-                      <div className="flex-shrink-0 text-blue-600 group-hover:text-blue-700">
+                      <div className="flex-shrink-0 text-primary group-hover:text-primary/80">
                         {filter.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium text-gray-900 group-hover:text-blue-900 text-sm">
+                        <span className="font-medium text-foreground group-hover:text-accent-foreground text-sm">
                           {filter.label}
                         </span>
                         {filter.type !== 'predefined' && (
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             Click to configure
                           </div>
                         )}
                       </div>
                       {filter.type === 'predefined' && filter.value !== undefined && (
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-200 flex-shrink-0 hidden sm:inline-flex">
+                        <Badge variant="secondary" className="text-xs flex-shrink-0 hidden sm:inline-flex">
                           {typeof filter.value === 'boolean' 
                             ? (filter.value ? 'Yes' : 'No')
                             : String(filter.value)
@@ -323,12 +323,12 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                   ))
                 )}
                 
-                <div className="border-t border-gray-100 pt-3 mt-3">
+                <div className="border-t border-border pt-3 mt-3">
                   <button
                     onClick={handleCustomFilterDialog}
-                    className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border border-dashed border-gray-300 hover:border-gray-400 rounded-lg transition-all duration-200 flex items-center gap-3"
+                    className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-accent border border-dashed border-border hover:border-border rounded-lg transition-all duration-200 flex items-center gap-3"
                   >
-                    <Plus className="w-4 h-4 text-gray-400" />
+                    <Plus className="w-4 h-4 text-muted-foreground" />
                     <span className="font-medium">Add Custom Filter</span>
                   </button>
                 </div>
@@ -336,9 +336,9 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
             </div>
 
             {/* Group By Section */}
-            <div className="flex-1 border-b sm:border-b-0 sm:border-r border-gray-200 sm:min-w-[200px]">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <div className="flex-1 border-b sm:border-b-0 sm:border-r border-border sm:min-w-[200px]">
+              <div className="px-4 py-3 border-b border-border bg-muted/50">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <BarChart3 className="w-4 h-4" />
                   Group By
                 </div>
@@ -348,17 +348,17 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                   <button
                     key={option.id}
                     onClick={() => handleGroupByClick(option)}
-                    className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                    className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors font-medium"
                   >
                     {option.label}
                   </button>
                 ))}
                 
-                <div className="border-t border-gray-100 pt-3 mt-3">
+                <div className="border-t border-border pt-3 mt-3">
                   <button
-                    className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-3"
+                    className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors flex items-center gap-3"
                   >
-                    <Plus className="w-4 h-4 text-gray-400" />
+                    <Plus className="w-4 h-4 text-muted-foreground" />
                     <span className="font-medium">Add Custom Group</span>
                   </button>
                 </div>
@@ -367,17 +367,17 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 
             {/* Saved Searches Section */}
             <div className="flex-1 sm:min-w-[200px]">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <div className="px-4 py-3 border-b border-border bg-muted/50">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <Star className="w-4 h-4" />
                   Saved Searches
                 </div>
               </div>
               <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
                 {savedSearches.length === 0 ? (
-                  <div className="text-center text-gray-500 text-sm py-8">
+                  <div className="text-center text-muted-foreground text-sm py-8">
                     <div className="flex flex-col items-center gap-2">
-                      <Star className="w-6 h-6 text-gray-300" />
+                      <Star className="w-6 h-6 text-muted-foreground/50" />
                       <span>No saved searches yet</span>
                     </div>
                   </div>
@@ -390,15 +390,15 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
                           onSavedSearchLoad(search.id);
                           setIsOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-3"
+                        className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors flex items-center gap-3"
                       >
-                        <Star className={`w-4 h-4 ${search.isFavorite ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'}`} />
+                        <Star className={`w-4 h-4 ${search.isFavorite ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
                         <span className="flex-1 truncate font-medium">{search.name}</span>
                       </button>
                     ))}
                     
-                    <div className="border-t border-gray-100 pt-3 mt-3">
-                      <button className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium">
+                    <div className="border-t border-border pt-3 mt-3">
+                      <button className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors font-medium">
                         Save current search
                       </button>
                     </div>

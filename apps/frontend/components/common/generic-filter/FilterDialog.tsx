@@ -243,7 +243,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
           {/* Logic Selector */}
           {rules.length > 1 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Match</span>
+              <span className="text-sm text-muted-foreground">Match</span>
               <Select value={logic} onValueChange={(value: 'AND' | 'OR') => setLogic(value)}>
                 <SelectTrigger className="w-20 h-8 text-sm">
                   <SelectValue />
@@ -253,7 +253,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                   <SelectItem value="OR">any</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm text-gray-600">of the following rules:</span>
+              <span className="text-sm text-muted-foreground">of the following rules:</span>
             </div>
           )}
 
@@ -263,7 +263,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
               const operatorOptions = getOperatorsForFieldType(rule.fieldType);
 
               return (
-                <div key={rule.id} className="flex items-center gap-2 p-3 border rounded-md bg-gray-50">
+                <div key={rule.id} className="flex items-center gap-2 p-3 border rounded-md bg-muted/30">
                   {/* Field Selector */}
                   <div className="flex-1 min-w-0">
                     <Popover 
@@ -273,7 +273,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                       <PopoverTrigger asChild>
                         <Button 
                           variant="outline" 
-                          className="w-full justify-between h-9 bg-white text-sm"
+                          className="w-full justify-between h-9 bg-background text-sm"
                           onClick={() => setFieldSelectorOpen(rule.id)}
                         >
                           <span className="truncate">
@@ -307,7 +307,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                       onValueChange={(value) => handleOperatorChange(rule.id, value as FilterOperator)}
                       disabled={!rule.field}
                     >
-                      <SelectTrigger className="w-full h-9 bg-white text-sm">
+                      <SelectTrigger className="w-full h-9 bg-background text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -335,7 +335,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                         fieldConfig={config?.columns.find(col => col.field === rule.field)}
                       />
                     ) : (
-                      <div className="h-9 bg-gray-100 border border-gray-300 rounded-md flex items-center justify-center text-gray-400 text-xs">
+                      <div className="h-9 bg-muted border border-border rounded-md flex items-center justify-center text-muted-foreground text-xs">
                         Select field first
                       </div>
                     )}
@@ -347,7 +347,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => removeRule(rule.id)}
-                      className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600"
+                      className="h-9 w-9 p-0 hover:bg-destructive/10 hover:text-destructive"
                       disabled={rules.length === 1}
                     >
                       <X className="h-4 w-4" />

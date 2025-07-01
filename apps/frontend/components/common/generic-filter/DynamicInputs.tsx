@@ -273,7 +273,7 @@ export const DynamicInput: React.FC<DynamicInputProps> = ({
             </SelectContent>
           </Select>
                      {optionsError && (
-             <p className="text-xs text-red-600 mt-1">{optionsError}</p>
+                             <p className="text-xs text-destructive mt-1">{optionsError}</p>
            )}
          </div>
         );
@@ -355,7 +355,7 @@ export const DatePresetDisplay: React.FC<{ preset: string; onRemove: () => void 
     <Badge variant="secondary" className="flex items-center gap-1">
       {presetConfig.label}
       <X 
-        className="h-3 w-3 cursor-pointer hover:text-red-500" 
+                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
         onClick={onRemove}
       />
     </Badge>
