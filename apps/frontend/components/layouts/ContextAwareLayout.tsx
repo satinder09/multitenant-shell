@@ -2,16 +2,70 @@
 import { usePlatform } from '@/context/PlatformContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import UnifiedLayout from './UnifiedLayout';
 
 export default function ContextAwareLayout({ children }: { children: React.ReactNode }) {
   const { isPlatform, tenantSubdomain } = usePlatform();
-  const { user, isAuthenticated, isLoading, isLoggingOut } = useAuth();
+  const { user, isAuthenticated, isLoading, isLoggingOut, refreshUser } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const hasRedirected = useRef(false);
+  const [isProcessingSecureLogin, setIsProcessingSecureLogin] = useState(false);
+
+  // Check for secure login token in URL
+  useEffect(() => {
+    const processSecureLoginToken = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const secureLoginToken = urlParams.get('secureLoginToken');
+      
+      console.log('🔐 Checking for secure login token:', {
+        hasToken: !!secureLoginToken,
+        isProcessing: isProcessingSecureLogin,
+        currentPath: pathname,
+        isAuthenticated
+      });
+      
+      if (secureLoginToken && !isProcessingSecureLogin) {
+        console.log('🔐 Processing secure login token from URL');
+        setIsProcessingSecureLogin(true);
+        
+        try {
+          // Set the authentication cookie using our API
+          const response = await fetch('/api/auth/secure-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ token: secureLoginToken })
+          });
+          
+          if (response.ok) {
+            console.log('🔐 Secure login cookie set successfully');
+            
+            // Remove token from URL
+            urlParams.delete('secureLoginToken');
+            const newUrl = `${window.location.pathname}${urlParams.toString() ? '?' + urlParams.toString() : ''}`;
+            window.history.replaceState({}, '', newUrl);
+            
+            // Refresh user profile to pick up the new authentication
+            await refreshUser(true);
+            
+            // Redirect to home page after successful secure login
+            router.push('/');
+          } else {
+            console.error('🔐 Failed to set secure login cookie');
+          }
+        } catch (error) {
+          console.error('🔐 Error processing secure login token:', error);
+        } finally {
+          setIsProcessingSecureLogin(false);
+        }
+      }
+    };
+    
+    processSecureLoginToken();
+  }, [isProcessingSecureLogin, refreshUser, router]);
 
   // Memoize public pages check for performance
   const isPublicPage = useMemo(() => {
@@ -21,11 +75,21 @@ export default function ContextAwareLayout({ children }: { children: React.React
 
   // Handle authentication redirects efficiently
   useEffect(() => {
+    console.log('🔄 ContextAwareLayout auth check:', {
+      isLoading,
+      isLoggingOut,
+      isPublicPage,
+      isAuthenticated,
+      pathname,
+      user: user ? { id: user.id, accessType: user.accessType } : null
+    });
+    
     // Skip redirect logic during loading, logging out, or on public pages
     if (isLoading || isLoggingOut || isPublicPage) return;
 
     // Only redirect if user is not authenticated and not already redirecting
     if (!isAuthenticated && !hasRedirected.current) {
+      console.log('🔄 User not authenticated, redirecting to login');
       hasRedirected.current = true;
       router.push('/login');
       return;
@@ -33,12 +97,13 @@ export default function ContextAwareLayout({ children }: { children: React.React
     
     // Reset redirect flag when user becomes authenticated
     if (isAuthenticated) {
+      console.log('🔄 User authenticated, resetting redirect flag');
       hasRedirected.current = false;
     }
   }, [isAuthenticated, isPublicPage, isLoading, isLoggingOut, router]);
 
   // Show loading during auth transitions or logout (but don't block if just logging out)
-  if (isLoading) {
+  if (isLoading || isProcessingSecureLogin) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
         <Spinner size="lg" />

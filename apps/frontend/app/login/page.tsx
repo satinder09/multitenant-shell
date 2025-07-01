@@ -2,7 +2,7 @@
 
 'use client';
 
-import { FormEvent, useState, useEffect } from 'react';
+import { FormEvent, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { usePlatform } from '@/context/PlatformContext';
@@ -22,6 +22,7 @@ function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
   const { isPlatform, tenantSubdomain } = usePlatform();
+  const loginInProgress = useRef(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +30,30 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutTime, setLockoutTime] = useState<Date | null>(null);
+
+  // Debug logging for Fast Refresh issues
+  useEffect(() => {
+    console.log('🔄 LoginForm mounted/re-mounted');
+    // Check if we're in the middle of a login attempt (component remounted during login)
+    const loginAttemptData = sessionStorage.getItem('login-attempt-data');
+    if (loginAttemptData) {
+      try {
+        const { email: savedEmail, error: savedError } = JSON.parse(loginAttemptData);
+        if (savedEmail) setEmail(savedEmail);
+        if (savedError) setError(savedError);
+        console.log('🔄 Restored login attempt data after remount');
+      } catch (e) {
+        console.log('🔄 Failed to restore login attempt data');
+      }
+    } else {
+      // Fresh page load - clear any stale data
+      sessionStorage.removeItem('login-form-email');
+      sessionStorage.removeItem('login-form-error');
+    }
+    return () => {
+      console.log('🔄 LoginForm unmounting');
+    };
+  }, []);
 
   // Check for lockout
   useEffect(() => {
@@ -63,10 +88,18 @@ function LoginForm() {
     return () => clearInterval(timer);
   }, [isLocked, lockoutTime]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (isLocked) return;
+  const handleSubmit = async () => {
+    console.log('🔔 handleSubmit called');
+    if (isLocked || loginInProgress.current) return;
+    
+    loginInProgress.current = true;
     setError(null);
+    
+    // Save current form state temporarily during login attempt
+    sessionStorage.setItem('login-attempt-data', JSON.stringify({
+      email: email,
+      error: null
+    }));
 
     // Sanitize inputs
     const sanitizedEmail = sanitizeInput(email);
@@ -75,11 +108,21 @@ function LoginForm() {
     // Client-side validation
     if (!isValidEmail(sanitizedEmail)) {
       setError('Please enter a valid email address');
+      sessionStorage.setItem('login-attempt-data', JSON.stringify({
+        email: email,
+        error: 'Please enter a valid email address'
+      }));
+      loginInProgress.current = false;
       return;
     }
 
     if (sanitizedPassword.length < 6) {
       setError('Password must be at least 6 characters long');
+      sessionStorage.setItem('login-attempt-data', JSON.stringify({
+        email: email,
+        error: 'Password must be at least 6 characters long'
+      }));
+      loginInProgress.current = false;
       return;
     }
 
@@ -91,10 +134,16 @@ function LoginForm() {
       setLockoutTime(lockoutEnd);
       localStorage.setItem('loginLockout', lockoutEnd.toISOString());
       setError('Too many failed attempts. Please try again in 15 minutes.');
+      sessionStorage.setItem('login-attempt-data', JSON.stringify({
+        email: email,
+        error: 'Too many failed attempts. Please try again in 15 minutes.'
+      }));
+      loginInProgress.current = false;
       return;
     }
 
     setIsLoading(true);
+    console.log('🔔 Starting login attempt...');
     try {
       // Smart redirect: remember where user was trying to go
       const urlParams = new URLSearchParams(window.location.search);
@@ -116,19 +165,39 @@ function LoginForm() {
 
       await login({ email: sanitizedEmail, password: sanitizedPassword }, destination);
       loginRateLimiter.reset('login');
+      // Clear login attempt data on successful login
+      sessionStorage.removeItem('login-attempt-data');
+      console.log('🔔 Login successful, redirecting...');
       
       // The login function now handles the redirect, so we don't need router.push here
     } catch (err: unknown) {
-      const rateLimitCheck = loginRateLimiter.checkLimit('login');
-      const remainingAttempts = rateLimitCheck.remaining || 0;
-      
-      if (remainingAttempts <= 0) {
-        setError('Too many failed attempts. Please try again in 15 minutes.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Invalid email or password');
-      }
+      // Don't call checkLimit again - it was already called above
+      // Just handle the error display
+      console.log('🔔 Login failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Invalid email or password';
+      setError(errorMessage);
+      // Update login attempt data with error
+      sessionStorage.setItem('login-attempt-data', JSON.stringify({
+        email: email,
+        error: errorMessage
+      }));
     } finally {
       setIsLoading(false);
+      loginInProgress.current = false;
+      console.log('🔔 Login attempt completed');
+      // Clean up login attempt data after a delay (in case component remounts)
+      setTimeout(() => {
+        sessionStorage.removeItem('login-attempt-data');
+        console.log('🔔 Cleaned up login attempt data');
+      }, 2000);
+    }
+  };
+
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isLoading && !isLocked) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -161,7 +230,7 @@ function LoginForm() {
           </CardHeader>
           
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email address
@@ -173,11 +242,10 @@ function LoginForm() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="pl-10 pr-4"
                     placeholder="Enter your email"
                     disabled={isLoading || isLocked}
-                    required
-                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -193,11 +261,10 @@ function LoginForm() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="pl-10 pr-10"
                     placeholder="Enter your password"
                     disabled={isLoading || isLocked}
-                    required
-                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -230,7 +297,8 @@ function LoginForm() {
               )}
 
               <Button
-                type="submit"
+                type="button"
+                onClick={handleSubmit}
                 className="w-full"
                 disabled={isLoading || isLocked}
               >
@@ -243,7 +311,7 @@ function LoginForm() {
                   'Sign in'
                 )}
               </Button>
-            </form>
+            </div>
 
             <div className="mt-6 text-center">
               <p className="text-xs text-muted-foreground">

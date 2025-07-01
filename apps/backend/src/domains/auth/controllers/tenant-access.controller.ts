@@ -10,8 +10,9 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { JwtAuthGuard, AuthorizationGuard, RequireAdmin } from '../../../shared/guards';
 import { AuthService } from '../services/auth.service';
+import { AdminRateLimit, AuthRateLimit, ApiRateLimit } from '../../../shared/decorators/multitenant-rate-limit.decorator';
 
 export interface TenantAccessOption {
   tenantId: string;
@@ -29,6 +30,7 @@ export class TenantAccessController {
 
   // Get tenant access options for current user
   @Get('options')
+  @ApiRateLimit()
   @UseGuards(JwtAuthGuard)
   async getTenantAccessOptions(@Req() req: Request): Promise<TenantAccessOption[]> {
     const user = req.user as any;
@@ -37,6 +39,7 @@ export class TenantAccessController {
 
   // Secure login to tenant
   @Post('secure-login')
+  @AuthRateLimit()
   @UseGuards(JwtAuthGuard)
   async secureLoginToTenant(
     @Body() dto: {
@@ -49,6 +52,13 @@ export class TenantAccessController {
   ): Promise<{ redirectUrl: string }> {
     const user = req.user as any;
     
+    console.log('🔐 Secure login request:', {
+      userId: user.id,
+      tenantId: dto.tenantId,
+      duration: dto.duration,
+      reason: dto.reason
+    });
+    
     const { accessToken, redirectUrl } = await this.authService.secureLoginToTenant(
       user.id,
       dto.tenantId,
@@ -60,21 +70,25 @@ export class TenantAccessController {
 
     const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
     const frontendPort = process.env.FRONTEND_PORT || '3000';
-    // Set cookie for tenant session (cross-subdomain, local dev)
-    res.cookie('Authentication', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+    
+    console.log('🔐 Setting secure login cookie:', {
       maxAge: dto.duration * 60 * 1000,
-      domain: `.${baseDomain}`,
+      redirectUrl
     });
+    
+    // Instead of setting cross-domain cookie, include token in redirect URL
+    // The tenant frontend will set the cookie on its own domain
+    const redirectUrlWithToken = `${redirectUrl}?secureLoginToken=${encodeURIComponent(accessToken)}`;
 
-    return { redirectUrl };
+    console.log('🔐 Secure login successful, redirectUrl:', redirectUrl);
+    return { redirectUrl: redirectUrlWithToken };
   }
 
   // Start impersonation
   @Post('impersonate')
-  @UseGuards(JwtAuthGuard)
+  @AdminRateLimit()
+  @RequireAdmin()
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
   async startImpersonation(
     @Body() dto: {
       tenantId: string;
@@ -113,7 +127,9 @@ export class TenantAccessController {
 
   // End impersonation session
   @Post('impersonate/end')
-  @UseGuards(JwtAuthGuard)
+  @AdminRateLimit()
+  @RequireAdmin()
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
   async endImpersonation(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -140,7 +156,9 @@ export class TenantAccessController {
 
   // Get tenant users for impersonation
   @Get('tenants/:tenantId/users')
-  @UseGuards(JwtAuthGuard)
+  @AdminRateLimit()
+  @RequireAdmin()
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
   async getTenantUsers(
     @Param('tenantId') tenantId: string,
     @Req() req: Request,

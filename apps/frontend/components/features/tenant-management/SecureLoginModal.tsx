@@ -17,6 +17,7 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
   const handleSecureLogin = async () => {
     setLoading(true);
     try {
+      console.log('🔐 Starting secure login to tenant:', tenant.tenantName);
       // Use frontend API route which handles CSRF protection
       const response = await fetch('/api/tenant-access/secure-login', {
         method: 'POST',
@@ -31,7 +32,15 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
 
       if (response.ok) {
         const { redirectUrl } = await response.json();
-        // Redirect to tenant with secure session
+        console.log('🔐 Secure login successful, redirecting to:', redirectUrl);
+        
+        // Close the modal first
+        onOpenChange(false);
+        
+        // Small delay to ensure response is processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('🔐 Performing redirect to:', redirectUrl);
         window.location.href = redirectUrl;
       } else {
         const error = await response.json();

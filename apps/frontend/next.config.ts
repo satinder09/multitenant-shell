@@ -12,7 +12,8 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
     NEXT_PUBLIC_BASE_DOMAIN: process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me',
-    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000',
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000',
+    NEXT_PUBLIC_FRONTEND_PORT: frontendPort,
   },
 
   // Security headers
@@ -45,7 +46,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' " + (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'),
+              "connect-src 'self' " + (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000'),
               "frame-ancestors 'none'",
             ].join('; '),
           },

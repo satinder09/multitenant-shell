@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './useAuth';
-import { LoginFormData } from '@/domains/auth/types/auth.types';
+import type { LoginFormData } from '@/shared/utils/validation';
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);

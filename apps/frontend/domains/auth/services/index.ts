@@ -1,7 +1,8 @@
 // Auth domain services
 // Authentication business logic and API calls
 
-export * from './authService';
+// Export specific items to avoid conflicts
+export { authService as legacyAuthService } from './authService';
 export * from './tokenService';
-export * from './authApiClient';
+export { authApiClient, authService, AuthApiClient, type AuthApiError, type AuthRequestConfig } from './authApiClient';
 export * from './csrfService'; 

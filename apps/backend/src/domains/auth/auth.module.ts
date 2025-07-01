@@ -12,6 +12,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { DatabaseModule } from '../database/database.module';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { MetricsService } from '../../infrastructure/monitoring/metrics.service';
+import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
 
 @Module({
   imports: [
@@ -32,6 +33,8 @@ import { MetricsService } from '../../infrastructure/monitoring/metrics.service'
     AuthService,
     AuthSecurityService,
     JwtStrategy,
+    JwtAuthGuard,
+    AuthorizationGuard,
     AuditService,
     MetricsService,
   ],

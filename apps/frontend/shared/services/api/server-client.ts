@@ -11,7 +11,13 @@ class ServerApiClient {
   private csrfTokenCache: { token: string | null; expiry: number } = { token: null, expiry: 0 };
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    // Force correct backend URL for development
+    const defaultBackendUrl = 'http://lvh.me:4000';
+    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_BACKEND_URL || defaultBackendUrl;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ServerApiClient] Using backend URL:', this.baseUrl);
+    }
   }
 
   private async getCSRFToken(cookieHeader?: string, originalRequest?: NextRequest): Promise<string | null> {

@@ -43,7 +43,7 @@ interface AuthContextType {
   isLoggingOut: boolean;
   login: (dto: LoginDto, redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: (forceRefresh?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,16 +76,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const refreshUser = useCallback(async (forceRefresh = false) => {
+    console.log('🔍 AuthContext.refreshUser called, forceRefresh:', forceRefresh);
     // Try cache first unless force refresh
     if (!forceRefresh) {
       const cachedUser = AuthCache.get();
       if (cachedUser) {
+        console.log('🔍 Using cached user:', cachedUser);
         setUser(cachedUser);
         return cachedUser;
       }
     }
 
     try {
+      console.log('🔍 Fetching user profile from /api/auth/me');
       const response = await fetch('/api/auth/me', { 
         credentials: 'include',
         headers: {
@@ -93,12 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
       
+      console.log('🔍 /api/auth/me response status:', response.status);
       if (response.ok) {
         const profile = await response.json();
+        console.log('🔍 User profile received:', profile);
         setUser(profile);
         AuthCache.set(profile);
         return profile;
       } else {
+        console.log('🔍 /api/auth/me failed, clearing user state');
         setUser(null);
         AuthCache.clear();
         return null;
@@ -132,21 +138,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const login = useCallback(async (dto: LoginDto, redirectTo?: string) => {
+    if (process.env.DEBUG_AUTH) {
+      console.log('AuthContext.login called with:', { email: dto.email, rememberMe: dto.rememberMe });
+    }
     setIsLoading(true);
     try {
+      if (process.env.DEBUG_AUTH) {
+        console.log('Calling loginApi...');
+      }
       await loginApi(dto);
+      if (process.env.DEBUG_AUTH) {
+        console.log('loginApi succeeded, refreshing user...');
+      }
       const profile = await refreshUser(true); // Force refresh after login
       
       if (profile) {
-        // Smart redirect logic
+        // Smart redirect logic - ONLY redirect on successful login
         const destination = redirectTo || getSmartRedirectPath(
           window.location.hostname, 
           profile.isSuperAdmin
         );
         
-        // Optimistic navigation - don't wait for render
-        setTimeout(() => router.push(destination), 0);
+        if (process.env.DEBUG_AUTH) {
+          console.log('Login successful, redirecting to:', destination);
+        }
+        // Use router.push directly, no setTimeout needed
+        router.push(destination);
       }
+    } catch (error) {
+      if (process.env.DEBUG_AUTH) {
+        console.log('AuthContext.login error:', error);
+        console.log('Error type:', typeof error);
+        if (error instanceof Error) {
+          console.log('Error message:', error.message);
+        }
+      }
+      // Re-throw error so login form can handle it
+      // DO NOT redirect or change state on error
+      throw error;
     } finally {
       setIsLoading(false);
     }

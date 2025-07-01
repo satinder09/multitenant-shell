@@ -40,21 +40,40 @@ export class AuthService {
     tenantId?: string,
   ): Promise<LoginResponse> {
     if (tenantId && tenantId.trim() !== '') {
-      // Only check tenant DB for credentials
+      // Tenant login: ONLY check tenant DB for credentials
+      // Master users should NOT be able to login directly to tenant subdomains
+      // They must use secure login or impersonation from the platform
       try {
         const user = await this.tenantPrisma.db.user.findUnique({ where: { email: dto.email } });
         if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+          // Check if this is a master user trying to login directly to tenant
+          const masterUser = await this.masterPrisma.user.findUnique({ where: { email: dto.email } });
+          if (masterUser) {
+            this.logger.warn('Master user attempted direct login to tenant', {
+              email: dto.email,
+              tenantId,
+              masterUserId: masterUser.id
+            });
+            throw new UnauthorizedException('Master users cannot login directly to tenant subdomains. Please use secure login or impersonation from the platform.');
+          }
           throw new UnauthorizedException('Invalid credentials');
         }
-              const payload = {
-        sub: user.id,
-        email: user.email,
-        name: user.name,
-        tenantContext: tenantId,
-      };
+        
+        // Valid tenant user login
+        const payload = {
+          sub: user.id,
+          email: user.email,
+          name: user.name,
+          tenantContext: tenantId,
+          accessType: 'direct_access',
+        };
         const accessToken = this.jwt.sign(payload);
         return { accessToken };
       } catch (error) {
+        // Re-throw the specific error (including master user prevention)
+        if (error instanceof UnauthorizedException) {
+          throw error;
+        }
         this.logger.error('Failed to authenticate user in tenant database', { 
           tenantId, 
           email: dto.email,
@@ -63,7 +82,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid tenant or credentials');
       }
     } else {
-      // Only check master DB for credentials (platform login)
+      // Platform login: Only check master DB for credentials
       const user = await this.validateMasterUser(dto.email, dto.password);
       if (!user) {
         throw new UnauthorizedException('Invalid credentials');

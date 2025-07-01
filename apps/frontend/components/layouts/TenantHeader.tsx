@@ -188,7 +188,7 @@ export default function TenantHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full md:h-9 md:w-9">
                 <Avatar className="h-8 w-8 md:h-9 md:w-9">
-                  <AvatarImage src="/avatars/user.jpg" alt={user?.name || user?.email} />
+                  {/* Use fallback avatar with user initials */}
                   <AvatarFallback>{getUserInitials(user?.name, user?.email)}</AvatarFallback>
                 </Avatar>
               </Button>

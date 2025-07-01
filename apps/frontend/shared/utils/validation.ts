@@ -53,18 +53,36 @@ export const searchSchema = z.object({
   sort: sortSchema.optional(),
 });
 
-// Auth schemas
+// ============================================================================
+// ENHANCED AUTH SCHEMAS (CHUNK 1 IMPROVEMENT)
+// ============================================================================
+
+// Enhanced login schema with rememberMe support
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Password is required'), // Don't validate strength on login
+  rememberMe: z.boolean().default(false).optional(),
 });
 
+// Enhanced login form schema (for frontend forms with additional UI state)
+export const loginFormSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().default(false).optional(),
+});
+
+// Registration schema
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   name: requiredStringSchema.max(100, 'Name must be less than 100 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
+// Password change schema
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
   newPassword: passwordSchema,
@@ -73,6 +91,62 @@ export const changePasswordSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
+
+// Password reset schemas
+export const requestPasswordResetSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  password: passwordSchema,
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Profile update schema
+export const updateProfileSchema = z.object({
+  name: requiredStringSchema.max(100, 'Name must be less than 100 characters').optional(),
+  email: emailSchema.optional(),
+});
+
+// ============================================================================
+// TYPESCRIPT TYPES DERIVED FROM SCHEMAS (CHUNK 1 IMPROVEMENT) 
+// ============================================================================
+
+// Auth types
+export type LoginData = z.infer<typeof loginSchema>;
+export type LoginFormData = z.infer<typeof loginFormSchema>;
+export type RegisterData = z.infer<typeof registerSchema>;
+export type ChangePasswordData = z.infer<typeof changePasswordSchema>;
+export type RequestPasswordResetData = z.infer<typeof requestPasswordResetSchema>;
+export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
+export type UpdateProfileData = z.infer<typeof updateProfileSchema>;
+
+// Common types
+export type EmailData = z.infer<typeof emailSchema>;
+export type PaginationData = z.infer<typeof paginationSchema>;
+export type SearchData = z.infer<typeof searchSchema>;
+export type SortData = z.infer<typeof sortSchema>;
+
+// Tenant types
+export type CreateTenantData = z.infer<typeof createTenantSchema>;
+export type UpdateTenantData = z.infer<typeof updateTenantSchema>;
+
+// User types  
+export type CreateUserData = z.infer<typeof createUserSchema>;
+export type UpdateUserData = z.infer<typeof updateUserSchema>;
+
+// Platform admin types
+export type ImpersonationData = z.infer<typeof impersonationSchema>;
+export type SecureLoginData = z.infer<typeof secureLoginSchema>;
+
+// Filter types
+export type FilterRuleData = z.infer<typeof filterRuleSchema>;
+export type FilterGroupData = z.infer<typeof filterGroupSchema>;
+export type ComplexFilterData = z.infer<typeof complexFilterSchema>;
 
 // Tenant schemas
 export const createTenantSchema = z.object({

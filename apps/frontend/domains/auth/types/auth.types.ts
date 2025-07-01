@@ -1,5 +1,6 @@
 // Authentication domain types
 // Core authentication interfaces and types
+import type { LoginFormData } from '@/shared/utils/validation';
 
 export interface LoginCredentials {
   email: string;
@@ -51,12 +52,6 @@ export interface ProtectedRouteProps {
   requiredPermissions?: string[];
   requiredRoles?: string[];
   fallback?: React.ReactNode;
-}
-
-export interface LoginFormData {
-  email: string;
-  password: string;
-  rememberMe?: boolean;
 }
 
 export interface LoginFormProps {

@@ -21,6 +21,7 @@ function isValidEmail(email: string): boolean {
 export interface LoginDto {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface LoginResponse {
@@ -55,6 +56,11 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 }
 
 export async function login(dto: LoginDto): Promise<LoginResponse> {
+  // Debug logging only when explicitly enabled
+  if (process.env.DEBUG_AUTH) {
+    console.log('API login function called with:', { email: dto.email, rememberMe: dto.rememberMe });
+  }
+  
   // Input validation and sanitization
   if (!dto.email || !dto.password) {
     throw new Error('Email and password are required');
@@ -72,8 +78,13 @@ export async function login(dto: LoginDto): Promise<LoginResponse> {
   const sanitizedDto = {
     email: sanitizedEmail,
     password: dto.password, // Don't sanitize passwords as they may contain special chars
+    ...(dto.rememberMe !== undefined && { rememberMe: dto.rememberMe }),
   };
 
+  if (process.env.DEBUG_AUTH) {
+    console.log('Making login request to /api/auth/login...');
+  }
+  
   const res = await securityFetch('/api/auth/login', {
     method: 'POST',
     headers: { 
@@ -83,11 +94,15 @@ export async function login(dto: LoginDto): Promise<LoginResponse> {
     body: JSON.stringify(sanitizedDto),
   });
 
+  if (process.env.DEBUG_AUTH) {
+    console.log('Login response status:', res.status, res.statusText);
+  }
+  
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(sanitizeInput(error.message || 'Login failed'));
+    const errorMessage = sanitizeInput(error.message || 'Login failed');
+    throw new Error(errorMessage);
   }
-
   return res.json();
 }
 

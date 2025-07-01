@@ -15,6 +15,9 @@ import { TenantModule } from './domains/tenant/tenant.module';
 import { SecurityLoggerMiddleware } from './shared/middleware/security-logger.middleware';
 import { CsrfProtectionMiddleware } from './shared/middleware/csrf-protection.middleware';
 import { SecurityHeadersMiddleware } from './shared/middleware/security-headers.middleware';
+import { MultitenantRateLimitMiddleware } from './shared/middleware/multitenant-rate-limit.middleware';
+import { MultitenantRateLimitService } from './shared/services/multitenant-rate-limit.service';
+import { MultitenantRateLimitGuard } from './shared/guards/multitenant-rate-limit.guard';
 
 // Monitoring infrastructure
 import { PerformanceMonitoringInterceptor } from './shared/interceptors/performance-monitoring.interceptor';
@@ -61,6 +64,10 @@ import { PerformanceOptimizationController } from './infrastructure/performance/
       useClass: ThrottlerGuard,
     },
     {
+      provide: APP_GUARD,
+      useClass: MultitenantRateLimitGuard,
+    },
+    {
       provide: APP_INTERCEPTOR,
       useClass: PerformanceMonitoringInterceptor,
     },
@@ -70,12 +77,13 @@ import { PerformanceOptimizationController } from './infrastructure/performance/
     DatabaseOptimizationService,
     IntelligentCacheService,
     AuditService,
+    MultitenantRateLimitService,
   ],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(SecurityHeadersMiddleware, SecurityLoggerMiddleware, CsrfProtectionMiddleware)
+      .apply(SecurityHeadersMiddleware, SecurityLoggerMiddleware, CsrfProtectionMiddleware, MultitenantRateLimitMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,13 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { Eye, EyeOff } from 'lucide-react';
-import { LoginFormProps, LoginFormData } from '@/domains/auth/types/auth.types';
-
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
-  rememberMe: z.boolean().default(false),
-});
+import { LoginFormProps } from '@/domains/auth/types/auth.types';
+import { loginFormSchema, type LoginFormData } from '@/shared/utils/validation';
 
 export function LoginForm({ 
   onSubmit, 
@@ -35,7 +29,7 @@ export function LoginForm({
     setValue,
     watch,
   } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(loginFormSchema),
     defaultValues: {
       email: '',
       password: '',

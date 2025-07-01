@@ -4,7 +4,7 @@ import { authApiClient } from '@/domains/auth/services/authApiClient';
 import { AuthUser } from '@/domains/auth/types/auth.types';
 
 export function useCurrentUser() {
-  return useApiQuery<AuthUser>(
+  return useApiQuery<AuthUser | null>(
     ['auth', 'current-user'],
     () => authApiClient.getCurrentUser(),
     {
@@ -36,15 +36,23 @@ export function useAuthMutations() {
   };
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
-    return authApiClient.changePassword(currentPassword, newPassword);
+    return authApiClient.changePassword({ 
+      currentPassword, 
+      newPassword, 
+      confirmPassword: newPassword 
+    });
   };
 
   const requestPasswordReset = async (email: string) => {
-    return authApiClient.requestPasswordReset(email);
+    return authApiClient.requestPasswordReset({ email });
   };
 
   const resetPassword = async (token: string, newPassword: string) => {
-    return authApiClient.resetPassword(token, newPassword);
+    return authApiClient.resetPassword({ 
+      token, 
+      password: newPassword, 
+      confirmPassword: newPassword 
+    });
   };
 
   return {

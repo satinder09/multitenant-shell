@@ -1,236 +1,37 @@
-# Multi-Tenant SaaS Application Development Rules
-
-## 🏗️ **Architecture & File Organization**
-
-### Component Structure
-- **Domain-Driven Organization**: Group related components by domain (`auth/`, `platform/`, `tenant/`)
-- **Perfect Filename ↔ Component Name Matching**: `LoginForm.tsx` exports `LoginForm`, never `Login` or `LoginFormComponent`
-- **No Generic/Ambiguous Names**: Avoid `Advanced`, `Enhanced`, `Popular`, `Generic` prefixes
-- **Specific Descriptive Names**: `UserManagementTable` not `AdvancedTable`
-
-### Folder Structure Rules
-```
-components/
-├── common/           # Reusable UI components
-├── composite/        # Business logic components  
-├── features/         # Feature-specific components
-├── layouts/          # Layout and navigation components
-├── ui/              # ShadCN UI components only
-domains/
-├── auth/            # Authentication domain
-├── platform/        # Platform administration
-├── tenant/          # Tenant-specific functionality
-```
-
-### Import/Export Standards
-- **Barrel Exports**: Always maintain `index.ts` files with proper exports
-- **Consistent Imports**: Use domain-based imports `from '@/domains/auth'`
-- **No Default Export Mixing**: If using named exports, be consistent across the module
-
-## 🎨 **UI/UX Design Standards**
-
-### Design System Priority
-1. **ShadCN First**: Always use ShadCN components and patterns over custom implementations
-2. **No Custom Modern Styling**: Avoid glassmorphism, custom gradients, or experimental CSS
-3. **Follow Established Patterns**: Use proven designs like ShadCN dashboard-01 block
-4. **Conservative Approach**: Prefer established, professional designs over trendy styles
-
-### Component Styling Rules
-- **No Text Truncation**: Remove `max-w-{size} truncate` that cuts off important content
-- **Responsive by Default**: Use `flex-wrap`, `min-w-0`, proper responsive classes
-- **Proper Spacing**: Use consistent gap classes (`gap-2`, `gap-3`) and padding
-- **Hover States**: Always include proper hover transitions and visual feedback
-
-### Badge and Tag Standards
-```tsx
-// ✅ Good - No truncation, proper spacing
-<Badge className="flex items-center gap-2 max-w-none px-3 py-1.5">
-  <Icon className="h-3 w-3 flex-shrink-0" />
-  <span className="font-medium">{fullText}</span>
-</Badge>
-
-// ❌ Bad - Truncates content
-<Badge className="max-w-48 truncate">
-  {longText}
-</Badge>
-```
-
-## 🏷️ **Naming Conventions**
-
-### Property Naming Standards
-- **filterPreset**: For filter configuration objects (not `popularFilter` or `popular`)
-- **Consistent Terminology**: Use the same term throughout (e.g., always `filterPreset`, never mix with `popularFilter`)
-- **Descriptive Names**: `isUserAuthenticated` not `isAuth`
-- **Boolean Prefixes**: Use `is`, `has`, `can`, `should` for booleans
-
-### Interface Consistency
-```tsx
-// ✅ Consistent naming
-interface ColumnDefinition {
-  filterPreset?: FilterPresetConfig;  // Not popularFilter
-  visible: boolean;                   // Not isVisible
-  sortable: boolean;                  // Not canSort
-}
-```
-
-### Component Naming Patterns
-- **PascalCase**: All component names in PascalCase
-- **Descriptive**: `UserAuthenticationForm` not `AuthForm`
-- **No Abbreviations**: `Navigation` not `Nav` (except for established patterns)
-- **Domain Prefixes**: `PlatformUserTable`, `TenantDashboard` when needed for clarity
-
-## 🔧 **Technical Standards**
-
-### TypeScript Rules
-- **Avoid `any`**: Use proper typing, create interfaces when needed
-- **Union Types**: Properly type union types with `as const` when needed
-- **Interface Definitions**: Create clear, well-documented interfaces
-- **Generic Constraints**: Use proper generic constraints, not `<T = any>`
-
-### Build Quality Standards
-- **Zero Critical Errors**: Build must pass without TypeScript errors
-- **Warnings Acceptable**: ESLint warnings are acceptable, but address obvious ones
-- **Consistent Exports**: Fix import/export issues that cause build failures
-- **Dependency Management**: Keep dependencies up to date and properly typed
-
-### Error Handling
-```tsx
-// ✅ Proper error handling
-try {
-  const result = await apiCall();
-  return result;
-} catch (error) {
-  console.error('Specific operation failed:', error);
-  // Handle appropriately
-}
-
-// ❌ Generic error handling
-try {
-  // operation
-} catch (err: any) {
-  console.log(err);
-}
-```
-
-## 🎛️ **Filter System Standards**
-
-### FilterPreset Configuration
-```tsx
-// ✅ Correct filter preset structure
-{
-  field: 'name',
-  display: 'User Name',
-  filterable: true,
-  filterPreset: {
-    field: 'name',
-    operator: 'contains',
-    label: 'Search Users'
-  }
-}
-
-// ❌ Old inconsistent structure  
-{
-  popular: true,
-  popularFilter: { /* config */ }
-}
-```
-
-### Date Handling in Filters
-- **Proper Date Objects**: Handle date range objects with `from`/`to` properties
-- **Format Consistently**: Use `format(date, 'MMM dd, yyyy')` for display
-- **Avoid [object Object]**: Always check and format object values properly
-
-## 📋 **Layout System Rules**
-
-### Sidebar Implementation
-- **ShadCN Sidebar Pattern**: Use `SidebarProvider`, `AppSidebar`, `SidebarInset`
-- **Single Layout System**: Avoid overlapping layout components
-- **Consistent Spacing**: Use `px-8 py-6` for platform layout padding
-- **Responsive Behavior**: Proper collapsible behavior with `collapsible="icon"`
-
-### Navigation Structure
-```tsx
-// ✅ Proper navigation structure
-<SidebarProvider>
-  <AppSidebar />
-  <SidebarInset>
-    <SiteHeader />
-    <main className="px-8 py-6">
-      {children}
-    </main>
-  </SidebarInset>
-</SidebarProvider>
-```
-
-## 🧪 **Testing & Validation Standards**
-
-### Component Validation
-- **Manual Testing**: Always test UI changes in development mode
-- **Build Verification**: Run `npm run build` before finalizing changes
-- **Cross-Browser Testing**: Test in multiple browsers for responsive behavior
-- **Edge Cases**: Test with long text, empty states, error conditions
-
-### Data Flow Testing
-- **Filter Functionality**: Test all filter types (presets, custom, date ranges)
-- **State Management**: Verify state persistence and updates
-- **Event Handling**: Test all interactive elements and their responses
-
-## 🚀 **Performance & Optimization**
-
-### Bundle Size Management
-- **Tree Shaking**: Import only what you need from libraries
-- **Component Lazy Loading**: Use dynamic imports for large components
-- **Icon Optimization**: Use tree-shakeable icon libraries properly
-
-### Rendering Optimization
-- **Proper Keys**: Use stable, unique keys in lists
-- **Memo Usage**: Use React.memo judiciously for expensive components
-- **Callback Optimization**: Use useCallback for functions passed to children
-
-## 📝 **Documentation Standards**
-
-### Code Comments
-- **Interface Documentation**: Document complex interfaces and their usage
-- **Business Logic**: Comment non-obvious business rules and calculations
-- **API Integration**: Document API contracts and data transformations
-
-### Component Documentation
-```tsx
-/**
- * FilterDropdownMenu - Main filter interface component
- * 
- * Displays popular filters, group by options, and saved searches
- * in a three-column dropdown layout following ShadCN patterns.
- * 
- * @param config - Module configuration with filterPreset definitions
- * @param onFilterApply - Callback for applying new filters
- */
-export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({ ... }) => {
-```
-
-## 🔍 **Code Review Checklist**
-
-Before finalizing any changes:
-- [ ] Component names match file names exactly
-- [ ] No `popular`/`popularFilter` references (use `filterPreset`)
-- [ ] No text truncation in badges or important UI elements
-- [ ] Proper TypeScript typing (no `any` unless absolutely necessary)
-- [ ] Build passes without critical errors
-- [ ] ShadCN patterns used over custom styling
-- [ ] Responsive design tested
-- [ ] Import/export statements are clean and consistent
-- [ ] Proper error handling implemented
-- [ ] Date formatting works correctly (no `[object Object]`)
-
-## 🎯 **Priority Order for Changes**
-
-1. **Build Errors**: Fix any TypeScript/build errors immediately
-2. **UI Functionality**: Ensure all interactive elements work properly
-3. **Naming Consistency**: Fix inconsistent property/component names
-4. **Styling Issues**: Address truncation, spacing, responsive issues
-5. **Performance**: Optimize only after functionality is perfect
-6. **Refactoring**: Clean up code structure and organization
-
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: "Ensure code handles platform & tenant flows, and covers auth, security, design, and UI"
+globs:
+  - "**/*"
+alwaysApply: true
 ---
 
-**Remember**: Favor established patterns and conventions over innovation. Consistency and maintainability are more valuable than cutting-edge features or styling. 
+### Change Summary
+_A brief summary of the change._
+
+### Request Flow Considerations
+_Always handle both layers:_  
+- Platform login & global flows  
+- Tenant login & per-tenant data isolation  
+
+### Authentication & Security
+_Enforce robust protection:_  
+- Proper auth checks for both platform and tenant contexts  
+- Input validation, output encoding, and data isolation  
+- Secrets management and dependency security  
+
+### Design & UI
+_Ensure consistent, scalable UX:_  
+- Adhere to global and tenant-specific UI patterns  
+- Accessibility, theming, and responsive design  
+- Reuse shared components; avoid fragmented styles  
+
+### Conventions & Coding Standards
+_Maintain enterprise-grade quality:_  
+- Clear naming, folder structure, and layering  
+- SOLID principles, strict typing/validation  
+- Promote reuse; avoid duplication  

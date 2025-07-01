@@ -14,7 +14,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: any) => req?.cookies?.Authentication,
+        (req: any) => {
+          const mainCookie = req?.cookies?.Authentication;
+          const fallbackCookie = req?.cookies?.['Authentication-Fallback'];
+          console.log('🔍 JWT Strategy cookie check:', {
+            hasMainCookie: !!mainCookie,
+            hasFallbackCookie: !!fallbackCookie,
+            allCookies: Object.keys(req?.cookies || {}),
+            host: req?.headers?.host,
+            url: req?.url
+          });
+          return mainCookie || fallbackCookie;
+        },
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,

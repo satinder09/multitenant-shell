@@ -33,8 +33,14 @@ export async function middleware(request: NextRequest) {
 
   // If there's no auth cookie, redirect to login for any protected path
   if (!cookie && pathname !== '/login') {
+    // Check if there's a secure login token - if so, preserve it in the redirect
+    const secureLoginToken = request.nextUrl.searchParams.get('secureLoginToken');
     console.log(`[Middleware] No auth cookie, redirecting to login`);
     const loginUrl = new URL('/login', request.url);
+    if (secureLoginToken) {
+      loginUrl.searchParams.set('secureLoginToken', secureLoginToken);
+      console.log(`[Middleware] Preserving secure login token in redirect`);
+    }
     return NextResponse.redirect(loginUrl);
   }
 
