@@ -48,30 +48,30 @@ export function SectionHeader({
   };
 
   const getContainerClasses = () => {
-    const baseClasses = 'space-y-4';
+    const baseClasses = 'space-y-3 sm:space-y-4';
     
     switch (variant) {
       case 'subtle':
-        return cn(baseClasses, 'pb-4');
+        return cn(baseClasses, 'pb-3 sm:pb-4');
       case 'bordered':
-        return cn(baseClasses, 'pb-6 border-b border-border');
+        return cn(baseClasses, 'pb-4 sm:pb-6 border-b border-border');
       default:
-        return cn(baseClasses, 'pb-6');
+        return cn(baseClasses, 'pb-4 sm:pb-6');
     }
   };
 
   return (
     <div className={cn(getContainerClasses(), className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2 flex-1">
-          <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="space-y-1 flex-1 min-w-0 sm:space-y-2">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
             <h1 className={getTitleClasses()}>
               {title}
             </h1>
             {count !== undefined && (
               <Badge 
                 variant="secondary" 
-                className="h-6 px-2 text-sm font-medium"
+                className="h-6 px-2 text-sm font-medium w-fit"
               >
                 {count}
               </Badge>
@@ -86,7 +86,7 @@ export function SectionHeader({
         </div>
         
         {actions && (
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
             {actions}
           </div>
         )}

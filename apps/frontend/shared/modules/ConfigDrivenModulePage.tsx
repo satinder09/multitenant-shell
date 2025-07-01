@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Filter, Save, X, AlertCircle, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ConfigDrivenModulePageProps {
   moduleName: string;
@@ -43,6 +44,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [originalComplexFilter, setOriginalComplexFilter] = useState<ComplexFilter | null>(null);
+  const isMobile = useIsMobile();
 
   // Use provided config or loaded config
   const activeConfig = propConfig || config;
@@ -325,7 +327,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                   className="h-8 px-2"
                   title={action.label}
                 >
-                  {action.icon && <action.icon className="w-4 h-4" />}
+                  {action.icon && React.createElement(action.icon, { className: "w-4 h-4" })}
                   {rowActionDisplay.showLabels && action.label && (
                     <span className="ml-1 hidden sm:inline">{action.label}</span>
                   )}
@@ -348,7 +350,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                         onClick={() => executeRowAction(action.key, row.original)}
                         className={action.variant === 'destructive' ? 'text-destructive' : ''}
                       >
-                        {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+                        {action.icon && React.createElement(action.icon, { className: "mr-2 h-4 w-4" })}
                         {action.label}
                       </DropdownMenuItem>
                     ))}
@@ -373,6 +375,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
   const hasActiveFilters = complexFilter && complexFilter.rootGroup.rules.length > 0;
   const isAdvancedMode = fieldDiscovery !== null;
 
+  // Search handler
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+  };
+
   // NOW we can do conditional returns after all hooks are called
   if (isLoadingConfig) {
     return <div>Loading module configuration...</div>;
@@ -381,11 +388,6 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
   if (!activeConfig) {
     return <div>Module configuration not found for: {propModuleName}</div>;
   }
-
-  // Search handler
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-  };
 
   // Error state
   if (error) {
@@ -406,30 +408,76 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
   }
 
   return (
-    <div className="w-full max-w-none space-y-6 min-w-0">
+    <div className="w-full max-w-none space-y-4 min-w-0 sm:space-y-6">
       {/* Module Header */}
       <SectionHeader
         title={module.title}
         description={module.description}
         actions={
-          <div className="flex items-center gap-2">
-            {actions?.headerActions?.map((action) => (
-              <Button
-                key={action.key}
-                variant={action.variant || 'outline'} 
-                size="sm" 
-                onClick={() => executeHeaderAction(action.key)}
-              >
-                {action.icon && <action.icon className="mr-2 h-4 w-4" />}
-                {action.label}
-              </Button>
-            ))}
-          </div>
+          actions?.headerActions && actions.headerActions.length > 0 ? (
+            isMobile ? (
+              // Mobile: Show primary action as button, rest in dropdown
+              <div className="flex items-center gap-2 w-full justify-end">
+                {/* Primary action (first one) as full button */}
+                {actions.headerActions && actions.headerActions.length > 0 && (
+                  <Button
+                    key={actions.headerActions![0].key}
+                    variant={actions.headerActions![0].variant || 'default'}
+                    size="sm"
+                    onClick={() => executeHeaderAction(actions.headerActions![0].key)}
+                    className="px-4 py-2 h-9"
+                  >
+                    {actions.headerActions![0].icon && React.createElement(actions.headerActions![0].icon, { className: "mr-2 h-4 w-4" })}
+                    {actions.headerActions![0].label}
+                  </Button>
+                )}
+                
+                {/* Secondary actions in dropdown */}
+                {actions.headerActions && actions.headerActions.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="px-3 py-2 h-9">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52 p-1">
+                      {actions.headerActions.slice(1).map((action) => (
+                        <DropdownMenuItem
+                          key={action.key}
+                          onClick={() => executeHeaderAction(action.key)}
+                          className="flex items-center gap-2 px-2 py-2 text-sm cursor-pointer"
+                        >
+                          {action.icon && React.createElement(action.icon, { className: "h-4 w-4" })}
+                          <span>{action.label}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            ) : (
+              // Desktop: Show all actions as buttons
+              <div className="flex items-center gap-2">
+                {actions.headerActions && actions.headerActions.map((action) => (
+                  <Button
+                    key={action.key}
+                    variant={action.variant || 'outline'} 
+                    size="sm" 
+                    onClick={() => executeHeaderAction(action.key)}
+                    className="px-4 py-2 h-9"
+                  >
+                    {action.icon && React.createElement(action.icon, { className: "mr-2 h-4 w-4" })}
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            )
+          ) : null
         }
       />
 
       {/* Advanced Filters */}
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {/* Enhanced Search with Dropdown Menu */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -443,52 +491,9 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
               onSavedSearchLoad={() => {}}
               placeholder={`Search ${module.title.toLowerCase()}...`}
               config={activeConfig}
+              filterCount={complexFilter?.rootGroup.rules.length || 0}
             />
           </div>
-          
-          {isAdvancedMode && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilterDialog(true)}
-              className="flex items-center gap-1"
-            >
-              <Filter className="w-4 h-4" />
-              Advanced
-              {hasActiveFilters && (
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {complexFilter?.rootGroup.rules.length || 0}
-                </Badge>
-              )}
-            </Button>
-          )}
-
-          {isAdvancedMode && savedSearches.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSavedSearches(!showSavedSearches)}
-              className="flex items-center gap-1"
-            >
-              <Save className="w-4 h-4" />
-              Saved
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {savedSearches.length}
-              </Badge>
-            </Button>
-          )}
-
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <X className="w-4 h-4" />
-              Clear
-            </Button>
-          )}
         </div>
 
         {/* Active Filters Display */}
@@ -521,11 +526,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
 
       {/* Bulk Actions */}
       {selectedRows.length > 0 && actions?.bulkActions && (
-        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+        <div className="flex flex-col gap-3 p-3 bg-muted rounded-lg sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="text-sm font-medium">
             {selectedRows.length} item{selectedRows.length > 1 ? 's' : ''} selected
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 justify-end">
             {actions.bulkActions
               .filter(action => !action.condition || action.condition(selectedRows))
               .map(action => (
@@ -535,7 +540,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                   size="sm"
                   onClick={() => executeBulkAction(action.key, selectedRows)}
                 >
-                  {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+                  {action.icon && React.createElement(action.icon, { className: "mr-2 h-4 w-4" })}
                   {action.label}
                 </Button>
               ))}

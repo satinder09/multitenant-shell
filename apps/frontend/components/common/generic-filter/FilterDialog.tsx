@@ -234,8 +234,8 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="pb-4">
           <DialogTitle>Add Custom Filter</DialogTitle>
         </DialogHeader>
 
@@ -243,9 +243,9 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
           {/* Logic Selector */}
           {rules.length > 1 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm">Match</span>
+              <span className="text-sm text-gray-600">Match</span>
               <Select value={logic} onValueChange={(value: 'AND' | 'OR') => setLogic(value)}>
-                <SelectTrigger className="w-20">
+                <SelectTrigger className="w-20 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,72 +253,76 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                   <SelectItem value="OR">any</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm">of the following rules:</span>
+              <span className="text-sm text-gray-600">of the following rules:</span>
             </div>
           )}
 
           {/* Rules */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             {rules.map((rule) => {
               const operatorOptions = getOperatorsForFieldType(rule.fieldType);
 
               return (
-                <div key={rule.id} className="flex items-center gap-2 p-2 border rounded">
+                <div key={rule.id} className="flex items-center gap-2 p-3 border rounded-md bg-gray-50">
                   {/* Field Selector */}
-                  <Popover 
-                    open={fieldSelectorOpen === rule.id} 
-                    onOpenChange={(open) => setFieldSelectorOpen(open ? rule.id : null)}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        className="w-48 justify-between h-8"
-                        onClick={() => setFieldSelectorOpen(rule.id)}
-                      >
-                        <span className="truncate">
-                          {rule.field && rule.fieldPath.length > 0 ? 
-                            (config?.columns.find(col => col.field === rule.field)?.display || rule.field) : 
-                            'Select field...'}
-                        </span>
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-0" align="start">
-                      <NestedFieldSelector
-                        key={`${moduleName}-${rule.id}-${fieldSelectorOpen}`} // Force fresh instance
-                        moduleName={moduleName}
-                        selectedPath={rule.fieldPath}
-                        config={config}
-                        onFieldSelect={(field) => {
-                          handleFieldSelect(rule.id, field);
-                          setFieldSelectorOpen(null);
-                        }}
-                        onClose={() => setFieldSelectorOpen(null)}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <div className="flex-1 min-w-0">
+                    <Popover 
+                      open={fieldSelectorOpen === rule.id} 
+                      onOpenChange={(open) => setFieldSelectorOpen(open ? rule.id : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-between h-9 bg-white text-sm"
+                          onClick={() => setFieldSelectorOpen(rule.id)}
+                        >
+                          <span className="truncate">
+                            {rule.field && rule.fieldPath.length > 0 ? 
+                              (config?.columns.find(col => col.field === rule.field)?.display || rule.field) : 
+                              'Select field...'}
+                          </span>
+                          <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0" align="start">
+                        <NestedFieldSelector
+                          key={`${moduleName}-${rule.id}-${fieldSelectorOpen}`}
+                          moduleName={moduleName}
+                          selectedPath={rule.fieldPath}
+                          config={config}
+                          onFieldSelect={(field) => {
+                            handleFieldSelect(rule.id, field);
+                            setFieldSelectorOpen(null);
+                          }}
+                          onClose={() => setFieldSelectorOpen(null)}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
 
                   {/* Operator Selector */}
-                  <Select 
-                    value={rule.operator} 
-                    onValueChange={(value) => handleOperatorChange(rule.id, value as FilterOperator)}
-                    disabled={!rule.field}
-                  >
-                    <SelectTrigger className="w-40 h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {operatorOptions.map((op) => (
-                        <SelectItem key={op.value} value={op.value}>
-                          {op.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="w-28 flex-shrink-0">
+                    <Select 
+                      value={rule.operator} 
+                      onValueChange={(value) => handleOperatorChange(rule.id, value as FilterOperator)}
+                      disabled={!rule.field}
+                    >
+                      <SelectTrigger className="w-full h-9 bg-white text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {operatorOptions.map((op) => (
+                          <SelectItem key={op.value} value={op.value}>
+                            {op.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Value Input */}
-                  {rule.field && (
-                    <div className="flex-1">
+                  <div className="flex-1 min-w-0">
+                    {rule.field ? (
                       <DynamicInput
                         fieldName={rule.field}
                         fieldPath={rule.fieldPath}
@@ -330,40 +334,48 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
                         enumOptions={getFieldOptions(rule.fieldPath)}
                         fieldConfig={config?.columns.find(col => col.field === rule.field)}
                       />
-                    </div>
-                  )}
+                    ) : (
+                      <div className="h-9 bg-gray-100 border border-gray-300 rounded-md flex items-center justify-center text-gray-400 text-xs">
+                        Select field first
+                      </div>
+                    )}
+                  </div>
 
                   {/* Remove Button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeRule(rule.id)}
-                    className="h-8 w-8 p-0"
-                    disabled={rules.length === 1}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeRule(rule.id)}
+                      className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600"
+                      disabled={rules.length === 1}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               );
             })}
           </div>
 
           {/* Add Rule Button */}
-          <Button variant="outline" onClick={addRule} className="w-full h-8">
-            <Plus className="w-4 h-4 mr-2" />
-            New Rule
-          </Button>
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" onClick={addRule} className="h-9 px-4 text-sm">
+              <Plus className="w-4 h-4 mr-2" />
+              New Rule
+            </Button>
+          </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-3 border-t">
-            <Button variant="outline" onClick={handleClear} disabled={rules.length <= 1} size="sm">
+          <div className="flex items-center justify-between pt-4 border-t mt-4">
+            <Button variant="outline" onClick={handleClear} disabled={rules.length <= 1} className="h-9 px-4 text-sm">
               Clear All
             </Button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleCancel} size="sm">
+              <Button variant="outline" onClick={handleCancel} className="h-9 px-4 text-sm">
                 Cancel
               </Button>
-              <Button onClick={handleApply} size="sm">
+              <Button onClick={handleApply} className="h-9 px-4 text-sm">
                 Add Filter
               </Button>
             </div>

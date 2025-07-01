@@ -171,20 +171,20 @@ export const FilterTags: React.FC<FilterTagsProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-start gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-      <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+    <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/30 rounded-lg border">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
         <Filter className="w-4 h-4" />
         <span>Active filters:</span>
       </div>
       
       {filter.rootGroup.logic === 'OR' && filter.rootGroup.rules.length > 1 && (
-        <Badge variant="outline" className="text-xs font-normal border-orange-200 text-orange-700 bg-orange-50">
+        <Badge variant="outline" className="text-xs h-6">
           Match ANY of:
         </Badge>
       )}
       
       {filter.rootGroup.logic === 'AND' && filter.rootGroup.rules.length > 1 && (
-        <Badge variant="outline" className="text-xs font-normal border-blue-200 text-blue-700 bg-blue-50">
+        <Badge variant="outline" className="text-xs h-6">
           Match ALL of:
         </Badge>
       )}
@@ -193,15 +193,15 @@ export const FilterTags: React.FC<FilterTagsProps> = ({
         <Badge
           key={rule.id}
           variant="secondary"
-          className="flex items-center gap-2 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 px-3 py-1.5 text-sm max-w-none bg-blue-50 border-blue-200 text-blue-900"
+          className="flex items-center gap-1.5 cursor-pointer hover:bg-accent/80 transition-colors px-2.5 py-1 text-sm h-6 max-w-none"
           onClick={() => onEditFilter(createSingleRuleFilter(rule))}
         >
-          <Edit className="h-3 w-3 flex-shrink-0" />
+          <Edit className="h-3 w-3 flex-shrink-0 opacity-60" />
           <span className="font-medium">
             {formatFilterLabel(rule)}
           </span>
           <X
-            className="h-3 w-3 cursor-pointer hover:text-red-600 ml-1 flex-shrink-0 transition-colors"
+            className="h-3 w-3 cursor-pointer hover:text-destructive flex-shrink-0 transition-colors opacity-60 hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onRemoveFilter(rule.id);
@@ -215,7 +215,7 @@ export const FilterTags: React.FC<FilterTagsProps> = ({
           variant="ghost"
           size="sm"
           onClick={onClearAll}
-          className="h-6 text-xs text-gray-500 hover:text-red-500"
+          className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
         >
           Clear all
         </Button>
