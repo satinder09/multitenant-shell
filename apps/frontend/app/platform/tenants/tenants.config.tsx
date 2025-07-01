@@ -95,13 +95,22 @@ const tenantActions = {
 
   bulkDeactivate: async (tenants: any[]) => {
     const ids = tenants.map(t => t.id);
-    try {
-      await browserApi.patch('/api/tenants/bulk-update', { ids, data: { isActive: false } });
-      toastNotify({ variant: 'success', title: 'Tenants deactivated' });
-      window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
-    } catch (error: any) {
-      toastNotify({ variant: 'error', title: 'Bulk deactivate failed', description: error?.message || 'Unknown error' });
-    }
+    confirm({
+      title: 'Deactivate Tenants',
+      description: `Are you sure you want to deactivate ${ids.length} tenant${ids.length > 1 ? 's' : ''}? This will disable access for these tenants.`,
+      variant: 'critical',
+      confirmLabel: 'Deactivate',
+      cancelLabel: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await browserApi.patch('/api/tenants/bulk-update', { ids, data: { isActive: false } });
+          toastNotify({ variant: 'success', title: 'Tenants deactivated' });
+          window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
+        } catch (error: any) {
+          toastNotify({ variant: 'error', title: 'Bulk deactivate failed', description: error?.message || 'Unknown error' });
+        }
+      },
+    });
   },
 
   // Bulk Toggle Status: toggles activation state for selected tenants
@@ -442,17 +451,16 @@ export const TenantsConfig: ModuleConfig = {
     bulkActions: [
       {
         key: 'activate',
-        label: 'Activate Selected',
+        label: 'Activate',
         icon: CheckCircle,
         onClick: tenantActions.bulkActivate,
-        variant: 'default',
-        condition: (tenants) => tenants.some(t => !t.isActive)
+        variant: 'default'
       },
       {
-        key: 'toggle-status',
-        label: 'Toggle Status',
-        icon: CheckCircle,
-        onClick: tenantActions.bulkToggleStatus,
+        key: 'deactivate',
+        label: 'Deactivate',
+        icon: XCircle,
+        onClick: tenantActions.bulkDeactivate,
         variant: 'secondary'
       },
       {
@@ -465,11 +473,10 @@ export const TenantsConfig: ModuleConfig = {
       },
       {
         key: 'delete',
-        label: 'Delete Selected',
+        label: 'Delete',
         icon: Trash,
         onClick: tenantActions.bulkDelete,
-        variant: 'destructive',
-        confirmMessage: 'Are you sure you want to delete the selected tenants?'
+        variant: 'destructive'
       }
     ],
 

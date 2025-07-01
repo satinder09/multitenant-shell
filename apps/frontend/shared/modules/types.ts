@@ -281,6 +281,17 @@ export interface RowActionConfig {
   key: string;
   label: string;
   icon?: React.ComponentType<any>;
+  /**
+   * Action handler function. 
+   * 
+   * IMPORTANT: Actions are responsible for their own data refresh.
+   * Use: window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'yourModule' } }))
+   * 
+   * The framework does NOT automatically refresh data to avoid:
+   * - Duplicate refreshes when actions show confirmation dialogs
+   * - Performance issues from unnecessary API calls
+   * - Race conditions between user interactions and data updates
+   */
   onClick: (record: any) => void | Promise<void>;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   condition?: (record: any) => boolean;
@@ -293,6 +304,17 @@ export interface BulkActionConfig {
   key: string;
   label: string;
   icon?: React.ComponentType<any>;
+  /**
+   * Bulk action handler function.
+   * 
+   * IMPORTANT: Actions are responsible for their own data refresh.
+   * Use: window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'yourModule' } }))
+   * 
+   * The framework does NOT automatically refresh data to avoid:
+   * - Duplicate refreshes when actions show confirmation dialogs
+   * - Performance issues from unnecessary API calls
+   * - Race conditions between user interactions and data updates
+   */
   onClick: (records: any[]) => void | Promise<void>;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   condition?: (records: any[]) => boolean;
@@ -304,6 +326,20 @@ export interface HeaderActionConfig {
   key: string;
   label: string;
   icon?: React.ComponentType<any>;
+  /**
+   * Header action handler function.
+   * 
+   * IMPORTANT: Actions are responsible for their own data refresh if needed.
+   * Use: window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'yourModule' } }))
+   * 
+   * The framework does NOT automatically refresh data to avoid:
+   * - Duplicate refreshes when actions show confirmation dialogs
+   * - Performance issues from unnecessary API calls
+   * - Race conditions between user interactions and data updates
+   * 
+   * Note: Header actions (like "Create", "Import") typically don't need refresh
+   * since they usually open modals or navigate to other pages.
+   */
   onClick: () => void | Promise<void>;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
