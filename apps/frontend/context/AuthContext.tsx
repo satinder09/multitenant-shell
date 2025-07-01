@@ -31,6 +31,7 @@ interface UserProfile {
   impersonatedUserName?: string;
   impersonationSessionId?: string;
   originalUserId?: string;
+  expiresAt?: string;
   // add other user fields here
 }
 

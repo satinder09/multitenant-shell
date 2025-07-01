@@ -10,6 +10,7 @@ import { AuthService } from './services/auth.service';
 import { AuthSecurityService } from './services/auth-security.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { DatabaseModule } from '../database/database.module';
+import { TenantModule } from '../tenant/tenant.module';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { MetricsService } from '../../infrastructure/monitoring/metrics.service';
 import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
@@ -27,6 +28,7 @@ import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
       inject: [ConfigService],
     }),
     DatabaseModule,
+    TenantModule,
   ],
   controllers: [AuthController, TenantAccessController, SecurityController],
   providers: [

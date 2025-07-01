@@ -46,6 +46,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     expiresAt?: string;
     impersonationSessionId?: string;
   }) {
+    // Check if session has expired for secure login or impersonation
+    if (payload.expiresAt && (payload.accessType === 'secure_login' || payload.accessType === 'impersonation')) {
+      const expirationTime = new Date(payload.expiresAt);
+      const now = new Date();
+      
+      if (now > expirationTime) {
+        console.log('🔒 Session expired:', {
+          accessType: payload.accessType,
+          expiresAt: payload.expiresAt,
+          now: now.toISOString(),
+          email: payload.email
+        });
+        throw new Error('Session expired');
+      }
+    }
+
     // This is the user object that will be attached to the request
     const user = {
       id: payload.sub,

@@ -7,6 +7,7 @@ import PlatformSidebar from './PlatformSidebar';
 import TenantSidebar from './TenantSidebar';
 import PlatformHeader from './PlatformHeader';
 import TenantHeader from './TenantHeader';
+import ImpersonationBanner from '@/components/features/ImpersonationBanner';
 
 interface UnifiedLayoutProps {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ const UnifiedLayout = memo(function UnifiedLayout({ children }: UnifiedLayoutPro
       <SidebarComponent />
       <SidebarInset className="flex flex-col min-h-screen">
         <HeaderComponent />
+        <ImpersonationBanner />
         <div className="flex flex-1 flex-col gap-4 px-8 py-6 min-w-0">
           {children}
         </div>

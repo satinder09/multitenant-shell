@@ -127,10 +127,10 @@ export class TenantAccessController {
 
   // End impersonation session
   @Post('impersonate/end')
-  @AdminRateLimit()
-  @RequireAdmin()
-  @UseGuards(JwtAuthGuard, AuthorizationGuard)
+  @AuthRateLimit()
+  @UseGuards(JwtAuthGuard)
   async endImpersonation(
+    @Body() dto: { sessionId?: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ redirectUrl: string }> {
@@ -138,10 +138,14 @@ export class TenantAccessController {
 
     const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
     const frontendPort = process.env.FRONTEND_PORT || '3000';
-    if (user.impersonationSessionId) {
+    
+    // Use sessionId from body if provided, otherwise fall back to user's current session
+    const sessionId = dto.sessionId || user.impersonationSessionId;
+    
+    if (sessionId && user.accessType === 'impersonation') {
       // End impersonation session in DB
       const { redirectUrl } = await this.authService.endImpersonation(
-        user.impersonationSessionId,
+        sessionId,
         req.ip,
         req.get('User-Agent')
       );
@@ -150,7 +154,7 @@ export class TenantAccessController {
     } else {
       // Secure login: just clear cookie and redirect to master
       res.clearCookie('Authentication');
-      return { redirectUrl: `http://${baseDomain}:${frontendPort}` };
+      return { redirectUrl: `http://${baseDomain}:${frontendPort}/platform` };
     }
   }
 

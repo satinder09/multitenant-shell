@@ -19,6 +19,7 @@ import {
 import { Request, Response } from 'express';
 import { TenantContext } from '../../../shared/types/tenant-context';
 import { AuthService } from '../services/auth.service';
+import { TenantService } from '../../tenant/services/tenant.service';
 import { LoginDto } from '../dto/login.dto';
 import { LoginResponse } from '../interfaces/login-response.interface';
 import { JwtAuthGuard, SkipAuth } from '../../../shared/guards';
@@ -26,7 +27,10 @@ import { AuthRateLimit, SkipRateLimit } from '../../../shared/decorators/multite
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly tenantService: TenantService,
+  ) {}
 
   /** Issue a new JWT (in HttpOnly cookie) */
   @Post('login')
@@ -37,7 +41,22 @@ export class AuthController {
     @TenantContext() tenant: { id: string; databaseUrl: string } | undefined,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponse> {
-    const { accessToken } = await this.authService.login(dto, tenant?.id);
+    let tenantId: string | undefined = tenant?.id;
+    
+    // If tenantSubdomain is provided in the request body, resolve it to tenant ID
+    if (dto.tenantSubdomain && !tenantId) {
+      try {
+        const tenantInfo = await this.tenantService.findBySubdomain(dto.tenantSubdomain);
+        tenantId = tenantInfo.id;
+        console.log(`[AUTH] Resolved tenant subdomain "${dto.tenantSubdomain}" to ID: ${tenantId}`);
+      } catch (error) {
+        console.error(`[AUTH] Failed to resolve tenant subdomain "${dto.tenantSubdomain}":`, error);
+        throw new UnauthorizedException(`Invalid tenant: ${dto.tenantSubdomain}`);
+      }
+    }
+    
+    console.log(`[AUTH] Login attempt - Email: ${dto.email}, TenantID: ${tenantId || 'platform'}`);
+    const { accessToken } = await this.authService.login(dto, tenantId);
 
     res.cookie('Authentication', accessToken, {
       httpOnly: true,
