@@ -72,33 +72,50 @@ export default function ImpersonationBanner() {
   const timeRemaining = getTimeRemaining();
 
   return (
-    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-3">
-          <div className="flex items-center space-x-3">
-            {isImpersonation ? (
-              <User className="h-5 w-5 text-amber-600" />
-            ) : (
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-            )}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+    <div className="w-full bg-gradient-to-r from-amber-50/80 to-orange-50/80 border-b border-amber-200/50 backdrop-blur-sm">
+      <div className="px-8 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               {isImpersonation ? (
-                <span className="text-sm font-medium text-amber-800">
-                  Impersonating: {user.impersonatedUserName || user.impersonatedUserEmail}
-                </span>
+                <div className="p-1.5 rounded-full bg-amber-100">
+                  <User className="h-4 w-4 text-amber-700" />
+                </div>
               ) : (
-                <span className="text-sm font-medium text-amber-800">
-                  Secure Login: Accessing tenant "{tenantSubdomain}"
-                </span>
+                <div className="p-1.5 rounded-full bg-amber-100">
+                  <AlertTriangle className="h-4 w-4 text-amber-700" />
+                </div>
               )}
-              <span className="text-xs text-amber-700">
-                {isImpersonation ? `in tenant "${tenantSubdomain}"` : `as ${user.name} (${user.email})`}
-              </span>
+              <div className="flex flex-col">
+                {isImpersonation ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-amber-900">
+                      Impersonating: {user.impersonatedUserName || user.impersonatedUserEmail}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full font-medium">
+                      Tenant: {tenantSubdomain}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-amber-900">
+                      Secure Login: Accessing tenant "{tenantSubdomain}"
+                    </span>
+                    <span className="text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full font-medium">
+                      {user.name}
+                    </span>
+                  </div>
+                )}
+                <span className="text-xs text-amber-700/80 mt-0.5">
+                  {isImpersonation ? 'Administrative access session' : `Authenticated as ${user.email}`}
+                </span>
+              </div>
             </div>
+            
             {timeRemaining && (
-              <div className="flex items-center space-x-1 text-xs text-amber-700">
-                <Clock className="h-3 w-3" />
-                <span>{timeRemaining}</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 rounded-full border border-amber-200">
+                <Clock className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-xs font-medium text-amber-800">{timeRemaining}</span>
               </div>
             )}
           </div>
@@ -108,9 +125,9 @@ export default function ImpersonationBanner() {
             disabled={isReturning}
             variant="outline"
             size="sm"
-            className="bg-white hover:bg-amber-50 border-amber-300 text-amber-800 hover:text-amber-900"
+            className="bg-white/80 hover:bg-white border-amber-300 text-amber-800 hover:text-amber-900 shadow-sm hover:shadow transition-all duration-200"
           >
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
             {isReturning ? 'Returning...' : 'Return to Platform'}
           </Button>
         </div>
