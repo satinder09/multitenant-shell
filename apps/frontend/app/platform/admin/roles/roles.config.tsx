@@ -212,9 +212,8 @@ export const RolesConfig: ModuleConfig = {
   sourceTable: 'Role',
   primaryKey: 'id',
 
-  // GENERIC BACKEND CONFIGURATION
-  backendEndpoint: '/platform-rbac/roles/search',
-  backendMethod: 'POST',
+  // GENERIC BACKEND CONFIGURATION - Using Universal Dynamic Search
+  // No custom endpoint needed - system uses module config automatically
   
   // Manual Column Definitions - Complete control
   columns: [

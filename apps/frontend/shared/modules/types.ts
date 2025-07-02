@@ -344,10 +344,55 @@ export interface HeaderActionConfig {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
 
+export interface RelationConfig {
+  include?: boolean | string[];  // Include relation data: true, false, or specific fields
+  where?: Record<string, any>;   // Filter conditions for the relation
+  aggregate?: {
+    count?: string | boolean;    // Count field name or true for default '_count'
+    sum?: string[];              // Fields to sum
+    avg?: string[];              // Fields to average
+    min?: string[];              // Fields to get minimum
+    max?: string[];              // Fields to get maximum
+  };
+  alias?: string;                // Custom alias for the relation in results
+}
+
+export interface VirtualFieldConfig {
+  resolver: string;              // Function name to call for resolving this field
+  type: ColumnType;              // Data type of the virtual field
+  dependencies?: string[];       // Fields this virtual field depends on
+  batchSize?: number;            // Batch size for loading (default: 100)
+  cache?: {
+    enabled: boolean;
+    ttl: number;                 // Cache TTL in milliseconds
+  };
+}
+
+export interface ComputedFieldMapping {
+  [sourceField: string]: string; // Maps internal field names to display field names
+  // Examples:
+  // '_count.users': 'userCount'
+  // '_max.users.lastLogin': 'lastUserLogin'
+  // '_custom.totalRevenue': 'revenue'
+}
+
 export interface ModuleConfig {
   // Source Configuration
   sourceTable: string;
   primaryKey?: string;
+  
+  // NEW: Multi-table support
+  relations?: {
+    [relationName: string]: RelationConfig;
+  };
+  
+  // NEW: Virtual fields with custom resolvers
+  virtualFields?: {
+    [fieldName: string]: VirtualFieldConfig;
+  };
+  
+  // NEW: Custom naming for computed fields
+  computedFields?: ComputedFieldMapping;
   
   // Backend Configuration (GENERIC APPROACH)
   backendEndpoint?: string; // Custom backend endpoint (defaults to /api/{moduleName})

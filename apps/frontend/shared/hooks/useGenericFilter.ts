@@ -269,14 +269,14 @@ export function useGenericFilter<
         }
       }
       
-      // Use custom backend endpoint if specified in config, otherwise use default
-      const endpoint = config?.backendEndpoint ? `/api${config.backendEndpoint}` : `/api/modules/${moduleName}`;
-      const method = config?.backendMethod || 'POST';
-      
-      const response = await fetch(endpoint, {
-        method: method,
+      // Use the universal dynamic search endpoint
+      const response = await fetch('/api/dynamic-search', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backendCompatibleParams)
+        body: JSON.stringify({
+          moduleName,
+          ...backendCompatibleParams
+        })
       });
       
       // Debug response for users

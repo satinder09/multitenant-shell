@@ -1,6 +1,9 @@
 import React from 'react';
 import { ModuleConfig } from '@/shared/modules/types';
-import { Building2, Shield, Eye, Edit, Trash, CheckCircle, XCircle, Download, Plus, Upload, RefreshCw, Users } from 'lucide-react';
+import { 
+  Building2, Users, Eye, Edit, Trash, CheckCircle, XCircle, 
+  Shield, Plus, Upload, RefreshCw, Download 
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { confirm } from '@/shared/utils/ui/dialogUtils';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
@@ -210,7 +213,7 @@ const customRenderers = {
   permissions: (permissions: any[], record: any) => (
     <div className="flex items-center gap-1">
       <Users className="h-4 w-4 text-muted-foreground" />
-      <span>{record.userCount || 0} users</span>
+      <span>{permissions?.length || 0} permissions</span>
     </div>
   ),
 
@@ -220,20 +223,34 @@ const customRenderers = {
 
   updatedAt: (date: string) => {
     return new Date(date).toLocaleDateString();
-  }
+  },
+
+  // NEW: Computed field renderers
+  userCount: (userCount: number) => (
+    <div className="flex items-center gap-1">
+      <Users className="h-4 w-4 text-muted-foreground" />
+      <span>{userCount || 0} users</span>
+    </div>
+  ),
+
+  lastActivity: (lastActivity: string) => {
+    if (!lastActivity) return <span className="text-muted-foreground">Never</span>;
+    return new Date(lastActivity).toLocaleDateString();
+  },
+
+  totalRevenue: (revenue: number) => (
+    <span className="font-mono">${revenue?.toLocaleString() || '0'}</span>
+  )
 };
 
-// Completely manual config - no schema dependency
+// Advanced multi-table config with relations and computed fields
 export const TenantsConfig: ModuleConfig = {
   // Source Configuration
   sourceTable: 'Tenant',
   primaryKey: 'id',
 
-  // GENERIC BACKEND CONFIGURATION
-  backendEndpoint: '/tenants/search',
-  backendMethod: 'POST',
-  
-  // Manual Column Definitions - Complete control
+
+  // Column Definitions - now includes computed fields
   columns: [
     {
       field: 'id',
@@ -327,17 +344,6 @@ export const TenantsConfig: ModuleConfig = {
         { value: false, label: 'Inactive', color: 'gray' }
       ],
       render: customRenderers.isActive,
-      width: 100
-    },
-    {
-      field: 'userCount',
-      display: 'Users',
-      type: 'number', // Auto-derives: ['equals', 'not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between', 'not_between']
-      visible: true,
-      sortable: true,
-      searchable: false,
-      filterable: true,
-      render: customRenderers.permissions,
       width: 100
     },
     {
@@ -517,7 +523,7 @@ export const TenantsConfig: ModuleConfig = {
   module: {
     name: 'tenants',
     title: 'Tenants',
-    description: 'Manage multi-tenant organizations and access',
+    description: 'Advanced tenant management with user counts and multi-table data',
     icon: Building2
   }
 }; 

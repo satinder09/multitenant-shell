@@ -9,6 +9,7 @@ import { DatabaseModule } from './domains/database/database.module';
 import { AuthModule } from './domains/auth/auth.module';
 import { PlatformModule } from './domains/platform/platform.module';
 import { TenantModule } from './domains/tenant/tenant.module';
+import { SearchModule } from './domains/search/search.module';
 
 // Shared infrastructure imports ✅
 // import { TenantResolverMiddleware } from './shared/middleware/tenant-resolver.middleware';
@@ -52,6 +53,7 @@ import { PerformanceOptimizationController } from './infrastructure/performance/
     AuthModule,
     PlatformModule,
     TenantModule,
+    SearchModule,
   ],
   controllers: [
     HealthController,
