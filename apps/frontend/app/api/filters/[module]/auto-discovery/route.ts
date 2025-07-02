@@ -24,15 +24,15 @@ export async function GET(
     // Get module config via registry
     const config = await getModuleConfig(module);
     if (!config) {
-      return NextResponse.json(
-        { 
-          error: `Module configuration not found for: ${module}`,
-          fields: [],
-          relationships: [],
-          nestedFields: []
-        },
-        { status: 404 }
-      );
+      console.warn(`⚠️ Auto-discovery: No config found for module ${module}`);
+      // Return empty structure instead of error for better UX
+      return NextResponse.json({
+        fields: [],
+        relationships: [],
+        nestedFields: [],
+        success: true,
+        note: `Module ${module} not yet registered - this is normal during initial page load`
+      });
     }
     
     // Generate field definitions from config

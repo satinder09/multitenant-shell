@@ -25,6 +25,20 @@ interface DynamicSearchRequest {
       groups: any[];
     };
   };
+  // NEW: Include config data directly to avoid server-side registry dependency
+  moduleConfig?: {
+    sourceTable: string;
+    primaryKey?: string;
+    columns: Array<{
+      field: string;
+      type?: string;
+      operators?: string[];
+      options?: any[];
+    }>;
+    relations?: Record<string, any>;
+    virtualFields?: Record<string, any>;
+    computedFields?: Record<string, string>;
+  };
 }
 
 interface BackendSearchPayload {
@@ -52,7 +66,7 @@ interface BackendSearchPayload {
 export async function POST(req: NextRequest) {
   try {
     const requestData: DynamicSearchRequest = await req.json();
-    const { moduleName, page = 1, limit = 10, sort, complexFilter } = requestData;
+    const { moduleName, page = 1, limit = 10, sort, complexFilter, moduleConfig: passedConfig } = requestData;
 
     // Input validation
     if (!moduleName || typeof moduleName !== 'string') {
@@ -71,13 +85,19 @@ export async function POST(req: NextRequest) {
 
     console.log(`🔍 Dynamic Search: Processing request for module "${moduleName}"`);
 
-    // Get module configuration
-    const moduleConfig = await getModuleConfig(moduleName);
-    if (!moduleConfig) {
-      return NextResponse.json(
-        { error: `Module configuration not found for: ${moduleName}` },
-        { status: 404 }
-      );
+    // Get module configuration - prefer passed config, fallback to registry
+    let moduleConfig: any;
+    if (passedConfig) {
+      moduleConfig = passedConfig;
+      console.log(`✅ Using passed config for module: ${moduleName}`);
+    } else {
+      moduleConfig = await getModuleConfig(moduleName);
+      if (!moduleConfig) {
+        return NextResponse.json(
+          { error: `Module configuration not found for: ${moduleName}` },
+          { status: 404 }
+        );
+      }
     }
 
     // Validate module configuration
@@ -89,8 +109,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Extract field information from module config
-    const fields = moduleConfig.columns.map(col => col.field);
-    const fieldMappings = moduleConfig.columns.reduce((acc, col) => {
+    const fields = moduleConfig.columns.map((col: any) => col.field);
+    const fieldMappings = moduleConfig.columns.reduce((acc: Record<string, any>, col: any) => {
       acc[col.field] = {
         type: col.type || 'string',
         operators: col.operators || [],

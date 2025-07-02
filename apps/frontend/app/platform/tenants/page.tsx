@@ -2,10 +2,20 @@
 
 import React, { useState } from 'react';
 import { ConfigDrivenModulePage } from '@/shared/modules/ConfigDrivenModulePage';
+import { registerModule } from '@/shared/modules/module-registry';
+import { TenantsConfig } from './tenants.config';
 import CreateTenantDialog from '@/components/features/tenant-management/CreateTenantDialog';
 import { SecureLoginModal } from '@/components/features/tenant-management/SecureLoginModal';
 import { ImpersonationModal } from '@/components/features/tenant-management/ImpersonationModal';
 import type { TenantAccessOption } from '@/domains/platform/types/tenant.types';
+
+// 🚀 EARLY REGISTRATION: Register BEFORE component definition to ensure it's available immediately
+registerModule({
+  name: 'tenants',
+  title: 'Tenants',
+  description: 'Manage tenant organizations',
+  config: TenantsConfig
+});
 
 export default function TenantsPage() {
   // Modal states
@@ -59,6 +69,7 @@ export default function TenantsPage() {
       {/* Main Config-Driven Module Page */}
       <ConfigDrivenModulePage 
         moduleName="tenants"
+        config={TenantsConfig}
       />
 
       {/* Modal Components */}

@@ -270,9 +270,25 @@ export function useGenericFilter<
         }
       }
       
+      // Prepare config data for API if available
+      const configData = config ? {
+        sourceTable: config.sourceTable,
+        primaryKey: config.primaryKey,
+        columns: config.columns.map(col => ({
+          field: col.field,
+          type: col.type,
+          operators: col.operators,
+          options: col.options
+        })),
+        relations: config.relations,
+        virtualFields: config.virtualFields,
+        computedFields: config.computedFields
+      } : undefined;
+
       // Use the universal dynamic search endpoint
       const response = await browserApi.post('/api/dynamic-search', {
         moduleName,
+        moduleConfig: configData,
         ...backendCompatibleParams
       });
       

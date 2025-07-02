@@ -10,7 +10,16 @@ import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle } from 'lucide-react';
 import { ConfigDrivenModulePage } from '@/shared/modules/ConfigDrivenModulePage';
+import { registerModule } from '@/shared/modules/module-registry';
 import { UsersConfig } from './users.config';
+
+// 🚀 EARLY REGISTRATION: Register BEFORE component definition
+registerModule({
+  name: 'admin-users',
+  title: 'Platform Users',
+  description: 'Manage platform admin users',
+  config: UsersConfig
+});
 
 interface Role {
   id: string;
@@ -173,7 +182,7 @@ export default function PlatformUsersPage() {
   return (
     <div className="space-y-8">
       <ConfigDrivenModulePage
-        moduleName="users"
+        moduleName="admin-users"
         config={UsersConfig}
       />
 

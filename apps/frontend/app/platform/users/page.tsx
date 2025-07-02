@@ -2,7 +2,16 @@
 
 import React, { useState } from 'react';
 import { ConfigDrivenModulePage } from '@/shared/modules/ConfigDrivenModulePage';
+import { registerModule } from '@/shared/modules/module-registry';
 import { UsersConfig } from './users.config';
+
+// 🚀 EARLY REGISTRATION: Register BEFORE component definition
+registerModule({
+  name: 'users',
+  title: 'Users',
+  description: 'Manage system users',
+  config: UsersConfig
+});
 
 export default function UsersPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -42,7 +51,7 @@ export default function UsersPage() {
       {/* PHASE 1 ENHANCEMENT: Enhanced Config-Driven Module Page with optimized filtering */}
       <ConfigDrivenModulePage 
         moduleName="users"
-        config={UsersConfig} // Explicit config for better performance and caching
+        config={UsersConfig}
       />
 
       {/* Placeholder for future modals - Phase 2 will add these */}

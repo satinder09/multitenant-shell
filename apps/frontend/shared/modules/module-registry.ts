@@ -1,77 +1,43 @@
 // GENERIC MODULE REGISTRY SYSTEM
-// This registry automatically discovers and loads module configurations
-// without hardcoding specific module names or imports
+// This registry provides a completely generic system for module registration and loading
+// No hardcoded module names, paths, or configurations - everything is self-registered
 
 import { ModuleConfig } from './types';
 
-// GENERIC APPROACH: Dynamic module loading
-// Instead of hardcoding imports, modules self-register by placing their config files
-// in the expected location: /app/platform/[moduleName]/[moduleName].config.ts
+// ZERO-CONFIGURATION APPROACH: Complete self-registration
+// Modules register themselves by calling registerModule() with their imported config
+// No manual registry updates needed - completely dynamic and self-contained
 
 interface ModuleRegistryEntry {
   name: string;
   title: string;
   description: string;
-  configPath?: string; // Optional custom config path
 }
 
-// SIMPLIFIED REGISTRY: Only register basic metadata, configs are loaded dynamically
+// ZERO-CONFIG REGISTRY: Modules register themselves with imported configs
 const MODULE_REGISTRY: ModuleRegistryEntry[] = [
-  {
-    name: 'tenants',
-    title: 'Tenants',
-    description: 'Manage tenant organizations'
-  },
-  {
-    name: 'users',
-    title: 'Users',
-    description: 'Manage system users'
-  },
-  {
-    name: 'roles',
-    title: 'Platform Roles',
-    description: 'Manage platform-level roles and permissions'
-  }
-  // NEW MODULES: Just add metadata here, no imports needed!
-  // {
-  //   name: 'permissions',
-  //   title: 'Permissions', 
-  //   description: 'Manage user permissions'
-  // }
+  // 🚀 ALL MODULES: Self-register with imported config!
+  // Call registerModule({ name, title, description, config: ImportedConfig })
 ];
 
-// GENERIC CONFIG LOADER: Dynamically loads module configs
+// IN-MEMORY CONFIG STORAGE
+// Modules provide their config directly when they register
+const CONFIG_CACHE: Map<string, ModuleConfig> = new Map();
+
+// STORE CONFIG: Called during module registration to cache the config
+export function storeModuleConfig(moduleName: string, config: ModuleConfig): void {
+  CONFIG_CACHE.set(moduleName, config);
+}
+
+// GET CONFIG: Retrieves config from memory cache (no dynamic imports needed)
 export async function getModuleConfig(moduleName: string): Promise<ModuleConfig | null> {
-  try {
-    // GENERIC APPROACH: Load config from conventional path
-    let configPath = `@/app/platform/${moduleName}/${moduleName}.config`;
-    
-    // Special handling for admin modules
-    if (moduleName === 'roles') {
-      configPath = `@/app/platform/admin/roles/roles.config`;
-    }
-    
-    console.log(`🔍 Loading config for module: ${moduleName} from ${configPath}`);
-    
-    // Dynamic import with error handling
-    const configModule = await import(configPath);
-    
-    // Try different export patterns
-    const configExportName = `${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Config`;
-    const config = configModule[configExportName] || configModule.default || configModule.config;
-    
-    if (!config) {
-      console.warn(`⚠️ No config found for module ${moduleName}. Expected export: ${configExportName}`);
-      return null;
-    }
-    
-    console.log(`✅ Successfully loaded config for module: ${moduleName}`);
+  const config = CONFIG_CACHE.get(moduleName);
+  if (config) {
     return config;
-    
-  } catch (error) {
-    console.warn(`⚠️ Failed to load config for module ${moduleName}:`, error);
-    return null;
   }
+  
+  // Note: This is expected during SSR/API calls before client-side registration
+  return null;
 }
 
 // UTILITY FUNCTIONS
@@ -91,12 +57,32 @@ export function getAllModuleMetadata(): ModuleRegistryEntry[] {
   return [...MODULE_REGISTRY];
 }
 
-// HELPER: Add new modules programmatically (useful for plugins/extensions)
-export function registerModule(entry: ModuleRegistryEntry): void {
-  if (!isModuleRegistered(entry.name)) {
-    MODULE_REGISTRY.push(entry);
-    console.log(`📝 Registered new module: ${entry.name}`);
-  } else {
-    console.warn(`⚠️ Module ${entry.name} already registered`);
+// 🚀 SELF-REGISTRATION API
+// Call this from your page/config to auto-register your module
+
+interface ModuleRegistration {
+  name: string;
+  title: string;
+  description: string;
+  config: ModuleConfig; // Provide config directly - no dynamic imports needed!
+}
+
+// Legacy: No longer needed since configs are provided directly
+
+/**
+ * 🚀 Register a module with config provided directly
+ * Call this from your page component with the imported config
+ */
+export function registerModule(registration: ModuleRegistration): void {
+  const { name, title, description, config } = registration;
+  
+  // Register module metadata
+  if (!isModuleRegistered(name)) {
+    MODULE_REGISTRY.push({ name, title, description });
   }
-} 
+  
+  // Store the config directly in memory
+  storeModuleConfig(name, config);
+}
+
+// Legacy function - no longer needed with new approach 
