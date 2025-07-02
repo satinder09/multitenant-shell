@@ -26,6 +26,11 @@ const MODULE_REGISTRY: ModuleRegistryEntry[] = [
     name: 'users',
     title: 'Users',
     description: 'Manage system users'
+  },
+  {
+    name: 'roles',
+    title: 'Platform Roles',
+    description: 'Manage platform-level roles and permissions'
   }
   // NEW MODULES: Just add metadata here, no imports needed!
   // {
@@ -39,7 +44,12 @@ const MODULE_REGISTRY: ModuleRegistryEntry[] = [
 export async function getModuleConfig(moduleName: string): Promise<ModuleConfig | null> {
   try {
     // GENERIC APPROACH: Load config from conventional path
-    const configPath = `@/app/platform/${moduleName}/${moduleName}.config`;
+    let configPath = `@/app/platform/${moduleName}/${moduleName}.config`;
+    
+    // Special handling for admin modules
+    if (moduleName === 'roles') {
+      configPath = `@/app/platform/admin/roles/roles.config`;
+    }
     
     console.log(`🔍 Loading config for module: ${moduleName} from ${configPath}`);
     

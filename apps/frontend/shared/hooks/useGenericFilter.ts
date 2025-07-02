@@ -269,8 +269,12 @@ export function useGenericFilter<
         }
       }
       
-      const response = await fetch(`/api/modules/${moduleName}`, {
-        method: 'POST',
+      // Use custom backend endpoint if specified in config, otherwise use default
+      const endpoint = config?.backendEndpoint ? `/api${config.backendEndpoint}` : `/api/modules/${moduleName}`;
+      const method = config?.backendMethod || 'POST';
+      
+      const response = await fetch(endpoint, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(backendCompatibleParams)
       });

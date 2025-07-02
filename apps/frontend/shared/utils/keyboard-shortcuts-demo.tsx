@@ -51,20 +51,20 @@ export const KeyboardShortcutsDemo: React.FC = () => {
   // Example 3: Button click via keyboard
   useKeyboardShortcut(
     { key: 'Space', ctrlKey: true },
-    createButtonClickHandler(incrementButtonRef),
+    createButtonClickHandler(incrementButtonRef as React.RefObject<HTMLButtonElement>),
     { description: 'Click increment button (Ctrl+Space)' }
   );
 
   // Example 4: Focus management
   useKeyboardShortcut(
     { key: '1', altKey: true },
-    createFocusHandler(nameInputRef),
+    createFocusHandler(nameInputRef as React.RefObject<HTMLElement>),
     { description: 'Focus name input (Alt+1)' }
   );
 
   useKeyboardShortcut(
     { key: '2', altKey: true },
-    createFocusHandler(emailInputRef),
+    createFocusHandler(emailInputRef as React.RefObject<HTMLElement>),
     { description: 'Focus email input (Alt+2)' }
   );
 

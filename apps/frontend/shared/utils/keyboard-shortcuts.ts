@@ -132,7 +132,7 @@ export function useKeyboardShortcut(
 ) {
   const { description, enabled = true, dependencies = [] } = options;
   const handlerRef = useRef(handler);
-  const shortcutIdRef = useRef<string>();
+  const shortcutIdRef = useRef<string>('');
 
   // Update handler ref when it changes
   useEffect(() => {
