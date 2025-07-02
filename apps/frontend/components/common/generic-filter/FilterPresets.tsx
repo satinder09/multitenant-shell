@@ -15,6 +15,7 @@ import { FilterSource } from '@/shared/modules/types';
 import { generateId } from '@/shared/utils/utils';
 import { createComplexFilterRule } from '@/shared/utils/filterUtils';
 import { DATE_PRESETS } from '@/shared/utils/filter-field-types';
+import { useKeyboardShortcut } from '@/shared/utils/keyboard-shortcuts';
 
 interface FilterPresetsProps {
   filter: FilterPresetsConfig;
@@ -69,6 +70,23 @@ export const FilterPresets: React.FC<FilterPresetsProps> = ({ filter, onApply, o
 
     loadOptions();
   }, [filter.type, filter.column?.filterSource, filter.options?.length]);
+
+  // Add keyboard shortcuts for the filter preset dialog
+  useKeyboardShortcut(
+    { key: 'Enter', preventDefault: true },
+    () => {
+      if (!isApplyDisabled() && !loading) {
+        handleApply();
+      }
+    },
+    { description: 'Apply filter', enabled: true }
+  );
+
+  useKeyboardShortcut(
+    { key: 'Escape', preventDefault: true },
+    () => onClose(),
+    { description: 'Cancel filter', enabled: true }
+  );
 
   const handleApply = () => {
     let finalValue = inputValue;

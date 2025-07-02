@@ -376,13 +376,22 @@ export function useGenericFilter<
     }));
   }, []);
 
+  // Debounced search function to reduce API calls while typing
+  const debouncedSetSearch = useCallback(
+    debounce((search: string) => {
+      setQueryParams(prev => ({ 
+        ...prev, 
+        filters: { ...prev.filters, search } as TFilters, 
+        page: 1 
+      }));
+    }, 300), // 300ms delay
+    []
+  );
+
   const setSearch = useCallback((search: string) => {
-    setQueryParams(prev => ({ 
-      ...prev, 
-      filters: { ...prev.filters, search } as TFilters, 
-      page: 1 
-    }));
-  }, []);
+    // Use debounced function to reduce API calls
+    debouncedSetSearch(search);
+  }, [debouncedSetSearch]);
 
   const setPage = useCallback((page: number) => {
     setQueryParams(prev => ({ ...prev, page }));

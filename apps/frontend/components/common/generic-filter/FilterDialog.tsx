@@ -23,6 +23,7 @@ import {
 import { DynamicInput } from './DynamicInputs';
 import { NestedFieldSelector } from './NestedFieldSelector';
 import { createFilterLabel } from '@/shared/utils/filterUtils';
+import { useDialogShortcuts } from '@/shared/utils/keyboard-shortcuts';
 
 interface FilterDialogProps {
   open: boolean;
@@ -231,6 +232,13 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
     }]);
     setLogic('AND');
   };
+
+  // Add keyboard shortcuts for dialog
+  useDialogShortcuts({
+    onSubmit: handleApply,
+    onCancel: handleCancel,
+    enabled: open
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

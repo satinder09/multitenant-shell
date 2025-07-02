@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ import { ModuleConfig, ColumnDefinition } from '@/shared/modules/types';
 import { FilterDialog } from './FilterDialog';
 import { FilterPresets, FilterPresetsConfig } from './FilterPresets';
 import { createComplexFilterRule } from '@/shared/utils/filterUtils';
+import { useKeyboardShortcut } from '@/shared/utils/keyboard-shortcuts';
+import { debounce } from '@/shared/utils/utils';
 
 interface FilterDropdownMenuProps {
   moduleName: string;
@@ -69,8 +71,28 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomFilterDialog, setShowCustomFilterDialog] = useState(false);
   const [showFilterPreset, setShowFilterPreset] = useState<FilterPresetsConfig | null>(null);
+  const [localSearchValue, setLocalSearchValue] = useState(searchValue);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync local search value with prop when it changes externally
+  useEffect(() => {
+    setLocalSearchValue(searchValue);
+  }, [searchValue]);
+
+  // Debounced search handler
+  const debouncedSearch = useCallback(
+    debounce((value: string) => {
+      onSearchChange(value);
+    }, 300),
+    [onSearchChange]
+  );
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setLocalSearchValue(value);
+    debouncedSearch(value);
+  };
 
   // Generate popular filters from config
   const filterPresets: FilterPreset[] = React.useMemo(() => {
@@ -231,6 +253,33 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
     setIsOpen(false);
   };
 
+  // Keyboard shortcuts for search functionality
+  useKeyboardShortcut(
+    { key: '/', preventDefault: true },
+    () => {
+      inputRef.current?.focus();
+      setIsOpen(true);
+    },
+    { description: 'Focus search input', enabled: !isOpen }
+  );
+
+  // Escape to close dropdown
+  useKeyboardShortcut(
+    { key: 'Escape', preventDefault: true },
+    () => setIsOpen(false),
+    { description: 'Close filter dropdown', enabled: isOpen }
+  );
+
+  // Ctrl+F to focus search
+  useKeyboardShortcut(
+    { key: 'f', ctrlKey: true, preventDefault: true },
+    () => {
+      inputRef.current?.focus();
+      setIsOpen(true);
+    },
+    { description: 'Focus search input' }
+  );
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -251,8 +300,8 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
         <Input
           ref={inputRef}
           placeholder={placeholder}
-          value={searchValue}
-          onChange={(e) => onSearchChange(e.target.value)}
+          value={localSearchValue}
+          onChange={(e) => handleSearchChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
           className="pl-10 pr-16 h-9 sm:h-10"
         />

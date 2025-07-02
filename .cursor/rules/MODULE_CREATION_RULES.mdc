@@ -191,16 +191,162 @@ _Last updated: 2025-01-14_
 - **Reusable patterns** - extract common functionality into hooks or utilities.
 - **Clean imports** - organize imports logically.
 
+## 11. **Keyboard Shortcuts System**
+
+### 11.1 **System-Wide Keyboard Support**
+- **Use the comprehensive keyboard shortcuts utility** from `@/shared/utils/keyboard-shortcuts`.
+- **Global registry** manages all shortcuts to prevent conflicts and enable debugging.
+- **Automatic cleanup** prevents memory leaks with proper event listener management.
+
+### 11.2 **Dialog Shortcuts**
+- **Implement `useDialogShortcuts` for all dialogs**:
+  ```tsx
+  useDialogShortcuts({
+    onSubmit: handleApply,
+    onCancel: handleCancel,
+    enabled: open
+  });
+  ```
+- **Standard shortcuts**:
+  - `Enter`: Submit/apply action
+  - `Escape`: Cancel/close dialog
+  - `Ctrl+Enter`: Force submit (for complex forms)
+
+### 11.3 **Form Shortcuts**
+- **Use `useFormShortcuts` for all forms**:
+  ```tsx
+  useFormShortcuts({
+    onSave: handleSave,
+    onReset: handleReset,
+    enabled: true
+  });
+  ```
+- **Standard shortcuts**:
+  - `Ctrl+S`: Save form
+  - `Ctrl+R`: Reset form (prevents browser refresh)
+
+### 11.4 **Search and Navigation Shortcuts**
+- **Search focus shortcuts**:
+  - `/`: Focus search input (when not already focused)
+  - `Ctrl+F`: Focus search input (universal)
+  - `Escape`: Close dropdowns/modals
+- **Table navigation**:
+  - `↑/k`: Navigate up
+  - `↓/j`: Navigate down
+  - `Ctrl+Space`: Trigger button clicks
+
+### 11.5 **Custom Shortcuts Implementation**
+- **Basic shortcut example**:
+  ```tsx
+  useKeyboardShortcut(
+    { key: 'n', ctrlKey: true },
+    () => openNewItemDialog(),
+    { description: 'Create new item' }
+  );
+  ```
+- **Multiple shortcuts for same action**:
+  ```tsx
+  useKeyboardShortcut(
+    [
+      { key: 'ArrowUp' },
+      { key: 'k' }
+    ],
+    () => navigateUp(),
+    { description: 'Navigate up' }
+  );
+  ```
+- **Conditional shortcuts**:
+  ```tsx
+  useKeyboardShortcut(
+    { key: 'Enter' },
+    () => handleSubmit(),
+    { 
+      description: 'Submit form',
+      enabled: isFormValid && !isLoading
+    }
+  );
+  ```
+
+### 11.6 **Helper Functions**
+- **Button click handlers**: `createButtonClickHandler(buttonRef)`
+- **Focus handlers**: `createFocusHandler(elementRef)`
+- **Common shortcuts**: Use `createShortcut.enter()`, `createShortcut.escape()`, etc.
+
+## 12. **Sort Icons and Table Interactions**
+
+### 12.1 **Sort Icon Implementation**
+- **Show icons only on sorted columns** - no icons on unsorted columns.
+- **Use proper sort indicators**:
+  ```tsx
+  {header.column.getCanSort() && header.column.getIsSorted() && (
+    header.column.getIsSorted() === 'desc' ? (
+      <ChevronDown className="h-3 w-3 text-muted-foreground" />
+    ) : (
+      <ChevronUp className="h-3 w-3 text-muted-foreground" />
+    )
+  )}
+  ```
+- **Size and styling**: Use `h-3 w-3` for subtle, standard sort indicators.
+- **Color**: Use `text-muted-foreground` for proper contrast in both light and dark modes.
+
+### 12.2 **Sorting Cycle Management**
+- **Three-state sorting**: asc → desc → clear (no sort)
+- **Proper null handling**: Pass `null` to clear sorting instead of empty string.
+- **API compatibility**: Ensure backend handles undefined/null sort parameters gracefully.
+
+## 13. **Environment and Configuration**
+
+### 13.1 **Backend Connection Management**
+- **Environment variables**:
+  ```env
+  NEXT_PUBLIC_BACKEND_URL=http://localhost:4000
+  NODE_ENV=development
+  ```
+- **Connection error handling**: Implement proper fallback and retry logic for `ECONNRESET` errors.
+- **CSRF token management**: Automatic token refresh and retry on 403 errors.
+
+### 13.2 **Development Setup**
+- **Backend server**: Ensure `npm run start:dev` is running on port 4000.
+- **Frontend server**: Run on port 3000 with proper proxy configuration.
+- **Database**: Ensure PostgreSQL is running and accessible.
+
+## 14. **Error Handling and Debugging**
+
+### 14.1 **Network Error Handling**
+- **Connection reset errors**: Implement retry logic and user-friendly error messages.
+- **Timeout handling**: Set appropriate timeouts (default 10 seconds).
+- **Fallback data**: Provide mock data when backend is unavailable.
+
+### 14.2 **User Feedback**
+- **Loading states**: Show spinners/skeletons during async operations.
+- **Error boundaries**: Catch and display React errors gracefully.
+- **Toast notifications**: Provide clear success/error feedback.
+
 ---
 
 ## **Recent Updates (2025-01-14)**
 
-- Added comprehensive dark mode compatibility guidelines
-- Documented responsive dialog design patterns
-- Enhanced bulk actions implementation rules
-- Added performance optimization patterns for action refresh
-- Included accessibility and touch target guidelines
-- Documented proper checkbox and filter component implementation
+### **Major Additions:**
+- **Comprehensive keyboard shortcuts system** with global registry and hooks
+- **Dialog and form keyboard support** with standard shortcuts (Enter, Escape, Ctrl+S)
+- **Search and navigation shortcuts** (/, Ctrl+F, arrow keys)
+- **Sort icon improvements** with proper three-state cycle and subtle indicators
+- **Dark mode enhancements** with softer color palette and better contrast
+- **Environment configuration** and backend connection troubleshooting
+- **Error handling patterns** for network issues and user feedback
+
+### **UI/UX Improvements:**
+- Enhanced bulk actions with Gmail-style interface
+- Responsive dialog design with proper margins
+- Improved dark mode compatibility across all components
+- Better sort indicators and table interactions
+- Comprehensive accessibility guidelines
+
+### **Development Standards:**
+- TypeScript best practices and strict typing
+- Performance optimization patterns
+- Code quality standards and component architecture
+- Testing and validation requirements
 
 ---
 
@@ -212,5 +358,7 @@ _Last updated: 2025-01-14_
 - Keep examples current with the latest ShadCN and framework versions.
 
 ---
+
+
 
 
