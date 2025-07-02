@@ -259,7 +259,7 @@ export const FilterPresets: React.FC<FilterPresetsProps> = ({ filter, onApply, o
       case 'predefined':
       default:
         return (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             This filter will be applied with the predefined value: {' '}
             <Badge variant="secondary">
               {typeof filter.value === 'boolean' 
@@ -305,7 +305,7 @@ export const FilterPresets: React.FC<FilterPresetsProps> = ({ filter, onApply, o
         </div>
       </div>
       
-      <div className="flex items-center gap-2 pt-2 border-t">
+      <div className="flex items-center gap-2 pt-2 border-t border-border">
         <Button 
           onClick={handleApply} 
           size="sm" 

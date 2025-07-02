@@ -189,8 +189,8 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
 
   if (loading) {
     return (
-      <div className="w-80 border rounded-lg bg-white shadow-lg">
-        <div className="p-4 text-center text-gray-500">
+      <div className="w-80 border rounded-lg bg-popover shadow-lg">
+        <div className="p-4 text-center text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
           Loading fields...
         </div>
@@ -199,9 +199,9 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
   }
 
   return (
-    <div className="w-80 border rounded-lg bg-white shadow-lg">
+    <div className="w-80 border rounded-lg bg-popover shadow-lg">
       {/* Header with breadcrumbs */}
-      <div className="p-2 border-b">
+      <div className="p-2 border-b border-border">
         <div className="flex items-center gap-2 mb-2">
           {navigationPath.length > 0 && (
             <Button 
@@ -219,15 +219,15 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
             </Button>
           )}
           
-          <div className="flex items-center gap-1 text-sm text-gray-600 flex-1 overflow-hidden">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground flex-1 overflow-hidden">
             {breadcrumbs.map((crumb, index) => (
               <React.Fragment key={index}>
-                {index > 0 && <ChevronRight className="h-3 w-3 text-gray-400" />}
+                {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/60" />}
                 <button
                   onClick={() => navigateToBreadcrumb(crumb.path)}
                   disabled={navigating}
-                  className={`hover:text-blue-600 truncate disabled:opacity-50 ${
-                    index === breadcrumbs.length - 1 ? 'font-medium text-gray-900' : 'text-gray-600'
+                  className={`hover:text-primary truncate disabled:opacity-50 ${
+                    index === breadcrumbs.length - 1 ? 'font-medium text-foreground' : 'text-muted-foreground'
                   }`}
                 >
                   {crumb.label}
@@ -238,7 +238,7 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
         </div>
         
         <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search fields..."
             value={searchTerm}
@@ -253,21 +253,21 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
       <div className="h-64 overflow-hidden relative">
         {/* Navigation overlay */}
         {navigating && (
-          <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
-            <div className="flex items-center gap-2 text-gray-600">
+          <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading...</span>
             </div>
           </div>
         )}
         
-        <div className={`h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 transition-opacity duration-200 ${navigating ? 'opacity-30' : 'opacity-100'}`}>
+        <div className={`h-full overflow-y-auto transition-opacity duration-200 ${navigating ? 'opacity-30' : 'opacity-100'}`}>
           <div className="p-1">
             {filteredFields.length > 0 ? (
               filteredFields.map(field => (
                 <div
                   key={field.path.join('.')}
-                  className={`flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
+                  className={`flex items-center gap-2 py-1.5 px-2 hover:bg-accent cursor-pointer rounded transition-colors ${
                     navigating ? 'pointer-events-none' : ''
                   }`}
                   onClick={() => navigateToField(field)}
@@ -275,18 +275,18 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
                   <span className="text-sm font-medium flex-1">{field.label || field.name}</span>
                   
                   {!field.hasChildren && (
-                    <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                       {field.type}
                     </span>
                   )}
                   
                   {field.hasChildren && (
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
               ))
             ) : (
-              <div className="text-center text-gray-500 py-8 text-sm">
+              <div className="text-center text-muted-foreground py-8 text-sm">
                 {searchTerm ? `No fields found matching "${searchTerm}"` : 'No fields found'}
               </div>
             )}
@@ -296,7 +296,7 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
       
       {/* Footer */}
       {onClose && (
-        <div className="p-2 border-t">
+        <div className="p-2 border-t border-border">
           <Button variant="outline" onClick={onClose} className="w-full h-8 text-sm" disabled={navigating}>
             Close
           </Button>

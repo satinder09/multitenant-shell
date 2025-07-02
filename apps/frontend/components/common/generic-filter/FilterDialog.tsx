@@ -234,7 +234,7 @@ export const FilterDialog: React.FC<FilterDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] md:w-full max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader className="pb-4">
           <DialogTitle>Add Custom Filter</DialogTitle>
         </DialogHeader>

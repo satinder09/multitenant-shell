@@ -522,114 +522,116 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
         <div className="relative">
           {/* Gmail-style Bulk Actions Bar */}
           {selectedRows.length > 0 && actions?.bulkActions && (
-                        <>
+            <>
               {/* Full-width background bar that extends beyond container - with pointer-events-none */}
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-screen bg-accent/80 backdrop-blur-sm border-b border-border/50 h-14 z-[1] pointer-events-none" />
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-screen bg-accent/80 backdrop-blur-sm border-b border-border/50 h-16 sm:h-14 z-[1] pointer-events-none" />
               
-              {/* Content bar - enhanced with proper ShadCN styling */}
-              <div className="absolute top-0 left-0 z-10 px-6 py-3 h-14 pointer-events-auto">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+              {/* Content bar - enhanced with proper ShadCN styling and responsive height */}
+              <div className="absolute top-0 left-0 z-10 px-4 sm:px-6 py-3 h-16 sm:h-14 pointer-events-auto">
+                <div className="flex items-center justify-between h-full">
+                  <div className="flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
                     {/* Selection indicator with improved styling */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-muted-foreground">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                         {selectedRows.length} {selectedRows.length === 1 ? 'item' : 'items'} selected
                       </span>
                     </div>
                     
-                    {/* Separator */}
-                    <div className="h-6 w-px bg-border" />
+                    {/* Separator - hidden on very small screens */}
+                    <div className="hidden sm:block h-6 w-px bg-border" />
                     
                     {/* Actions container with proper spacing */}
-                    <div className="flex items-center gap-2">
-                                      {(() => {
-                      const availableActions = actions.bulkActions.filter(action => !action.condition || action.condition(selectedRows));
-                      
-                      // Separate actions based on displayMode, key, and variant
-                      const iconActions = availableActions.filter(action => 
-                        action.displayMode === 'icon' || ['export', 'download'].includes(action.key)
-                      );
-                      const dropdownActions = availableActions.filter(action => 
-                        action.displayMode !== 'icon' && 
-                        !['export', 'download'].includes(action.key)
-                      );
-                    
-                    return (
-                      <>
-                        {/* Icon Actions - Enhanced with ShadCN styling */}
-                        {iconActions.map(action => (
-                          <Button
-                            key={action.key}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => executeBulkAction(action.key, selectedRows)}
-                            className="h-8 w-8 p-0 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground border border-border/30 hover:border-border/60 shadow-sm"
-                            title={action.label}
-                          >
-                            {action.icon && React.createElement(action.icon, { className: "h-4 w-4" })}
-                          </Button>
-                        ))}
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      {(() => {
+                        const availableActions = actions.bulkActions.filter(action => !action.condition || action.condition(selectedRows));
                         
-                                                {/* Dropdown Actions - Enhanced with ShadCN styling */}
-                        {dropdownActions.length > 0 && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-8 px-3 bg-muted/50 hover:bg-muted text-foreground font-medium border border-border/30 hover:border-border/60 shadow-sm"
+                        // Separate actions based on displayMode, key, and variant
+                        const iconActions = availableActions.filter(action => 
+                          action.displayMode === 'icon' || ['export', 'download'].includes(action.key)
+                        );
+                        const dropdownActions = availableActions.filter(action => 
+                          action.displayMode !== 'icon' && 
+                          !['export', 'download'].includes(action.key)
+                        );
+                      
+                        return (
+                          <>
+                            {/* Icon Actions - Enhanced with ShadCN styling */}
+                            {iconActions.map(action => (
+                              <Button
+                                key={action.key}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => executeBulkAction(action.key, selectedRows)}
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0 bg-muted/50 hover:bg-muted text-foreground hover:text-foreground border border-border/30 hover:border-border/60 shadow-sm"
+                                title={action.label}
                               >
-                                Actions
-                                <ChevronDown className="ml-1 h-3 w-3" />
+                                {action.icon && React.createElement(action.icon, { className: "h-3 w-3 sm:h-4 sm:w-4" })}
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-52 shadow-lg border-border/60">
-                              {(() => {
-                                const regularActions = dropdownActions.filter(action => action.variant !== 'destructive');
-                                const destructiveActions = dropdownActions.filter(action => action.variant === 'destructive');
-                                
-                                return (
-                                  <>
-                                    {/* Regular actions */}
-                                    {regularActions.map(action => (
-                                      <DropdownMenuItem
-                                        key={action.key}
-                                        onClick={() => executeBulkAction(action.key, selectedRows)}
-                                        className="flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer hover:bg-accent/50 focus:bg-accent/50"
-                                      >
-                                        {action.icon && React.createElement(action.icon, { className: "h-4 w-4 text-muted-foreground" })}
-                                        <span className="font-medium">{action.label}</span>
-                                      </DropdownMenuItem>
-                                    ))}
+                            ))}
+                            
+                            {/* Dropdown Actions - Enhanced with ShadCN styling */}
+                            {dropdownActions.length > 0 && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 sm:h-8 px-2 sm:px-3 bg-muted/50 hover:bg-muted text-foreground font-medium border border-border/30 hover:border-border/60 shadow-sm text-xs sm:text-sm"
+                                  >
+                                    Actions
+                                    <ChevronDown className="ml-1 h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-52 shadow-lg border-border/60">
+                                  {(() => {
+                                    const regularActions = dropdownActions.filter(action => action.variant !== 'destructive');
+                                    const destructiveActions = dropdownActions.filter(action => action.variant === 'destructive');
                                     
-                                    {/* Separator if both regular and destructive actions exist */}
-                                    {regularActions.length > 0 && destructiveActions.length > 0 && (
-                                      <div className="h-px bg-border my-1" />
-                                    )}
-                                    
-                                    {/* Destructive actions */}
-                                    {destructiveActions.map(action => (
-                                      <DropdownMenuItem
-                                        key={action.key}
-                                        onClick={() => executeBulkAction(action.key, selectedRows)}
-                                        className="flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer text-destructive hover:bg-destructive/10 focus:bg-destructive/10"
-                                      >
-                                        {action.icon && React.createElement(action.icon, { className: "h-4 w-4 text-destructive" })}
-                                        <span className="font-medium">{action.label}</span>
-                                      </DropdownMenuItem>
-                                    ))}
-                                  </>
-                                );
-                              })()}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </>
-                    );
-                  })()}
+                                    return (
+                                      <>
+                                        {/* Regular actions */}
+                                        {regularActions.map(action => (
+                                          <DropdownMenuItem
+                                            key={action.key}
+                                            onClick={() => executeBulkAction(action.key, selectedRows)}
+                                            className="flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer hover:bg-accent/50 focus:bg-accent/50"
+                                          >
+                                            {action.icon && React.createElement(action.icon, { className: "h-4 w-4 text-muted-foreground" })}
+                                            <span className="font-medium">{action.label}</span>
+                                          </DropdownMenuItem>
+                                        ))}
+                                        
+                                        {/* Separator if both regular and destructive actions exist */}
+                                        {regularActions.length > 0 && destructiveActions.length > 0 && (
+                                          <div className="h-px bg-border my-1" />
+                                        )}
+                                        
+                                        {/* Destructive actions */}
+                                        {destructiveActions.map(action => (
+                                          <DropdownMenuItem
+                                            key={action.key}
+                                            onClick={() => executeBulkAction(action.key, selectedRows)}
+                                            className="flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer text-destructive hover:bg-destructive/10 focus:bg-destructive/10"
+                                          >
+                                            {action.icon && React.createElement(action.icon, { className: "h-4 w-4 text-destructive" })}
+                                            <span className="font-medium">{action.label}</span>
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </>
+                                    );
+                                  })()}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
                   
                   {/* Clear selection button - close to actions */}
-                  <div className="ml-2 pl-2 border-l border-border/30">
+                  <div className="ml-1 sm:ml-2 pl-1 sm:pl-2 border-l border-border/30">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -637,7 +639,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                         // Clear all selections
                         setSelectedRows([]);
                       }}
-                      className="h-8 px-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-1"
+                      className="h-7 sm:h-8 px-1 sm:px-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-1"
                       title="Clear selection"
                     >
                       <X className="h-3 w-3" />
@@ -646,13 +648,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
                   </div>
                 </div>
               </div>
-                </div>
-              </div>
             </>
           )}
           
-          {/* Table with conditional top margin for bulk actions */}
-          <div className={selectedRows.length > 0 && actions?.bulkActions ? "mt-14" : ""}>
+          {/* Table with conditional top margin for bulk actions - responsive margin */}
+          <div className={selectedRows.length > 0 && actions?.bulkActions ? "mt-16 sm:mt-14" : ""}>
             <DataTable
               data={data || []}
               columns={tableColumns}
