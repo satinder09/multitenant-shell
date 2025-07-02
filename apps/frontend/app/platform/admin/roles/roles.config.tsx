@@ -93,8 +93,27 @@ const roleActions = {
   },
 
   importRoles: () => {
-    console.log('Import roles functionality');
-    toastNotify({ variant: 'info', title: 'Import functionality coming soon' });
+    // Create a file input element
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            // Basic CSV/JSON parsing would go here
+            console.log('File content:', event.target?.result);
+            toastNotify({ variant: 'info', title: 'Import feature in development', description: 'File selected but import logic needs implementation' });
+          } catch (error) {
+            toastNotify({ variant: 'error', title: 'Failed to parse file' });
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
   },
 
   refreshData: () => {
@@ -169,12 +188,22 @@ const customRenderers = {
   },
 
   createdAt: (date: string) => {
-    return new Date(date).toLocaleDateString();
+    if (!date) return 'N/A';
+    const parsedDate = new Date(date);
+    return isNaN(parsedDate.getTime()) ? 'Invalid Date' : parsedDate.toLocaleDateString();
   },
 
   updatedAt: (date: string) => {
-    return new Date(date).toLocaleDateString();
-  }
+    if (!date) return 'N/A';
+    const parsedDate = new Date(date);
+    return isNaN(parsedDate.getTime()) ? 'Invalid Date' : parsedDate.toLocaleDateString();
+  },
+
+  description: (description: string, record: any) => (
+    <span className="text-sm text-muted-foreground">
+      {description || 'No description'}
+    </span>
+  )
 };
 
 // Completely manual config - no schema dependency
@@ -238,31 +267,15 @@ export const RolesConfig: ModuleConfig = {
       width: 200
     },
     {
-      field: 'createdAt',
-      display: 'Created At',
-      type: 'datetime',
+      field: 'description',
+      display: 'Description',
+      type: 'string',
       visible: true,
       sortable: true,
-      searchable: false,
+      searchable: true,
       filterable: true,
-      filterPreset: {
-        field: 'createdAt',
-        operator: 'between',
-        label: 'Created Date Range'
-      },
-      render: customRenderers.createdAt,
-      width: 120
-    },
-    {
-      field: 'updatedAt',
-      display: 'Updated',
-      type: 'datetime',
-      visible: false,
-      sortable: true,
-      searchable: false,
-      filterable: true,
-      render: customRenderers.updatedAt,
-      width: 120
+      render: customRenderers.description,
+      width: 200
     }
   ],
 
@@ -369,7 +382,7 @@ export const RolesConfig: ModuleConfig = {
   // Display Configuration
   display: {
     pageSize: 10,
-    defaultColumns: ['name', 'rolePermissions', 'userRoles', 'createdAt'], // Only show these by default
+    defaultColumns: ['name', 'description', 'rolePermissions', 'userRoles'], // Only show these by default
     selectable: true
   }
 }; 
