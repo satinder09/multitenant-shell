@@ -58,6 +58,8 @@ import {
   Search, 
   MoreHorizontal, 
   ArrowUpDown, 
+  ChevronUp,
+  ChevronDown,
   Filter,
   Download,
   Plus
@@ -104,7 +106,7 @@ interface DataTableProps<TData = any> {
   enableFiltering?: boolean;
   enableRowSelection?: boolean;
   enablePagination?: boolean;
-  onSortChange?: (sort: SortParams<TData>) => void;
+  onSortChange?: (sort: SortParams<TData> | null) => void;
 }
 
 // Table state management hook with persistence
@@ -339,8 +341,8 @@ export function DataTable<TData>({
             if (newSorting.length > 0) {
               onSortChange({ field: newSorting[0].id as keyof TData, direction: newSorting[0].desc ? 'desc' : 'asc' });
             } else {
-              // No sorting selected - clear
-              onSortChange({ field: '' as any, direction: 'asc' });
+              // No sorting selected - clear (pass null to indicate no sorting)
+              onSortChange(null as any);
             }
           }
           // Persist internal state if persistenceKey is set
@@ -420,8 +422,12 @@ export function DataTable<TData>({
                   {header.isPlaceholder ? null : (
                     <div className="flex items-center gap-2">
                       {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && (
-                        <ArrowUpDown className="h-4 w-4" />
+                      {header.column.getCanSort() && header.column.getIsSorted() && (
+                        header.column.getIsSorted() === 'desc' ? (
+                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                        ) : (
+                          <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                        )
                       )}
                     </div>
                   )}

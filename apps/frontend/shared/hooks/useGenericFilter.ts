@@ -392,8 +392,8 @@ export function useGenericFilter<
     setQueryParams(prev => ({ ...prev, limit, page: 1 }));
   }, []);
 
-  const setSort = useCallback((sort: SortParams) => {
-    setQueryParams(prev => ({ ...prev, sort, page: 1 }));
+  const setSort = useCallback((sort: SortParams | null) => {
+    setQueryParams(prev => ({ ...prev, sort: sort || undefined, page: 1 }));
   }, []);
 
   const setGroupBy = useCallback((groupBy: string | null) => {

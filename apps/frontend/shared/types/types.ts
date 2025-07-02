@@ -319,7 +319,7 @@ export interface UseGenericFilterReturn<T extends GenericEntity, TFilters extend
   setSearch: (search: string) => void;
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
-  setSort: (sort: SortParams) => void;
+  setSort: (sort: SortParams | null) => void;
   setGroupBy: (groupBy: string | null) => void;
   refetch: () => void;
   
