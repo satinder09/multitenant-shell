@@ -14,7 +14,8 @@ import {
   BarChart3, 
   Calendar,
   Shield,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 import { ComplexFilter, ComplexFilterRule, SavedSearch } from '@/shared/types/types';
 import { ModuleConfig, ColumnDefinition } from '@/shared/modules/types';
@@ -296,14 +297,20 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
     <div className="relative w-full" ref={dropdownRef}>
       {/* Main Search Input - this is the primary search interface */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 transition-colors duration-200 ${
+          localSearchValue ? 'text-foreground/60' : 'text-muted-foreground'
+        }`} />
         <Input
           ref={inputRef}
           placeholder={placeholder}
           value={localSearchValue}
           onChange={(e) => handleSearchChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
-          className="pl-10 pr-16 h-9 sm:h-10"
+          className={`pl-10 pr-16 h-9 sm:h-10 transition-all duration-200 ${
+            localSearchValue 
+              ? 'border-border focus:border-ring/50' 
+              : 'focus:border-ring/30'
+          }`}
         />
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
           {filterCount > 0 && (

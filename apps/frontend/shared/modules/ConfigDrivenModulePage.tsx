@@ -514,12 +514,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
       </div>
 
       {/* Data Table */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-muted-foreground">Loading {module.title.toLowerCase()}...</div>
-        </div>
-      ) : (
-        <div className="relative">
+      <div className="relative">
           {/* Gmail-style Bulk Actions Bar */}
           {selectedRows.length > 0 && actions?.bulkActions && (
             <>
@@ -656,6 +651,7 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
             <DataTable
               data={data || []}
               columns={tableColumns}
+              loading={isLoading}
               allowDrag={false}
               persistenceKey={`${moduleName}-table`}
               defaultPageSize={display?.pageSize || 10}
@@ -669,7 +665,6 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
             />
           </div>
         </div>
-      )}
 
       {/* Advanced Filter Dialog (only shown when advanced filters are available) */}
       {isAdvancedMode && (

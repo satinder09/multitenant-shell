@@ -66,6 +66,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/shared/utils/utils"
 import { SortParams } from "@/shared/types/types"
+import { TableSkeleton, TableSkeletonWithActions, TableSkeletonWithSelection } from "@/components/ui/table-skeleton"
 
 // Legacy simple column interface for backwards compatibility
 interface SimpleColumn {
@@ -400,94 +401,133 @@ export function DataTable<TData>({
     }
   }, [searchTerm, enableFiltering, searchable, table])
 
-  const TableContent = () => (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map(headerGroup => (
-          <TableRow key={headerGroup.id} className="hover:bg-transparent">
-            {headerGroup.headers.map(header => {
-              const meta = header.column.columnDef.meta as any
+  const TableContent = () => {
+    // Show skeleton while loading
+    if (loading) {
+      const hasActions = tableColumns.some(col => (col as any).id === 'actions')
+      
+      // Get only visible columns from the table (this respects column visibility settings)
+      const visibleColumns = table.getVisibleLeafColumns().filter(col => col.id !== 'actions')
+      
+      // Create column configuration for skeleton based on actually visible columns
+      const columnConfig = visibleColumns.map((col: any) => {
+        const meta = col.columnDef.meta || {}
+        const field = col.id
+        
+        // Use width from meta if available, otherwise smart detection
+        let width: number | string = meta.width || 120
+        let type: 'name' | 'status' | 'date' | 'number' | 'text' | 'code' = 'text'
+        
+        // Smart type detection based on field names
+        if (field === 'name' || field === 'title' || field === 'tenant') {
+          type = 'name'
+          if (!meta.width) width = 250
+        } else if (field === 'subdomain' || field === 'domain') {
+          type = 'code'
+          if (!meta.width) width = 200
+        } else if (field === 'isActive' || field === 'status' || field === 'active') {
+          type = 'status'
+          if (!meta.width) width = 100
+        } else if (field === 'userCount' || field === 'users' || field === 'count') {
+          type = 'number'
+          if (!meta.width) width = 100
+        } else if (field === 'createdAt' || field === 'updatedAt' || field.includes('Date')) {
+          type = 'date'
+          if (!meta.width) width = 120
+        }
+        
+        return { width, type }
+      })
+      
+      const dataColumnCount = columnConfig.length
+      
+      if (enableRowSelection) {
+        return <TableSkeletonWithSelection columns={dataColumnCount} rows={6} columnConfig={columnConfig} />
+      } else if (hasActions) {
+        return <TableSkeletonWithActions columns={dataColumnCount} rows={6} columnConfig={columnConfig} />
+      } else {
+        return <TableSkeleton columns={dataColumnCount} rows={6} columnConfig={columnConfig} />
+      }
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map(headerGroup => (
+            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              {headerGroup.headers.map(header => {
+                const meta = header.column.columnDef.meta as any
+                return (
+                  <TableHead 
+                    key={header.id}
+                    className={cn(
+                      'font-medium text-muted-foreground',
+                      meta?.width && `w-[${meta.width}]`,
+                      meta?.align === 'center' && 'text-center',
+                      meta?.align === 'right' && 'text-right',
+                      header.column.getCanSort() && 'cursor-pointer hover:text-foreground'
+                    )}
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    {header.isPlaceholder ? null : (
+                      <div className="flex items-center gap-2">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && header.column.getIsSorted() && (
+                          header.column.getIsSorted() === 'desc' ? (
+                            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                          ) : (
+                            <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                          )
+                        )}
+                      </div>
+                    )}
+                  </TableHead>
+                )
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map(row => {
+              const meta = row.original as any
               return (
-                <TableHead 
-                  key={header.id}
-                  className={cn(
-                    'font-medium text-muted-foreground',
-                    meta?.width && `w-[${meta.width}]`,
-                    meta?.align === 'center' && 'text-center',
-                    meta?.align === 'right' && 'text-right',
-                    header.column.getCanSort() && 'cursor-pointer hover:text-foreground'
-                  )}
-                  onClick={header.column.getToggleSortingHandler()}
+                <TableRow 
+                  key={row.id} 
+                  data-state={row.getIsSelected() && "selected"}
+                  className="hover:bg-muted/50"
                 >
-                  {header.isPlaceholder ? null : (
-                    <div className="flex items-center gap-2">
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && header.column.getIsSorted() && (
-                        header.column.getIsSorted() === 'desc' ? (
-                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                        ) : (
-                          <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                        )
-                      )}
-                    </div>
-                  )}
-                </TableHead>
+                  {row.getVisibleCells().map(cell => {
+                    const columnMeta = cell.column.columnDef.meta as any
+                    return (
+                      <TableCell 
+                        key={cell.id}
+                        className={cn(
+                          columnMeta?.align === 'center' && 'text-center',
+                          columnMeta?.align === 'right' && 'text-right'
+                        )}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    )
+                  })}
+                </TableRow>
               )
-            })}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {loading ? (
-          <TableRow>
-            <TableCell 
-              colSpan={tableColumns.length} 
-              className="h-24 text-center"
-            >
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              </div>
-            </TableCell>
-          </TableRow>
-        ) : table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map(row => {
-            const meta = row.original as any
-            return (
-              <TableRow 
-                key={row.id} 
-                data-state={row.getIsSelected() && "selected"}
-                className="hover:bg-muted/50"
+            })
+          ) : (
+            <TableRow>
+              <TableCell 
+                colSpan={tableColumns.length} 
+                className="h-24 text-center text-muted-foreground"
               >
-                {row.getVisibleCells().map(cell => {
-                  const columnMeta = cell.column.columnDef.meta as any
-                  return (
-                    <TableCell 
-                      key={cell.id}
-                      className={cn(
-                        columnMeta?.align === 'center' && 'text-center',
-                        columnMeta?.align === 'right' && 'text-right'
-                      )}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  )
-                })}
-              </TableRow>
-            )
-          })
-        ) : (
-          <TableRow>
-            <TableCell 
-              colSpan={tableColumns.length} 
-              className="h-24 text-center text-muted-foreground"
-            >
-              {emptyMessage}
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  )
+                {emptyMessage}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    )
+  }
 
   return (
     <div className={cn('space-y-4', className)}>

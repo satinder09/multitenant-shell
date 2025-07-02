@@ -11,16 +11,19 @@ The search functionality in the multitenant-shell application now implements deb
 #### FilterDropdownMenu Component
 - **Local State Management**: Uses `localSearchValue` state to provide immediate UI feedback
 - **Debounced API Calls**: Uses a 300ms debounce delay before triggering actual search
+- **Loading Indicator**: Shows animated dots and pulsing text with enhanced input styling while searching
 - **Sync with Props**: Automatically syncs local state when external search value changes
 
 ```typescript
-// Local state for immediate UI response
+// Local state for immediate UI response and loading indication
 const [localSearchValue, setLocalSearchValue] = useState(searchValue);
+const [isSearching, setIsSearching] = useState(false);
 
 // Debounced search handler with 300ms delay
 const debouncedSearch = useCallback(
   debounce((value: string) => {
     onSearchChange(value);
+    setIsSearching(false); // Hide loading indicator when search completes
   }, 300),
   [onSearchChange]
 );
@@ -28,6 +31,14 @@ const debouncedSearch = useCallback(
 // Handle search input changes
 const handleSearchChange = (value: string) => {
   setLocalSearchValue(value);  // Immediate UI update
+  
+  // Show loading indicator only if there's a value to search
+  if (value.trim()) {
+    setIsSearching(true);
+  } else {
+    setIsSearching(false); // Hide immediately for empty searches
+  }
+  
   debouncedSearch(value);      // Debounced API call
 };
 ```
@@ -79,8 +90,11 @@ export function debounce<T extends (...args: any[]) => any>(
 
 ### 1. Immediate UI Feedback
 - Search input updates instantly as user types
+- Animated loading dots show search activity with staggered animation
+- Pulsing "Searching..." text provides clear status indication
+- Enhanced input styling with gradient background and colored border
 - No lag or delay in the input field
-- Maintains responsive feel
+- Maintains responsive feel with smooth transitions
 
 ### 2. Reduced Network Traffic
 - API calls only triggered after 300ms of inactivity
@@ -96,9 +110,11 @@ export function debounce<T extends (...args: any[]) => any>(
 
 1. **User Types**: Character entered in search input
 2. **Immediate Update**: `localSearchValue` state updates instantly
-3. **Debounce Timer**: 300ms timer starts/resets
-4. **Timer Completion**: After 300ms of inactivity, API call is made
-5. **State Sync**: Search results update and external state syncs
+3. **Loading Indicator**: Spinner appears and input styling changes
+4. **Debounce Timer**: 300ms timer starts/resets
+5. **Timer Completion**: After 300ms of inactivity, API call is made
+6. **Loading Complete**: Spinner disappears and input returns to normal
+7. **State Sync**: Search results update and external state syncs
 
 ## Configuration
 
