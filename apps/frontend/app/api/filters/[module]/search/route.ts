@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet, serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 interface SearchRequest {
   search?: string;
@@ -58,9 +58,10 @@ async function fetchRealModuleData(
     }
 
     // Make the API call to backend - always POST for tenants to ensure optimization
+    const serverApi = new ServerApiClient();
     const response = moduleName === 'tenants' 
-      ? await serverPost('/tenants/search', params, {}, request)
-      : await serverGet(apiUrl.replace(backendUrl, ''), {}, request);
+      ? await serverApi.post('/tenants/search', params, {}, request)
+      : await serverApi.get(apiUrl.replace(backendUrl, ''), {}, request);
 
     if (!response.ok) {
       throw new Error(`Backend API error: ${response.status} ${response.statusText}`);

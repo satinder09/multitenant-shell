@@ -164,6 +164,8 @@ class FilterSourceService {
       requestOptions.body = JSON.stringify(body);
     }
 
+    // TODO: This service needs to be refactored to use browserApi
+    // Currently keeping fetch as this is a utility service that may need redesign
     const response = await fetch(url, requestOptions);
     
     if (!response.ok) {
@@ -285,6 +287,7 @@ class FilterSourceService {
     }
 
     // This would typically call a backend API that executes the function
+    // TODO: Replace with browserApi for security
     const response = await fetch('/api/filters/function', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet, serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 // Handler for GET /api/tenants (fetch all)
 export async function GET(req: NextRequest) {
   try {
-    const response = await serverGet('/tenants', {}, req);
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.get('/tenants', {}, req);
 
     if (!response.ok) {
       const error = await response.json();
@@ -23,7 +24,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const response = await serverPost('/tenants', body, {}, req);
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.post('/tenants', body, {}, req);
 
     if (!response.ok) {
       const error = await response.json();

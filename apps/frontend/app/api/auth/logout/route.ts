@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function POST(req: NextRequest) {
   try {
-    const resp = await serverPost('/auth/logout', {}, {}, req);
+    const serverApi = new ServerApiClient();
+    const resp = await serverApi.post('/auth/logout', {}, {}, req);
     const body = await resp.json();
     const nextRes = NextResponse.json(body, { status: resp.status });
 

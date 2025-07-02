@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Search, X } from 'lucide-react';
 import { FieldValue, NestedFieldConfig } from '@/shared/types/types';
 import { debounce } from '@/shared/utils/utils';
+import { browserApi } from '@/shared/services/api-client';
 
 interface MultiValueSelectorProps {
   fieldPath: string[];
@@ -57,19 +58,14 @@ export const MultiValueSelector: React.FC<MultiValueSelectorProps> = ({
     
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/filters/${moduleName}/field-values`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fieldPath,
-          search: search || '',
-          limit: 50
-        })
+      const response = await browserApi.post(`/api/filters/${moduleName}/field-values`, {
+        fieldPath,
+        search: search || '',
+        limit: 50
       });
       
-      if (response.ok) {
-        const values = await response.json();
-        setAvailableValues(values);
+      if (response.success) {
+        setAvailableValues(response.data as FieldValue[]);
       }
     } catch (error) {
       console.error('Failed to load field values:', error);

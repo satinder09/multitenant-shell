@@ -1,40 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerApiClient } from '@/shared/services/api-client';
 
 export async function GET(req: NextRequest) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  // CRITICAL: If the backend URL isn't set, we must not proceed.
-  // This prevents an infinite loop where the proxy calls itself.
-  if (!backendUrl) {
-    console.error('FATAL: NEXT_PUBLIC_API_BASE_URL is not set. Halting proxy request.');
-    return NextResponse.json(
-      { message: 'Server configuration error.' },
-      { status: 500 },
-    );
-  }
-  
-  const apiUrl = `${backendUrl}/auth/me`;
-  console.log(`Forwarding 'me' request to: ${apiUrl}`);
+  console.log(`Forwarding 'me' request to backend`);
 
   try {
-    const resp = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        // Forward the cookie from the original client request
-        'cookie': req.headers.get('cookie') || '',
-      },
-    });
+    const serverClient = createServerApiClient(req);
+    const response = await serverClient.get('/auth/me');
 
-    // If the backend responds with an error, proxy that response
-    if (!resp.ok) {
+    if (!response.success) {
       return NextResponse.json(
-        { message: `Error from backend: ${resp.statusText}` },
-        { status: resp.status },
+        { message: `Error from backend: ${response.error}` },
+        { status: 500 },
       );
     }
 
-    const data = await resp.json();
-    return NextResponse.json(data);
+    return NextResponse.json(response.data);
 
   } catch (error) {
     console.error('Auth "me" proxy fetch failed:', error);

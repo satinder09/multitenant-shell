@@ -1,6 +1,6 @@
 // apps/frontend/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 import { getTenantSubdomain } from '@/shared/utils/contextUtils';
 
 export async function POST(req: NextRequest) {
@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     console.log('[API LOGIN PROXY] Backend URL being used:', process.env.NEXT_PUBLIC_BACKEND_URL || 'http://lvh.me:4000');
     
     // Use the generic server client with CSRF protection
-    const backendRes = await serverPost('/auth/login', loginData, {}, req);
+    const serverApi = new ServerApiClient();
+    const backendRes = await serverApi.post('/auth/login', loginData, {}, req);
     
     console.log('[API LOGIN PROXY] Backend response status:', backendRes.status);
     console.log('[API LOGIN PROXY] Backend response headers:', Object.fromEntries(backendRes.headers.entries()));

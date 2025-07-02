@@ -7,6 +7,7 @@ import { AlertTriangle, Clock, User, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AuthCache } from '@/shared/utils/authCache';
+import { browserApi } from '@/shared/services/api-client';
 
 export default function ImpersonationBanner() {
   const { user, refreshUser } = useAuth();
@@ -51,25 +52,14 @@ export default function ImpersonationBanner() {
       
       if (isImpersonation && user.impersonationSessionId) {
         // End impersonation session
-        await fetch('/api/auth/impersonation/end', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ sessionId: user.impersonationSessionId })
-        });
+        await browserApi.post('/api/auth/impersonation/end', { sessionId: user.impersonationSessionId });
       } else if (isSecureLogin) {
         // For secure login, logout from tenant
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          credentials: 'include'
-        });
+        await browserApi.post('/api/auth/logout');
       }
       
       // Additional cleanup - clear all session data
-      await fetch('/api/auth/clear-session', {
-        method: 'POST',
-        credentials: 'include'
-      });
+      await browserApi.post('/api/auth/clear-session');
       
       // Force refresh user state to clear any cached auth data
       await refreshUser(true);
@@ -94,10 +84,7 @@ export default function ImpersonationBanner() {
       
       // Try clearing session as fallback
       try {
-        await fetch('/api/auth/clear-session', {
-          method: 'POST',
-          credentials: 'include'
-        });
+        await browserApi.post('/api/auth/clear-session');
       } catch (clearError) {
         console.error('Error clearing session:', clearError);
       }

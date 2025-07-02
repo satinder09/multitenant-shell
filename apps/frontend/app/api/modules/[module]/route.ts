@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateConfigFromSchema } from '@/shared/modules/schema-config-generator';
-import { serverGet, serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 import { getModuleConfig, getRegisteredModules } from '@/shared/modules/module-registry';
 
 interface ModuleDataRequest {
@@ -140,10 +140,12 @@ async function handleModuleDataRequest(
         }
         
         const finalUrl = queryParams.toString() ? `${backendEndpoint}?${queryParams.toString()}` : backendEndpoint;
-        response = await serverGet(finalUrl, {}, request);
+        const serverApi = new ServerApiClient();
+        response = await serverApi.get(finalUrl, {}, request);
       } else {
         // For POST requests, send data in body
-        response = await serverPost(backendEndpoint, requestData, {}, request);
+        const serverApi = new ServerApiClient();
+        response = await serverApi.post(backendEndpoint, requestData, {}, request);
       }
     } catch (backendError) {
       console.warn(`Backend call failed for ${moduleName}, falling back to mock data:`, backendError);

@@ -13,6 +13,7 @@ import {
 } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { LoginDto, login as loginApi, ApiError } from '@/shared/services/api';
+import { browserApi } from '@/shared/services/api-client';
 import { Spinner } from '@/components/ui/spinner';
 import { initializeCsrfProtection } from '@/domains/auth/services/csrfService';
 import { AuthCache } from '@/shared/utils/authCache';
@@ -90,16 +91,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       console.log('🔍 Fetching user profile from /api/auth/me');
-      const response = await fetch('/api/auth/me', { 
-        credentials: 'include',
+      const response = await browserApi.get<UserProfile>('/api/auth/me', undefined, {
         headers: {
           'Cache-Control': 'no-cache',
         }
       });
       
-      console.log('🔍 /api/auth/me response status:', response.status);
-      if (response.ok) {
-        const profile = await response.json();
+      console.log('🔍 /api/auth/me response success:', response.success);
+      if (response.success) {
+        const profile = response.data;
         console.log('🔍 User profile received:', profile);
         setUser(profile);
         AuthCache.set(profile);
@@ -186,10 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoggingOut(true);
     
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await browserApi.post('/api/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     }

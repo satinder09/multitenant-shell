@@ -21,6 +21,7 @@ import { ModuleConfig, getEffectiveOperators } from '@/shared/modules/types';
 import { getModuleConfig } from '@/shared/modules/module-registry';
 import { generateId, debounce } from '@/shared/utils/utils';
 import { VisibilityState } from '@tanstack/react-table';
+import { browserApi } from '@/shared/services/api-client';
 
 // PHASE 1 ENHANCEMENT: Cached Field Discovery
 const fieldDiscoveryCache = new Map<string, {
@@ -210,9 +211,9 @@ export function useGenericFilter<
         return;
       }
 
-      const response = await fetch(`/api/filters/${moduleName}/auto-discovery`);
-      if (response.ok) {
-        const discovery = await response.json();
+      const response = await browserApi.get(`/api/filters/${moduleName}/auto-discovery`);
+      if (response.success) {
+        const discovery = response.data as DynamicFieldDiscovery;
         setFieldDiscovery(discovery);
         setMetadata(discovery.fields || []);
         setCachedFieldDiscovery(moduleName, discovery);
@@ -228,9 +229,9 @@ export function useGenericFilter<
     fetchedSavedSearchesRef.current = true;
     
     try {
-      const response = await fetch(`/api/filters/${moduleName}/saved-searches?userId=current-user`);
-      if (response.ok) {
-        const result = await response.json();
+      const response = await browserApi.get(`/api/filters/${moduleName}/saved-searches?userId=current-user`);
+      if (response.success) {
+        const result = response.data as { data: SavedSearch[] };
         setSavedSearches(result.data || []);
       }
     } catch (err) {
@@ -270,25 +271,20 @@ export function useGenericFilter<
       }
       
       // Use the universal dynamic search endpoint
-      const response = await fetch('/api/dynamic-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          moduleName,
-          ...backendCompatibleParams
-        })
+      const response = await browserApi.post('/api/dynamic-search', {
+        moduleName,
+        ...backendCompatibleParams
       });
       
       // Debug response for users
-      if (moduleName === 'users' && !response.ok) {
+      if (moduleName === 'users' && !response.success) {
         console.log('🔍 USERS ERROR RESPONSE:');
-        const errorText = await response.text();
-        console.log('🔍 Error details:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        console.log('🔍 Error details:', response.error);
+        throw new Error(`Error: ${response.error}`);
       }
       
-      if (response.ok) {
-        const result = await response.json();
+      if (response.success) {
+        const result = response.data as { data: T[], pagination: PaginationMeta };
         
         // Debug successful response for users
         if (moduleName === 'users') {
@@ -483,14 +479,10 @@ export function useGenericFilter<
         isPublic
       };
 
-      const response = await fetch(`/api/filters/${moduleName}/saved-searches`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(searchData)
-      });
+      const response = await browserApi.post(`/api/filters/${moduleName}/saved-searches`, searchData);
 
-      if (response.ok) {
-        const newSearch = await response.json();
+      if (response.success) {
+        const newSearch = response.data as SavedSearch;
         setSavedSearches(prev => [...prev, newSearch]);
         setQueryParams(prev => ({ ...prev, savedSearchId: newSearch.id }));
       }
@@ -502,9 +494,9 @@ export function useGenericFilter<
 
   const loadSavedSearch = useCallback(async (searchId: string) => {
     try {
-      const response = await fetch(`/api/filters/${moduleName}/saved-searches/${searchId}`);
-      if (response.ok) {
-        const search = await response.json();
+      const response = await browserApi.get(`/api/filters/${moduleName}/saved-searches/${searchId}`);
+      if (response.success) {
+        const search = response.data as SavedSearch;
         
         setQueryParams(prev => ({
           ...prev,
@@ -523,11 +515,9 @@ export function useGenericFilter<
 
   const deleteSavedSearch = useCallback(async (searchId: string) => {
     try {
-      const response = await fetch(`/api/filters/${moduleName}/saved-searches/${searchId}`, {
-        method: 'DELETE'
-      });
+      const response = await browserApi.delete(`/api/filters/${moduleName}/saved-searches/${searchId}`);
 
-      if (response.ok) {
+      if (response.success) {
         setSavedSearches(prev => prev.filter(s => s.id !== searchId));
         
         // Clear saved search ID if it was the current one
@@ -543,12 +533,10 @@ export function useGenericFilter<
 
   const toggleFavorite = useCallback(async (searchId: string) => {
     try {
-      const response = await fetch(`/api/filters/${moduleName}/saved-searches/${searchId}/favorite`, {
-        method: 'PATCH'
-      });
+      const response = await browserApi.patch(`/api/filters/${moduleName}/saved-searches/${searchId}/favorite`);
 
-      if (response.ok) {
-        const updatedSearch = await response.json();
+      if (response.success) {
+        const updatedSearch = response.data as SavedSearch;
         setSavedSearches(prev => 
           prev.map(s => s.id === searchId ? updatedSearch : s)
         );

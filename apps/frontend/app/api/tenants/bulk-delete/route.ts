@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverDelete } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json();
-    const response = await serverDelete('/tenants/bulk', { body: JSON.stringify(body) }, req);
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.delete('/tenants/bulk', { body: JSON.stringify(body) }, req);
     
     if (!response.ok) {
       const error = await response.json();

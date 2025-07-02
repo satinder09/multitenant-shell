@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverPatch } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const response = await serverPatch('/tenants/bulk', body, {}, req);
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.patch('/tenants/bulk', body, {}, req);
     
     if (!response.ok) {
       const error = await response.json();

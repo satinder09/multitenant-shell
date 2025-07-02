@@ -1,6 +1,6 @@
 // Performance optimization API route
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet, serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
     }
     
     // Proxy performance request to backend
-    const backendRes = await serverGet(endpoint, { skipCSRF: true }, req);
+    const serverApi = new ServerApiClient();
+    const backendRes = await serverApi.get(endpoint, { skipCSRF: true }, req);
     
     if (!backendRes.ok) {
       throw new Error(`Backend performance request failed: ${backendRes.status}`);
@@ -57,7 +58,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     
     // Proxy performance optimization request to backend
-    const backendRes = await serverPost('/performance/optimize', body, {}, req);
+    const serverApi = new ServerApiClient();
+    const backendRes = await serverApi.post('/performance/optimize', body, {}, req);
     
     if (!backendRes.ok) {
       throw new Error(`Backend performance optimization failed: ${backendRes.status}`);

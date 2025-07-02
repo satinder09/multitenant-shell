@@ -35,28 +35,7 @@ export interface ApiError {
   code?: string;
 }
 
-/**
- * @deprecated Use browserApi.get/post/etc instead for unified API calls
- */
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 10000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timeout');
-    }
-    throw error;
-  }
-}
+
 
 export async function login(dto: LoginDto): Promise<LoginResponse> {
   // Debug logging only when explicitly enabled
@@ -137,43 +116,8 @@ export interface CreateTenantDto {
   dbName: string;
 }
 
-/**
- * @deprecated Use browserApi.get('/api/tenants') instead
- */
-async function fetchTenants(): Promise<Tenant[]> {
-  const response = await browserApi.get<Tenant[]>('/api/tenants');
-  if (!response.success) {
-    throw new Error('Failed to fetch tenants');
-  }
-  return response.data;
-}
-
-/**
- * @deprecated Use browserApi.post('/api/tenants', dto) instead
- */
-async function createTenant(dto: CreateTenantDto): Promise<Tenant> {
-  const response = await browserApi.post<Tenant>('/api/tenants', dto);
-  if (!response.success) {
-    throw new Error('Failed to create tenant');
-  }
-  return response.data;
-}
-
-/**
- * @deprecated Use browserApi.delete(`/api/tenants/${id}`) instead
- */
-async function deleteTenant(id: string): Promise<void> {
-  const response = await browserApi.delete<void>(`/api/tenants/${id}`);
-  if (!response.success) {
-    throw new Error('Failed to delete tenant');
-  }
-}
-
-export const tenants = {
-  query: fetchTenants,
-  create: createTenant,
-  delete: deleteTenant,
-};
+// Tenant API functions moved to domain-specific clients
+// Use platformApiClient.tenants or tenantApiClient for tenant operations
 
 export function getBackendUrl(req: Request | NextRequest) {
   // Use the configured backend URL from environment variables

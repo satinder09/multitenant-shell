@@ -1,6 +1,6 @@
 // Metrics API route that proxies to backend monitoring
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
     }
     
     // Proxy metrics request to backend
-    const backendRes = await serverGet(endpoint, { skipCSRF: true }, req);
+    const serverApi = new ServerApiClient();
+    const backendRes = await serverApi.get(endpoint, { skipCSRF: true }, req);
     
     if (!backendRes.ok) {
       throw new Error(`Backend metrics request failed: ${backendRes.status}`);

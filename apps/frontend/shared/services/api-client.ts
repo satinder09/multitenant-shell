@@ -8,8 +8,8 @@ import type {
   JsonData 
 } from '../types/common';
 
-// Enhanced fetch with timeout and better error handling
-export async function fetchWithTimeout(
+// Enhanced fetch with timeout and better error handling (internal utility)
+async function fetchWithTimeout(
   url: string, 
   options: RequestInit, 
   timeoutMs: number = 10000

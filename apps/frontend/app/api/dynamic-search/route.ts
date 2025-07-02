@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverPost, serverGet } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 import { getModuleConfig } from '@/shared/modules/module-registry';
 
 interface DynamicSearchRequest {
@@ -118,7 +118,8 @@ export async function POST(req: NextRequest) {
     console.log(`🎯 Dynamic Search: Sending payload to backend for table "${moduleConfig.sourceTable}"`);
 
     // Send to universal backend search endpoint
-    const response = await serverPost('/search/universal', backendPayload, {}, req);
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.post('/search/universal', backendPayload, {}, req);
 
     if (!response.ok) {
       const error = await response.json();

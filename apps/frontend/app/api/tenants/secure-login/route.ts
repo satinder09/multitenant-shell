@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Use server-side client with automatic CSRF protection
-    const response = await serverPost('/tenants/secure-login', body, {
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.post('/tenants/secure-login', body, {
       timeout: 10000
     }, request);
 

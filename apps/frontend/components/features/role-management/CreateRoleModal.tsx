@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Shield, Key } from 'lucide-react';
+import { browserApi } from '@/shared/services/api-client';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
 
 interface Permission {
@@ -48,10 +49,9 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   const loadPermissions = async () => {
     setIsLoadingPermissions(true);
     try {
-      const response = await fetch('/api/platform-rbac/permissions');
-      if (response.ok) {
-        const data = await response.json();
-        setPermissions(data);
+      const response = await browserApi.get<Permission[]>('/api/platform-rbac/permissions');
+      if (response.success) {
+        setPermissions(response.data);
       } else {
         toastNotify({ variant: 'error', title: 'Failed to load permissions' });
       }
@@ -73,19 +73,14 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/platform-rbac/roles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const response = await browserApi.post('/api/platform-rbac/roles', formData);
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({ variant: 'success', title: 'Role created successfully' });
         onSuccess?.();
         handleClose();
       } else {
-        const error = await response.text();
-        toastNotify({ variant: 'error', title: 'Failed to create role', description: error });
+        toastNotify({ variant: 'error', title: 'Failed to create role' });
       }
     } catch (error) {
       console.error('Error creating role:', error);

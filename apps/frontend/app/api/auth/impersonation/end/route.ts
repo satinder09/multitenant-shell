@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverPost } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to the backend
-    const response = await serverPost('/tenant-access/impersonate/end', { sessionId }, {}, request);
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.post('/tenant-access/impersonate/end', { sessionId }, {}, request);
 
     if (response.status === 200) {
       const data = await response.json();

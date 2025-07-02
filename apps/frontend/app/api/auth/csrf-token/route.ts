@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverGet } from '@/shared/services/api/server-client';
+import { ServerApiClient } from '@/shared/services/api/server-client';
 
 export async function GET(req: NextRequest) {
   try {
-    const response = await serverGet('/auth/csrf-token', { skipCSRF: true }, req);
+    const serverApi = new ServerApiClient();
+    const response = await serverApi.get('/auth/csrf-token', { skipCSRF: true }, req);
     
     // Get the CSRF token from the backend response
     const csrfToken = response.headers.get('X-CSRF-Token');

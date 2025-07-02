@@ -240,6 +240,31 @@ export class SearchService {
   private buildRuleCondition(field: string, operator: string, value: any, fieldMapping: any): any {
     const { type } = fieldMapping;
 
+    // Handle pipe operator for OR conditions (e.g., "tenant1|tenant2|tenant3")
+    if (typeof value === 'string' && value.includes('|') && ['contains', 'equals', 'starts_with', 'ends_with'].includes(operator)) {
+      const values = value.split('|').map(v => v.trim()).filter(v => v.length > 0);
+      if (values.length > 1) {
+        this.logger.log(`🔄 Pipe operator detected: Converting "${value}" to OR conditions for ${field}`);
+        
+        const orConditions = values.map(val => {
+          switch (operator) {
+            case 'equals':
+              return { [field]: { equals: this.convertValue(val, type) } };
+            case 'contains':
+              return { [field]: { contains: val, mode: 'insensitive' } };
+            case 'starts_with':
+              return { [field]: { startsWith: val, mode: 'insensitive' } };
+            case 'ends_with':
+              return { [field]: { endsWith: val, mode: 'insensitive' } };
+            default:
+              return { [field]: { contains: val, mode: 'insensitive' } };
+          }
+        });
+        
+        return { OR: orConditions };
+      }
+    }
+
     switch (operator) {
       case 'contains':
         return { [field]: { contains: value, mode: 'insensitive' } };
