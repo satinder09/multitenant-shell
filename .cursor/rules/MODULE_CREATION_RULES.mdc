@@ -1,11 +1,11 @@
 ---
 description: 
-globs: 
+globs: module,page
 alwaysApply: false
 ---
 # 📦 MultiTenant Shell: Module Creation Rules
 
-_Last updated: 2025-07-01_
+_Last updated: 2025-01-14_
 
 ## 1. **Module Structure**
 
@@ -62,41 +62,155 @@ _Last updated: 2025-07-01_
 
 ## 6. **UI Component Best Practices**
 
-- **Checkbox Styling:**  
-  - Always use ShadCN `Checkbox` component instead of HTML `<input type="checkbox">`.
-  - Properly handle indeterminate state for "select all" checkboxes.
-  - Use `onCheckedChange` instead of `onChange` for ShadCN checkboxes.
-- **Search Inputs:**  
-  - Avoid duplicate search inputs - use either DataTable's built-in search OR FilterDropdownMenu, not both.
-  - Set `searchable={false}` on DataTable when using FilterDropdownMenu.
-  - Set `enableFiltering={false}` on DataTable to disable its search functionality.
-- **Bulk Actions:**  
-  - Use descriptive labels like "Toggle Status" instead of "Deactivate" for actions that can work both ways.
-  - Handle mixed selections (e.g., both active and inactive items) with user confirmation.
-  - Use proper confirm dialogs with `confirm()` function instead of browser `confirm()`.
-  - Always refresh data after bulk operations using `refresh-module-data` event.
+### 6.1 **Checkbox Implementation**
+- **Always use ShadCN `Checkbox` component** instead of HTML `<input type="checkbox">`.
+- **Proper indeterminate state handling** for "select all" checkboxes:
+  ```tsx
+  <Checkbox
+    checked={table.getIsAllPageRowsSelected()}
+    onCheckedChange={(value: boolean) => {
+      // Handle selection logic
+    }}
+    className="border-input bg-background"
+  />
+  ```
+- **Use `onCheckedChange` instead of `onChange`** for ShadCN checkboxes.
+- **Style with semantic colors**: `border-input bg-background` for proper dark mode support.
+
+### 6.2 **Search and Filter Implementation**
+- **Avoid duplicate search inputs** - use either DataTable's built-in search OR FilterDropdownMenu, not both.
+- **When using FilterDropdownMenu:**
+  - Set `searchable={false}` on DataTable
+  - Set `enableFiltering={false}` on DataTable to disable its search functionality
+- **Filter dropdown should be the primary search interface** for modules with complex filtering needs.
+
+### 6.3 **Bulk Actions Best Practices**
+- **Gmail-style bulk actions bar** that appears above table when items are selected.
+- **Responsive design**:
+  - Mobile: `h-16` bar height with `mt-16` table margin
+  - Desktop: `h-14` bar height with `mt-14` table margin
+  - Responsive button sizes: `h-7 w-7 sm:h-8 sm:w-8`
+  - Responsive text: `text-xs sm:text-sm`
+- **Action organization**:
+  - **Icon actions**: Export/download actions or actions with `displayMode: 'icon'`
+  - **Dropdown actions**: Regular actions grouped in "Actions" dropdown
+  - **Destructive actions**: Separated with divider and red styling
+- **Smart action labels**: Use "Toggle Status" instead of "Deactivate" for bidirectional actions.
+- **Confirmation dialogs**: Use proper confirm dialogs with contextual messages.
+- **Refresh pattern**: Actions handle their own refresh using `window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'module' } }))`.
+
+### 6.4 **Dark Mode Compatibility**
+- **Always use ShadCN semantic colors** instead of hardcoded colors:
+  - `text-muted-foreground` instead of `text-gray-500`
+  - `text-foreground` instead of `text-gray-900`
+  - `bg-muted` instead of `bg-gray-100`
+  - `bg-background` instead of `bg-white`
+  - `border-border` instead of `border-gray-200`
+  - `hover:bg-accent` instead of `hover:bg-gray-100`
+  - `text-primary` instead of `text-blue-600`
+- **Filter components**: Update all filter dialogs, dropdown menus, and nested selectors with semantic colors.
+- **Destructive colors**: Use `text-destructive` and `hover:bg-destructive/10` for delete/destructive actions.
+
+### 6.5 **Responsive Dialog Design**
+- **Responsive width approach**:
+  ```tsx
+  <DialogContent className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] md:w-full max-w-lg">
+  ```
+- **Progressive margins**:
+  - Mobile: 16px margins (32px total spacing)
+  - Small screens: 24px margins (48px total spacing)  
+  - Desktop: Natural centering with max-width
+- **Height constraints**: `max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]`
+- **Never use external margins** - use width-based approach for guaranteed spacing.
 
 ## 7. **Data Table Configuration**
 
-- **Column Visibility:**  
-  - Set `enableColumnVisibility={true}` to allow users to show/hide columns.
-  - Use `defaultColumns` in config to specify which columns are visible by default.
-- **Row Selection:**  
-  - Set `enableRowSelection={!!actions?.bulkActions?.length}` to enable checkboxes only when bulk actions exist.
-  - Properly sync checkbox state between DataTable and local state.
-- **Sorting:**  
-  - Set `enableSorting={true}` for server-side sorting support.
-  - Use `externalSorting` and `onSortingChange` props for server-side sorting.
-  - Convert TanStack Table sorting to API format: `{ field: sort.id, direction: sort.desc ? 'desc' : 'asc' }`.
-  - Ensure backend properly handles sort parameters in `QueryBuilderUtils.buildOrderBy()`.
-  - Initialize table sorting state from query params for consistency.
+### 7.1 **Column Visibility**
+- Set `enableColumnVisibility={true}` to allow users to show/hide columns.
+- Use `defaultColumns` in config to specify which columns are visible by default.
+
+### 7.2 **Row Selection**
+- Set `enableRowSelection={!!actions?.bulkActions?.length}` to enable checkboxes only when bulk actions exist.
+- **Properly sync checkbox state** between DataTable and local state.
+- **Reset selection on load** to avoid partially selected state.
+
+### 7.3 **Sorting Implementation**
+- Set `enableSorting={true}` for server-side sorting support.
+- Use `externalSorting` and `onSortingChange` props for server-side sorting.
+- **Convert TanStack Table sorting to API format**: `{ field: sort.id, direction: sort.desc ? 'desc' : 'asc' }`.
+- Ensure backend properly handles sort parameters in `QueryBuilderUtils.buildOrderBy()`.
+- Initialize table sorting state from query params for consistency.
+
+### 7.4 **Responsive Table Design**
+- **Bulk actions overlay**: Ensure proper z-indexing and pointer events management.
+- **Mobile spacing**: Use responsive margins and heights for bulk actions bar.
+- **Column dropdown accessibility**: Ensure columns dropdown works when bulk actions are visible.
+
+## 8. **Performance Optimization**
+
+### 8.1 **Action Refresh Patterns**
+- **Actions handle their own refresh** - no automatic refresh from framework.
+- **Use custom events** for module data refresh: `refresh-module-data`.
+- **Avoid duplicate API calls** by removing automatic refresh from action handlers.
+- **Confirmation dialogs**: Actions with confirmation should only refresh after user confirms.
+
+### 8.2 **State Management**
+- **Reset selection state** appropriately to avoid memory leaks.
+- **Persist table state** using `persistenceKey` for user experience.
+- **Clear state on navigation** to prevent stale data.
+
+## 9. **Accessibility & UX**
+
+### 9.1 **Touch Targets**
+- **Minimum touch target size**: 44px for mobile devices.
+- **Responsive button sizes** that scale appropriately.
+- **Adequate spacing** between interactive elements.
+
+### 9.2 **Visual Feedback**
+- **Loading states** for all async operations.
+- **Success/error toasts** for user actions.
+- **Disabled states** for buttons during operations.
+- **Selection indicators** with proper contrast ratios.
+
+### 9.3 **Keyboard Navigation**
+- **Tab order** should be logical and intuitive.
+- **Escape key** should close dialogs and dropdowns.
+- **Enter key** should trigger primary actions.
+
+## 10. **Code Quality Standards**
+
+### 10.1 **TypeScript Best Practices**
+- **Strict typing** for all props and state.
+- **Proper interfaces** for action configurations.
+- **Generic types** for reusable components.
+- **Avoid `any` types** - use proper type definitions.
+
+### 10.2 **Component Architecture**
+- **Single responsibility** - each component has one clear purpose.
+- **Prop drilling avoidance** - use context when appropriate.
+- **Reusable patterns** - extract common functionality into hooks or utilities.
+- **Clean imports** - organize imports logically.
+
+---
+
+## **Recent Updates (2025-01-14)**
+
+- Added comprehensive dark mode compatibility guidelines
+- Documented responsive dialog design patterns
+- Enhanced bulk actions implementation rules
+- Added performance optimization patterns for action refresh
+- Included accessibility and touch target guidelines
+- Documented proper checkbox and filter component implementation
 
 ---
 
 ## **How to Update This File**
 
 - As you learn new best practices or encounter new pitfalls, add them here.
-- Use clear, actionable language.
+- Use clear, actionable language with code examples.
 - Date and describe each major update.
+- Keep examples current with the latest ShadCN and framework versions.
 
 ---
+
+

@@ -74,38 +74,40 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 75% 65%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Softer dark mode - easier on the eyes */
+    --background: 240 10% 8%;          /* Softer dark gray instead of pure black */
+    --foreground: 210 20% 92%;         /* Softer white instead of pure white */
+    --card: 240 10% 9%;                /* Slightly lighter than background */
+    --card-foreground: 210 20% 92%;    /* Softer white */
+    --popover: 240 10% 10%;             /* Slightly lighter for popovers */
+    --popover-foreground: 210 20% 92%; /* Softer white */
+    --primary: 210 20% 88%;             /* Softer primary color */
+    --primary-foreground: 240 10% 8%;  /* Dark background for contrast */
+    --secondary: 240 8% 15%;            /* Subtle secondary background */
+    --secondary-foreground: 210 15% 85%; /* Softer secondary text */
+    --muted: 240 8% 15%;                /* Muted background */
+    --muted-foreground: 215 15% 70%;    /* More readable muted text */
+    --accent: 240 8% 18%;               /* Subtle accent background */
+    --accent-foreground: 210 15% 88%;   /* Softer accent text */
+    --destructive: 0 65% 60%;           /* Slightly muted destructive color */
+    --destructive-foreground: 210 20% 95%; /* Softer destructive text */
+    --border: 240 8% 20%;               /* Subtle borders */
+    --input: 240 8% 18%;                /* Input backgrounds */
+    --ring: 210 15% 75%;                /* Softer focus rings */
+    --chart-1: 220 60% 55%;
+    --chart-2: 160 50% 50%;
+    --chart-3: 30 70% 60%;
+    --chart-4: 280 55% 65%;
+    --chart-5: 340 65% 60%;
+    /* Sidebar colors - softer and more subtle */
+    --sidebar-background: 240 12% 7%;   /* Slightly darker than main background */
+    --sidebar-foreground: 210 15% 88%;  /* Softer sidebar text */
+    --sidebar-primary: 210 40% 70%;     /* Softer primary in sidebar */
+    --sidebar-primary-foreground: 240 10% 8%; /* Dark text on light primary */
+    --sidebar-accent: 240 8% 12%;       /* Subtle sidebar accent */
+    --sidebar-accent-foreground: 210 15% 85%; /* Softer accent text */
+    --sidebar-border: 240 8% 18%;       /* Subtle sidebar borders */
+    --sidebar-ring: 210 40% 70%;        /* Softer ring color */
   }
 
   html,
