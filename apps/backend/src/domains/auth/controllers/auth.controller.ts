@@ -17,7 +17,7 @@ import {
   Headers,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { TenantContext } from '../../../shared/types/tenant-context';
+import { TenantContext, GetTenantContext } from '../../../shared/types/tenant-context';
 import { AuthService } from '../services/auth.service';
 import { TenantService } from '../../tenant/services/tenant.service';
 import { LoginDto } from '../dto/login.dto';
@@ -38,7 +38,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,
-    @TenantContext() tenant: { id: string; databaseUrl: string } | undefined,
+    @GetTenantContext() tenant: { id: string; databaseUrl: string } | undefined,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponse> {
     let tenantId: string | undefined = tenant?.id;

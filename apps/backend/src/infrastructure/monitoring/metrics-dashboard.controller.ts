@@ -56,7 +56,7 @@ export class MetricsDashboardController {
   }
 
   @Get('dashboard')
-  async getDashboard(@Query('timeRange') timeRange: string = '1h'): Promise<MetricsSummary> {
+  async getDashboard(@Query('timeRange') timeRange = '1h'): Promise<MetricsSummary> {
     const rawMetrics = this.metricsService.getMetricsSummary();
     const dbHealth = await this.dbPerformanceService.performHealthCheck();
     const memoryUsage = process.memoryUsage();

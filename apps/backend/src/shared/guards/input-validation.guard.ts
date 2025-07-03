@@ -82,8 +82,8 @@ export class InputValidationGuard implements CanActivate {
     }
 
     return str
-      // Remove null bytes
-      .replace(/\x00/g, '')
+      // Remove null bytes  
+      .replace(/\0/g, '')
       // Remove or escape potentially dangerous characters
       .replace(/[<>]/g, '')
       // Limit length to prevent DoS

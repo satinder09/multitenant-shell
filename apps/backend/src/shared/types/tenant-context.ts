@@ -5,7 +5,7 @@ export interface TenantContext {
   databaseUrl: string;
 }
 
-export const TenantContext = createParamDecorator(
+export const GetTenantContext = createParamDecorator(
   (_, ctx: ExecutionContext): TenantContext => {
     const request = ctx.switchToHttp().getRequest();
     return request.tenant;

@@ -507,9 +507,17 @@ export class SecurityController {
     let score = 50; // Base score
     
     // Add points for security features (mock implementation)
-    if (false) score += 25; // MFA enabled
-    if (true) score += 15; // Strong password
-    if (true) score += 10; // Recent password change
+    // TODO: Replace with actual MFA check
+    const mfaEnabled = false; // user.mfaEnabled || false;
+    if (mfaEnabled) score += 25; // MFA enabled
+    
+    // TODO: Replace with actual password strength check
+    const hasStrongPassword = true; // this.hasStrongPassword(user);
+    if (hasStrongPassword) score += 15; // Strong password
+    
+    // TODO: Replace with actual recent password change check
+    const recentPasswordChange = true; // this.hasRecentPasswordChange(user);
+    if (recentPasswordChange) score += 10; // Recent password change
     
     return Math.min(100, score);
   }

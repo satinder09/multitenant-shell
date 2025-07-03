@@ -9,10 +9,10 @@
     "strict": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
-    "rootDir": "src",
+
     "outDir": "dist",
     "incremental": true,
     "useDefineForClassFields": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

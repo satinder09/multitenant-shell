@@ -171,7 +171,7 @@ export class DatabasePerformanceService {
     const recommendations: string[] = [];
     const config = this.getOptimalConfig();
     
-    let metrics: any = {
+    const metrics: any = {
       totalTenants: this.connectionStats.size,
       globalStats: this.getGlobalStats(),
     };

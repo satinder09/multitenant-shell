@@ -621,7 +621,7 @@ export class PlatformUsersService {
             }
           }
         };
-      case 'in':
+      case 'in': {
         const roles = Array.isArray(value) ? value : [value];
         return {
           userRoles: {
@@ -632,7 +632,8 @@ export class PlatformUsersService {
             }
           }
         };
-      case 'not_in':
+      }
+      case 'not_in': {
         const notRoles = Array.isArray(value) ? value : [value];
         return {
           NOT: {
@@ -645,6 +646,7 @@ export class PlatformUsersService {
             }
           }
         };
+      }
       default:
         return null;
     }
@@ -737,7 +739,7 @@ export class PlatformUsersService {
     if (isNaN(dateValue.getTime())) return null;
 
     switch (operator) {
-      case 'equals':
+      case 'equals': {
         // For date equality, we'll use a range for the entire day
         const startOfDay = new Date(dateValue);
         startOfDay.setHours(0, 0, 0, 0);
@@ -749,7 +751,8 @@ export class PlatformUsersService {
             lte: endOfDay
           }
         };
-      case 'not_equals':
+      }
+      case 'not_equals': {
         const notStartOfDay = new Date(dateValue);
         notStartOfDay.setHours(0, 0, 0, 0);
         const notEndOfDay = new Date(dateValue);
@@ -762,6 +765,7 @@ export class PlatformUsersService {
             }
           }
         };
+      }
       case 'greater_than':
         return { [field]: { gt: dateValue } };
       case 'greater_than_or_equal':

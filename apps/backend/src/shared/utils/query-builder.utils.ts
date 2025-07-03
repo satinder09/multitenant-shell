@@ -251,7 +251,7 @@ export class QueryBuilderUtils {
   /**
    * Build pagination options
    */
-  static buildPagination(page: number = 1, limit: number = 10): { skip: number; take: number } {
+  static buildPagination(page = 1, limit = 10): { skip: number; take: number } {
     const skip = (page - 1) * limit;
     return { skip, take: limit };
   }

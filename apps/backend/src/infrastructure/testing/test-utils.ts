@@ -182,11 +182,11 @@ export class TestModuleBuilder {
     return this;
   }
 
-  withMockDatabase(token: string = 'PrismaService') {
+  withMockDatabase(token = 'PrismaService') {
     return this.addMockProvider(token, new MockPrismaService());
   }
 
-  withMockTenantDatabase(token: string = 'PrismaTenantService') {
+  withMockTenantDatabase(token = 'PrismaTenantService') {
     return this.addMockProvider(token, new MockPrismaService());
   }
 
@@ -198,7 +198,7 @@ export class TestModuleBuilder {
     return this.addMockProvider(JwtService, new MockJwtService());
   }
 
-  withMockCache(token: string = 'CacheService') {
+  withMockCache(token = 'CacheService') {
     return this.addMockProvider(token, new MockCacheService());
   }
 

@@ -32,7 +32,7 @@ export class MetricsService {
   private timers: Map<string, number> = new Map();
 
   // Counter methods
-  incrementCounter(name: string, value: number = 1, tags?: Record<string, string>) {
+  incrementCounter(name: string, value = 1, tags?: Record<string, string>) {
     const key = this.buildKey(name, tags);
     const current = this.counters.get(key) || 0;
     this.counters.set(key, current + value);
@@ -76,7 +76,7 @@ export class MetricsService {
   }
 
   // Gauge methods
-  recordGauge(name: string, value: number, unit: string = 'count', tags?: Record<string, string>) {
+  recordGauge(name: string, value: number, unit = 'count', tags?: Record<string, string>) {
     this.recordMetric({
       name,
       value,
@@ -87,7 +87,7 @@ export class MetricsService {
   }
 
   // Histogram methods
-  recordHistogram(name: string, value: number, unit: string = 'ms', tags?: Record<string, string>) {
+  recordHistogram(name: string, value: number, unit = 'ms', tags?: Record<string, string>) {
     this.recordMetric({
       name: `${name}_histogram`,
       value,
@@ -98,7 +98,7 @@ export class MetricsService {
   }
 
   // Database metrics
-  recordDatabaseQuery(query: string, duration: number, success: boolean = true) {
+  recordDatabaseQuery(query: string, duration: number, success = true) {
     this.incrementCounter('database_queries_total', 1, {
       success: success.toString(),
     });
@@ -143,7 +143,7 @@ export class MetricsService {
   }
 
   // Tenant metrics
-  recordTenantOperation(operation: string, tenantId: string, success: boolean = true) {
+  recordTenantOperation(operation: string, tenantId: string, success = true) {
     this.incrementCounter('tenant_operations_total', 1, {
       operation,
       tenant_id: tenantId,
