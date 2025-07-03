@@ -2,6 +2,7 @@ import React from 'react';
 import { ModuleConfig } from '@/shared/modules/types';
 import { Users, Eye, Edit, Trash, CheckCircle, Plus, RefreshCw, Calendar, Mail, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { browserApi } from '@/shared/services/api-client';
 
 // User actions
 const userActions = {
@@ -17,7 +18,7 @@ const userActions = {
 
   deleteUser: async (user: any) => {
     try {
-      await fetch(`/api/platform/admin/users/${user.id}`, { method: 'DELETE' });
+      await browserApi.delete(`/api/platform/admin/users/${user.id}`);
       window.dispatchEvent(new CustomEvent('refresh-module-data', {
         detail: { moduleName: 'users' }
       }));

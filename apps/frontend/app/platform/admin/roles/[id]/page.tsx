@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Shield, Key, Users, Edit, Trash, Settings } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { RoleModalManager } from '@/components/features/role-management/RoleModalManager';
+import { browserApi } from '@/shared/services/api-client';
 
 interface Permission {
   id: string;
@@ -47,10 +48,9 @@ export default function RoleDetailPage() {
   const loadRole = async (roleId: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/platform-rbac/roles/${roleId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setRole(data);
+      const response = await browserApi.get(`/api/platform-rbac/roles/${roleId}`);
+      if (response.success) {
+        setRole(response.data as Role);
       } else {
         toastNotify({ variant: 'error', title: 'Failed to load role' });
         router.push('/platform/admin/roles');
@@ -88,11 +88,9 @@ export default function RoleDetailPage() {
     if (!role) return;
 
     try {
-      const response = await fetch(`/api/platform-rbac/roles/${role.id}`, {
-        method: 'DELETE',
-      });
+      const response = await browserApi.delete(`/api/platform-rbac/roles/${role.id}`);
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({ variant: 'success', title: 'Role deleted successfully' });
         router.push('/platform/admin/roles');
       } else {

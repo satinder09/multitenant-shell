@@ -220,7 +220,7 @@ export class ApiClient {
           errorMessage,
           response.status,
           typeof data === 'object' && data && 'code' in data ? (data as any).code : undefined,
-          typeof data === 'object' ? data as Record<string, any> : undefined
+          typeof data === 'object' ? { ...(data as Record<string, any>), url } : { url }
         );
         
         await this.applyErrorInterceptors(apiError);
@@ -322,14 +322,28 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
   // Add default error interceptor
   client.addErrorInterceptor((error) => {
+    // Don't log 401s for auth status checks - they're expected when not logged in
+    const isAuthStatusCheck = error.details && 
+      typeof error.details === 'object' && 
+      'url' in error.details && 
+      typeof error.details.url === 'string' && 
+      (error.details.url.includes('/api/auth/me') || error.details.url.includes('/auth/me'));
+    
     if (process.env.NODE_ENV === 'development') {
-      console.error(`[API Error] ${error.status || 'Unknown'} - ${error.message}`, error.details);
+      // Only log 401s if they're not auth status checks
+      if (error.status === 401 && isAuthStatusCheck) {
+        // Silent - expected behavior when checking auth status while not logged in
+      } else {
+        console.error(`[API Error] ${error.status || 'Unknown'} - ${error.message}`, error.details);
+      }
     }
     
     // Handle common error scenarios
     if (error.status === 401) {
-      // Redirect to login or refresh token
-      console.warn('Unauthorized access detected');
+      if (!isAuthStatusCheck) {
+        // Only warn for unexpected 401s, not auth status checks
+        console.warn('Unauthorized access detected');
+      }
     } else if (error.status === 403) {
       console.warn('Forbidden access detected');
     } else if (error.status && error.status >= 500) {
@@ -349,7 +363,7 @@ export function getDefaultApiClient(): ApiClient {
   if (!defaultClient) {
     const baseURL = typeof window !== 'undefined' 
       ? window.location.origin 
-              : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+              : process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:4000';
       
     defaultClient = createApiClient({ baseURL });
   }
@@ -373,7 +387,7 @@ export const browserApi: ApiClient = getDefaultApiClient();
  * You can forward Next.js request headers via a custom request interceptor if needed.
  */
 export const serverApi: ApiClient = createApiClient({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000'),
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000'),
   credentials: 'include',
 });
 
@@ -384,8 +398,8 @@ import type { NextRequest } from 'next/server';
  * Automatically forwards cookies for session/CSRF.
  */
 export function createServerApiClient(req: NextRequest): ApiClient {
-  // Determine backend base URL
-  const baseURL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000');
+  // Determine backend base URL - use the correct environment variables
+  const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000');
   const client = createApiClient({ baseURL, credentials: 'include' });
   client.addRequestInterceptor((config) => {
     const cookie = req.headers.get('cookie') || '';

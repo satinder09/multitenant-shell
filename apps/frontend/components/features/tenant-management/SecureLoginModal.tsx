@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Shield, Loader2 } from 'lucide-react';
 import { SecureLoginModalProps } from '@/domains/platform/types/tenant.types';
+import { browserApi } from '@/shared/services/api-client';
 
 export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModalProps) {
   const [duration, setDuration] = useState(60);
@@ -19,20 +20,15 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
     try {
       console.log('🔐 Starting secure login to tenant:', tenant.tenantName);
       // Use frontend API route which handles CSRF protection
-      const response = await fetch('/api/tenant-access/secure-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          tenantId: tenant.tenantId,
-          duration: duration,
-          reason: reason || 'Administrative access'
-        })
+      const response = await browserApi.post('/api/tenant-access/secure-login', {
+        tenantId: tenant.tenantId,
+        duration: duration,
+        reason: reason || 'Administrative access'
       });
 
-      if (response.ok) {
-        const { redirectUrl } = await response.json();
-        console.log('🔐 Secure login successful, redirecting to:', redirectUrl);
+      if (response.success) {
+        const data = response.data as { redirectUrl: string };
+        console.log('🔐 Secure login successful, redirecting to:', data.redirectUrl);
         
         // Close the modal first
         onOpenChange(false);
@@ -40,11 +36,10 @@ export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModa
         // Small delay to ensure response is processed
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        console.log('🔐 Performing redirect to:', redirectUrl);
-        window.location.href = redirectUrl;
+        console.log('🔐 Performing redirect to:', data.redirectUrl);
+        window.location.href = data.redirectUrl;
       } else {
-        const error = await response.json();
-        console.error('Secure login failed:', error);
+        console.error('Secure login failed:', response.error);
         // You could add toast notification here
       }
     } catch (error) {

@@ -45,11 +45,7 @@ const tenantActions = {
         cancelLabel: 'Cancel',
         onConfirm: async () => {
           try {
-            await fetch(`/api/tenants/${tenant.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ isActive: false }),
-            });
+            await browserApi.patch(`/api/tenants/${tenant.id}`, { isActive: false });
             // Refresh data after success
             window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
           } catch (error) {
@@ -60,11 +56,7 @@ const tenantActions = {
     } else {
       // Activate without confirmation
       try {
-        await fetch(`/api/tenants/${tenant.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isActive: true }),
-        });
+        await browserApi.patch(`/api/tenants/${tenant.id}`, { isActive: true });
         window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
       } catch (error) {
         console.error('Activate failed:', error);
@@ -74,7 +66,7 @@ const tenantActions = {
 
   deleteTenant: async (tenant: any) => {
     try {
-      await fetch(`/api/tenants/${tenant.id}`, { method: 'DELETE' });
+      await browserApi.delete(`/api/tenants/${tenant.id}`);
       window.dispatchEvent(new CustomEvent('refresh-module-data', {
         detail: { moduleName: 'tenants' }
       }));

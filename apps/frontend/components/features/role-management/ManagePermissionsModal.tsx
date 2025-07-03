@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Key, Shield, Users } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
+import { browserApi } from '@/shared/services/api-client';
 
 interface Permission {
   id: string;
@@ -60,10 +61,9 @@ export const ManagePermissionsModal: React.FC<ManagePermissionsModalProps> = ({
   const loadPermissions = async () => {
     setIsLoadingPermissions(true);
     try {
-      const response = await fetch('/api/platform-rbac/permissions');
-      if (response.ok) {
-        const data = await response.json();
-        setPermissions(data);
+      const response = await browserApi.get('/api/platform-rbac/permissions');
+      if (response.success) {
+        setPermissions(response.data as Permission[]);
       } else {
         toastNotify({ variant: 'error', title: 'Failed to load permissions' });
       }
@@ -80,23 +80,18 @@ export const ManagePermissionsModal: React.FC<ManagePermissionsModalProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/platform-rbac/roles/${role.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: role.name,
-          description: role.description,
-          permissionIds: selectedPermissionIds
-        })
+      const response = await browserApi.put(`/api/platform-rbac/roles/${role.id}`, {
+        name: role.name,
+        description: role.description,
+        permissionIds: selectedPermissionIds
       });
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({ variant: 'success', title: 'Permissions updated successfully' });
         onSuccess?.();
         onClose();
       } else {
-        const error = await response.text();
-        toastNotify({ variant: 'error', title: 'Failed to update permissions', description: error });
+        toastNotify({ variant: 'error', title: 'Failed to update permissions', description: response.error });
       }
     } catch (error) {
       console.error('Error updating permissions:', error);

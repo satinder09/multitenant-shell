@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Shield, UserCheck, Building2, Clock } from 'lucide-react';
 import { SecureLoginModal } from '@/components/features/tenant-management/SecureLoginModal';
 import { ImpersonationModal } from '@/components/features/tenant-management/ImpersonationModal';
+import { browserApi } from '@/shared/services/api-client';
 
 export interface TenantAccessOption {
   tenantId: string;
@@ -38,16 +39,13 @@ export function MasterDashboard({ showNavigation = false }: MasterDashboardProps
 
   const fetchTenantAccessOptions = async () => {
     try {
-      const response = await fetch('/api/tenant-access', {
-        credentials: 'include',
-      });
+      const response = await browserApi.get('/api/tenant-access');
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[MasterDashboard] Fetched tenant access options:', data);
-        setTenants(data);
+      if (response.success) {
+        console.log('[MasterDashboard] Fetched tenant access options:', response.data);
+        setTenants(response.data as TenantAccessOption[]);
       } else {
-        console.error('[MasterDashboard] Failed to fetch tenant access options, status:', response.status);
+        console.error('[MasterDashboard] Failed to fetch tenant access options:', response.error);
       }
     } catch (error) {
       console.error('[MasterDashboard] Error fetching tenant access options:', error);

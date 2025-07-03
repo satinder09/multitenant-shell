@@ -10,6 +10,7 @@ import type {
   UserListResponse,
   Role
 } from '@/domains/platform/types/user.types';
+import { browserApi } from '@/shared/services/api-client';
 
 const DEFAULT_LIMIT = 10;
 const DEFAULT_FILTERS: UserFilters = {
@@ -46,11 +47,10 @@ export function useFetchUsers(): UseFetchUsersReturn {
       setIsLoadingRoles(true);
       setRolesError(null);
       
-      const response = await fetch('/api/platform-rbac/roles');
+      const response = await browserApi.get('/api/platform-rbac/roles');
       
-      if (response.ok) {
-        const rolesData = await response.json();
-        setRoles(rolesData);
+      if (response.success) {
+        setRoles(response.data as Role[]);
       } else {
         // Fallback to default roles if API fails
         console.warn('Failed to fetch roles, using fallback');
@@ -102,16 +102,16 @@ export function useFetchUsers(): UseFetchUsersReturn {
         searchParams.set('sortDirection', queryParams.sort.direction);
       }
 
-      const response = await fetch(`/api/platform/admin/users?${searchParams.toString()}`);
+      const response = await browserApi.get(`/api/platform/admin/users?${searchParams.toString()}`);
       
-      if (!response.ok) {
-        if (response.status === 401) {
+      if (!response.success) {
+        if (response.error?.includes('401') || response.error?.includes('Authentication')) {
           throw new Error('Authentication required. Please log in.');
         }
-        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch users: ${response.error || 'Unknown error'}`);
       }
       
-      const responseData: UserListResponse = await response.json();
+      const responseData = response.data as UserListResponse;
       
       setData(responseData.data);
       setPagination(responseData.pagination);

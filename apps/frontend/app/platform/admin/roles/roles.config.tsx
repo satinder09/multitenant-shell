@@ -37,9 +37,7 @@ const roleActions = {
       cancelLabel: 'Cancel',
       onConfirm: async () => {
         try {
-          await fetch(`/api/platform-rbac/roles/${role.id}`, {
-            method: 'DELETE',
-          });
+          await browserApi.delete(`/api/platform-rbac/roles/${role.id}`);
           // Refresh data after success
           window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'roles' } }));
           toastNotify({ variant: 'success', title: 'Role deleted successfully' });
@@ -63,7 +61,7 @@ const roleActions = {
       onConfirm: async () => {
         try {
           await Promise.all(ids.map(id => 
-            fetch(`/api/platform-rbac/roles/${id}`, { method: 'DELETE' })
+            browserApi.delete(`/api/platform-rbac/roles/${id}`)
           ));
           toastNotify({ variant: 'success', title: 'Roles deleted successfully' });
           window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'roles' } }));

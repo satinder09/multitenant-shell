@@ -39,7 +39,10 @@ function LoginForm({
 
   // Debug logging for Fast Refresh issues
   useEffect(() => {
-    console.log('🔄 LoginForm mounted/re-mounted');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
+      console.log('🔄 LoginForm mounted/re-mounted');
+    }
+    
     // Check if we're in the middle of a login attempt (component remounted during login)
     const loginAttemptData = sessionStorage.getItem('login-attempt-data');
     if (loginAttemptData) {
@@ -47,9 +50,13 @@ function LoginForm({
         const { email: savedEmail, error: savedError } = JSON.parse(loginAttemptData);
         if (savedEmail) setEmail(savedEmail);
         if (savedError) setError(savedError);
-        console.log('🔄 Restored login attempt data after remount');
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
+          console.log('🔄 Restored login attempt data after remount');
+        }
       } catch (e) {
-        console.log('🔄 Failed to restore login attempt data');
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
+          console.log('🔄 Failed to restore login attempt data');
+        }
       }
     } else {
       // Fresh page load - clear any stale data
@@ -57,7 +64,9 @@ function LoginForm({
       sessionStorage.removeItem('login-form-error');
     }
     return () => {
-      console.log('🔄 LoginForm unmounting');
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
+        console.log('🔄 LoginForm unmounting');
+      }
     };
   }, []);
 

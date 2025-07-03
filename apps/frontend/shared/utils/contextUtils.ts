@@ -6,30 +6,40 @@ export function isPlatformHost(host: string): boolean {
   const [hostname] = host.split(':');
   const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me';
   
-  console.log('[contextUtils] isPlatformHost called with:', { host, hostname, baseDomain });
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+    console.log('[contextUtils] isPlatformHost called with:', { host, hostname, baseDomain });
+  }
   
   // Handle localhost development
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    console.log('[contextUtils] isPlatformHost: localhost detected, returning true');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+      console.log('[contextUtils] isPlatformHost: localhost detected, returning true');
+    }
     return true;
   }
   
   // Check if it's exactly the base domain (platform)
   if (hostname === baseDomain) {
-    console.log('[contextUtils] isPlatformHost: exact base domain match, returning true');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+      console.log('[contextUtils] isPlatformHost: exact base domain match, returning true');
+    }
     return true;
   }
   
   // Check if it's a subdomain of the base domain (tenant)
   if (hostname.endsWith(`.${baseDomain}`)) {
-    console.log('[contextUtils] isPlatformHost: subdomain detected, returning false');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+      console.log('[contextUtils] isPlatformHost: subdomain detected, returning false');
+    }
     return false; // This is a tenant subdomain
   }
   
   // For other domains, use the original logic as fallback
   const parts = hostname.split('.');
   const result = parts.length <= 2;
-  console.log('[contextUtils] isPlatformHost: fallback logic, parts:', parts, 'result:', result);
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+    console.log('[contextUtils] isPlatformHost: fallback logic, parts:', parts, 'result:', result);
+  }
   return result;
 }
 
@@ -41,28 +51,38 @@ export function getTenantSubdomain(host: string): string | null {
   const [hostname] = host.split(':');
   const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me';
   
-  console.log('[contextUtils] getTenantSubdomain called with:', { host, hostname, baseDomain });
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+    console.log('[contextUtils] getTenantSubdomain called with:', { host, hostname, baseDomain });
+  }
   
   // Handle localhost development - no tenant subdomain
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    console.log('[contextUtils] getTenantSubdomain: localhost detected, returning null');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+      console.log('[contextUtils] getTenantSubdomain: localhost detected, returning null');
+    }
     return null;
   }
   
   // Check if it's exactly the base domain (platform)
   if (hostname === baseDomain) {
-    console.log('[contextUtils] getTenantSubdomain: exact base domain match, returning null');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+      console.log('[contextUtils] getTenantSubdomain: exact base domain match, returning null');
+    }
     return null;
   }
   
   // Extract subdomain if it's a tenant
   if (hostname.endsWith(`.${baseDomain}`)) {
     const subdomain = hostname.replace(`.${baseDomain}`, '');
-    console.log('[contextUtils] getTenantSubdomain: extracted subdomain:', subdomain);
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+      console.log('[contextUtils] getTenantSubdomain: extracted subdomain:', subdomain);
+    }
     return subdomain || null;
   }
   
-  console.log('[contextUtils] getTenantSubdomain: no subdomain found, returning null');
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+    console.log('[contextUtils] getTenantSubdomain: no subdomain found, returning null');
+  }
   return null;
 }
 

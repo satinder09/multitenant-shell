@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft, Search, ArrowLeft, Loader2 } from 'lucide-re
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ModuleConfig } from '@/shared/modules/types';
+import { browserApi } from '@/shared/services/api-client';
 
 interface FieldNode {
   name: string;
@@ -101,9 +102,9 @@ export const NestedFieldSelector: React.FC<NestedFieldSelectorProps> = ({
         url += `?parent=${parentPath.join('.')}`;
       }
       
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
+      const response = await browserApi.get(url);
+      if (response.success) {
+        const data = response.data as { fields?: FieldNode[] };
         const rawFields = data.fields || [];
         
         // Enhance fields with display names from config

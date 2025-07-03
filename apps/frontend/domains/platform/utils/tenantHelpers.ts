@@ -1,4 +1,5 @@
 import { TenantModel, Tenant, TenantAccessInfo, TenantAccessOption } from '@/domains/platform/types/tenant.types';
+import { browserApi } from '@/shared/services/api-client';
 
 // Utility function to get access level color
 export const getAccessLevelColor = (level: string): string => {
@@ -47,28 +48,18 @@ export const tenantToAccessOption = (tenant: TenantModel): TenantAccessOption =>
 export async function createTenantAction(formData: FormData) {
   const name = formData.get('name') as string;
   
-  const res = await fetch('/api/tenants', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  });
+  const res = await browserApi.post('/api/tenants', { name });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to create tenant');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to create tenant');
   }
 }
 
 export async function updateTenantStatusAction(id: string, isActive: boolean) {
-  const res = await fetch(`/api/tenants/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ isActive }),
-  });
+  const res = await browserApi.patch(`/api/tenants/${id}`, { isActive });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update tenant');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to update tenant');
   }
-  return await res.json();
+  return res.data;
 } 

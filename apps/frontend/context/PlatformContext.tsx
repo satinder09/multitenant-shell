@@ -25,18 +25,26 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let tenantSubdomain: string | null = null;
     const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me';
     
-    console.log('[PlatformContext] PlatformProvider initializing...');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+      console.log('[PlatformContext] PlatformProvider initializing...');
+    }
     
     if (typeof window !== 'undefined') {
       const host = window.location.host;
-      console.log('[PlatformContext] window.location.host:', host);
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+        console.log('[PlatformContext] window.location.host:', host);
+      }
       
       isPlatform = isPlatformHost(host);
       tenantSubdomain = getTenantSubdomain(host);
       
-      console.log('[PlatformContext] Determined context:', { isPlatform, tenantSubdomain, baseDomain });
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+        console.log('[PlatformContext] Determined context:', { isPlatform, tenantSubdomain, baseDomain });
+      }
     } else {
-      console.log('[PlatformContext] Running on server side, defaulting to platform');
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+        console.log('[PlatformContext] Running on server side, defaulting to platform');
+      }
     }
     
     return { 
@@ -46,7 +54,9 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, []);
   
-  console.log('[PlatformContext] Providing context value:', value);
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+    console.log('[PlatformContext] Providing context value:', value);
+  }
   
   return <PlatformContext.Provider value={value}>{children}</PlatformContext.Provider>;
 }; 

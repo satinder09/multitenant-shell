@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import UnifiedLayout from './UnifiedLayout';
+import { browserApi } from '@/shared/services/api-client';
 
 export default function ContextAwareLayout({ children }: { children: React.ReactNode }) {
   const { isPlatform, tenantSubdomain } = usePlatform();
@@ -20,28 +21,29 @@ export default function ContextAwareLayout({ children }: { children: React.React
       const urlParams = new URLSearchParams(window.location.search);
       const secureLoginToken = urlParams.get('secureLoginToken');
       
-      console.log('🔐 Checking for secure login token:', {
-        hasToken: !!secureLoginToken,
-        isProcessing: isProcessingSecureLogin,
-        currentPath: pathname,
-        isAuthenticated
-      });
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+        console.log('🔐 Checking for secure login token:', {
+          hasToken: !!secureLoginToken,
+          isProcessing: isProcessingSecureLogin,
+          currentPath: pathname,
+          isAuthenticated
+        });
+      }
       
       if (secureLoginToken && !isProcessingSecureLogin) {
-        console.log('🔐 Processing secure login token from URL');
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+          console.log('🔐 Processing secure login token from URL');
+        }
         setIsProcessingSecureLogin(true);
         
         try {
           // Set the authentication cookie using our API
-          const response = await fetch('/api/auth/secure-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ token: secureLoginToken })
-          });
+          const response = await browserApi.post('/api/auth/secure-login', { token: secureLoginToken });
           
-          if (response.ok) {
-            console.log('🔐 Secure login cookie set successfully');
+          if (response.success) {
+            if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+              console.log('🔐 Secure login cookie set successfully');
+            }
             
             // Remove token from URL
             urlParams.delete('secureLoginToken');
@@ -75,21 +77,25 @@ export default function ContextAwareLayout({ children }: { children: React.React
 
   // Handle authentication redirects efficiently
   useEffect(() => {
-    console.log('🔄 ContextAwareLayout auth check:', {
-      isLoading,
-      isLoggingOut,
-      isPublicPage,
-      isAuthenticated,
-      pathname,
-      user: user ? { id: user.id, accessType: user.accessType } : null
-    });
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+      console.log('🔄 ContextAwareLayout auth check:', {
+        isLoading,
+        isLoggingOut,
+        isPublicPage,
+        isAuthenticated,
+        pathname,
+        user: user ? { id: user.id, accessType: user.accessType } : null
+      });
+    }
     
     // Skip redirect logic during loading, logging out, or on public pages
     if (isLoading || isLoggingOut || isPublicPage) return;
 
     // Only redirect if user is not authenticated and not already redirecting
     if (!isAuthenticated && !hasRedirected.current) {
-      console.log('🔄 User not authenticated, redirecting to login');
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+        console.log('🔄 User not authenticated, redirecting to login');
+      }
       hasRedirected.current = true;
       router.push('/login');
       return;
@@ -97,7 +103,9 @@ export default function ContextAwareLayout({ children }: { children: React.React
     
     // Reset redirect flag when user becomes authenticated
     if (isAuthenticated) {
-      console.log('🔄 User authenticated, resetting redirect flag');
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+        console.log('🔄 User authenticated, resetting redirect flag');
+      }
       hasRedirected.current = false;
     }
   }, [isAuthenticated, isPublicPage, isLoading, isLoggingOut, router]);

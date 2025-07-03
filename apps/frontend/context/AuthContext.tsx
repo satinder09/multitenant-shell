@@ -78,40 +78,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const refreshUser = useCallback(async (forceRefresh = false) => {
-    console.log('🔍 AuthContext.refreshUser called, forceRefresh:', forceRefresh);
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+      console.log('🔍 AuthContext.refreshUser called, forceRefresh:', forceRefresh);
+    }
+    
     // Try cache first unless force refresh
     if (!forceRefresh) {
       const cachedUser = AuthCache.get();
       if (cachedUser) {
-        console.log('🔍 Using cached user:', cachedUser);
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+          console.log('🔍 Using cached user:', cachedUser);
+        }
         setUser(cachedUser);
         return cachedUser;
       }
     }
 
     try {
-      console.log('🔍 Fetching user profile from /api/auth/me');
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+        console.log('🔍 Fetching user profile from /api/auth/me');
+      }
+      
       const response = await browserApi.get<UserProfile>('/api/auth/me', undefined, {
         headers: {
           'Cache-Control': 'no-cache',
         }
       });
       
-      console.log('🔍 /api/auth/me response success:', response.success);
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+        console.log('🔍 /api/auth/me response success:', response.success);
+      }
+      
       if (response.success) {
         const profile = response.data;
-        console.log('🔍 User profile received:', profile);
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+          console.log('🔍 User profile received:', profile);
+        }
         setUser(profile);
         AuthCache.set(profile);
         return profile;
       } else {
-        console.log('🔍 /api/auth/me failed, clearing user state');
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+          console.log('🔍 /api/auth/me failed, clearing user state');
+        }
         setUser(null);
         AuthCache.clear();
         return null;
       }
     } catch (error) {
-      console.error('Failed to fetch user profile:', error);
+      // Don't log 401 errors as errors - they're expected when not authenticated
+      const is401Error = (error as any)?.status === 401 || 
+                          (error instanceof Error && error.message.includes('401')) ||
+                          (error instanceof Error && error.message.includes('Not authenticated'));
+      
+      if (is401Error) {
+        // Only log 401s in debug mode
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
+          console.log('🔍 User not authenticated (401) - this is expected when checking auth status');
+        }
+      } else {
+        console.error('Failed to fetch user profile:', error);
+      }
       setUser(null);
       AuthCache.clear();
       return null;

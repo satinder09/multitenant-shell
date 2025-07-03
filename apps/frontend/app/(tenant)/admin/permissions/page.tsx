@@ -12,6 +12,7 @@ import { Plus, Edit, Trash2, Key, Shield, AlertTriangle } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { confirm, DialogOverlay } from '@/shared/utils/ui/dialogUtils';
 import { usePlatform } from '@/context/PlatformContext';
+import { browserApi } from '@/shared/services/api-client';
 
 interface Permission {
   id: string;
@@ -46,13 +47,12 @@ export default function AdminPermissionsPage() {
 
   const fetchPermissions = async () => {
     try {
-      const response = await fetch('/api/rbac/permissions');
-      if (response.ok) {
-        const data = await response.json();
-        setPermissions(data);
+      const response = await browserApi.get('/api/rbac/permissions');
+      if (response.success) {
+        setPermissions(response.data as Permission[]);
       } else {
-        const errorData = await response.json();
-        if (errorData.message && errorData.message.includes('tenant context')) {
+        const errorMessage = response.error || 'Failed to fetch permissions';
+        if (errorMessage.includes('tenant context')) {
           toastNotify({
             variant: 'error',
             title: 'Tenant Context Required',
@@ -62,7 +62,7 @@ export default function AdminPermissionsPage() {
           toastNotify({
             variant: 'error',
             title: 'Failed to fetch permissions',
-            description: errorData.message || 'Please try again later.'
+            description: errorMessage || 'Please try again later.'
           });
         }
       }
@@ -79,13 +79,9 @@ export default function AdminPermissionsPage() {
 
   const handleCreatePermission = async () => {
     try {
-      const response = await fetch('/api/rbac/permissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const response = await browserApi.post('/api/rbac/permissions', formData);
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({
           variant: 'success',
           title: 'Permission created successfully',
@@ -95,11 +91,10 @@ export default function AdminPermissionsPage() {
         setFormData({ name: '', description: '' });
         fetchPermissions();
       } else {
-        const error = await response.json();
         toastNotify({
           variant: 'error',
           title: 'Failed to create permission',
-          description: error.error || 'An unexpected error occurred.'
+          description: response.error || 'An unexpected error occurred.'
         });
       }
     } catch {
@@ -115,13 +110,9 @@ export default function AdminPermissionsPage() {
     if (!selectedPermission) return;
 
     try {
-      const response = await fetch(`/api/rbac/permissions/${selectedPermission.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const response = await browserApi.put(`/api/rbac/permissions/${selectedPermission.id}`, formData);
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({
           variant: 'success',
           title: 'Permission updated successfully',
@@ -132,11 +123,10 @@ export default function AdminPermissionsPage() {
         setFormData({ name: '', description: '' });
         fetchPermissions();
       } else {
-        const error = await response.json();
         toastNotify({
           variant: 'error',
           title: 'Failed to update permission',
-          description: error.error || 'An unexpected error occurred.'
+          description: response.error || 'An unexpected error occurred.'
         });
       }
     } catch {
@@ -159,11 +149,9 @@ export default function AdminPermissionsPage() {
       description: `Are you sure you want to delete "${permissionName}"? ${message}`,
       onConfirm: async () => {
         try {
-          const response = await fetch(`/api/rbac/permissions/${permissionId}`, {
-            method: 'DELETE',
-          });
+          const response = await browserApi.delete(`/api/rbac/permissions/${permissionId}`);
 
-          if (response.ok) {
+          if (response.success) {
             toastNotify({
               variant: 'success',
               title: 'Permission deleted successfully',
@@ -171,11 +159,10 @@ export default function AdminPermissionsPage() {
             });
             fetchPermissions();
           } else {
-            const error = await response.json();
             toastNotify({
               variant: 'error',
               title: 'Failed to delete permission',
-              description: error.error || 'An unexpected error occurred.'
+              description: response.error || 'An unexpected error occurred.'
             });
           }
         } catch {

@@ -88,7 +88,9 @@ export class CsrfService {
 
   // Clear cached token (useful when switching domains)
   clearToken(): void {
-    console.log('[CsrfService] Clearing cached CSRF token');
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_CSRF) {
+      console.log('[CsrfService] Clearing cached CSRF token');
+    }
     this.currentToken = null;
     this.tokenExpiry = 0;
   }
@@ -197,7 +199,9 @@ export function initializeCsrfProtection(): void {
     });
   }, 25 * 60 * 1000); // Refresh every 25 minutes
 
-  console.log('[CsrfService] CSRF protection initialized');
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_CSRF) {
+    console.log('[CsrfService] CSRF protection initialized');
+  }
 }
 
 // Debug utility function

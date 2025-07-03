@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Shield, Key } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
+import { browserApi } from '@/shared/services/api-client';
 
 interface Permission {
   id: string;
@@ -67,10 +68,9 @@ export const EditRoleModal: React.FC<EditRoleModalProps> = ({
   const loadPermissions = async () => {
     setIsLoadingPermissions(true);
     try {
-      const response = await fetch('/api/platform-rbac/permissions');
-      if (response.ok) {
-        const data = await response.json();
-        setPermissions(data);
+      const response = await browserApi.get('/api/platform-rbac/permissions');
+      if (response.success) {
+        setPermissions(response.data as Permission[]);
       } else {
         toastNotify({ variant: 'error', title: 'Failed to load permissions' });
       }
@@ -94,19 +94,14 @@ export const EditRoleModal: React.FC<EditRoleModalProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/platform-rbac/roles/${role.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const response = await browserApi.put(`/api/platform-rbac/roles/${role.id}`, formData);
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({ variant: 'success', title: 'Role updated successfully' });
         onSuccess?.();
         handleClose();
       } else {
-        const error = await response.text();
-        toastNotify({ variant: 'error', title: 'Failed to update role', description: error });
+        toastNotify({ variant: 'error', title: 'Failed to update role', description: response.error });
       }
     } catch (error) {
       console.error('Error updating role:', error);

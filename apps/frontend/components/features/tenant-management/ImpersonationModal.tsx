@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { UserCheck, Loader2 } from 'lucide-react';
 import { TenantUser, ImpersonationModalProps } from '@/domains/platform/types/tenant.types';
+import { browserApi } from '@/shared/services/api-client';
 
 export function ImpersonationModal({ tenant, open, onOpenChange }: ImpersonationModalProps) {
   const [selectedUser, setSelectedUser] = useState('');
@@ -20,14 +21,10 @@ export function ImpersonationModal({ tenant, open, onOpenChange }: Impersonation
   const fetchTenantUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
-      const response = await fetch(`/api/tenant-access/tenants/${tenant.tenantId}/users`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const response = await browserApi.get(`/api/tenant-access/tenants/${tenant.tenantId}/users`);
       
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
+      if (response.success) {
+        setUsers(response.data as TenantUser[]);
       } else {
         console.error('Failed to fetch tenant users');
         // For demo purposes, add some mock users
@@ -59,24 +56,18 @@ export function ImpersonationModal({ tenant, open, onOpenChange }: Impersonation
   const handleImpersonate = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/tenant-access/impersonate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          tenantId: tenant.tenantId,
-          targetUserId: selectedUser,
-          reason: reason,
-          duration: duration
-        })
+      const response = await browserApi.post('/api/tenant-access/impersonate', {
+        tenantId: tenant.tenantId,
+        targetUserId: selectedUser,
+        reason: reason,
+        duration: duration
       });
 
-      if (response.ok) {
-        const { redirectUrl } = await response.json();
-        window.location.href = redirectUrl;
+      if (response.success) {
+        const data = response.data as { redirectUrl: string };
+        window.location.href = data.redirectUrl;
       } else {
-        const error = await response.json();
-        console.error('Impersonation failed:', error);
+        console.error('Impersonation failed:', response.error);
         // You could add toast notification here
       }
     } catch (error) {

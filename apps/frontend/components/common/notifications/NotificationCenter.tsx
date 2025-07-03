@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/shared/utils/utils';
 import { NotificationMessage, getWebSocketClient } from '@/shared/services/realtime/websocket-client';
+import { browserApi } from '@/shared/services/api-client';
 
 interface NotificationCenterProps {
   maxNotifications?: number;
@@ -73,12 +74,11 @@ export function NotificationCenter({
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
-      // This would be replaced with actual API call
-      const response = await fetch('/api/notifications');
-      const data = await response.json();
+      const response = await browserApi.get('/api/notifications');
       
-      if (data.success) {
-        const notifications = data.data.notifications || [];
+      if (response.success) {
+        const data = response.data as { notifications?: NotificationMessage[] };
+        const notifications = data.notifications || [];
         const unreadCount = notifications.filter((n: NotificationMessage) => !n.read).length;
         
         setState({
@@ -95,11 +95,9 @@ export function NotificationCenter({
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
-      const response = await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'PATCH',
-      });
+      const response = await browserApi.patch(`/api/notifications/${notificationId}/read`);
 
-      if (response.ok) {
+      if (response.success) {
         setState(prev => ({
           ...prev,
           notifications: prev.notifications.map(n => 
@@ -115,11 +113,9 @@ export function NotificationCenter({
 
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await fetch('/api/notifications/read-all', {
-        method: 'PATCH',
-      });
+      const response = await browserApi.patch('/api/notifications/read-all');
 
-      if (response.ok) {
+      if (response.success) {
         setState(prev => ({
           ...prev,
           notifications: prev.notifications.map(n => ({ ...n, read: true })),
@@ -133,11 +129,9 @@ export function NotificationCenter({
 
   const deleteNotification = useCallback(async (notificationId: string) => {
     try {
-      const response = await fetch(`/api/notifications/${notificationId}`, {
-        method: 'DELETE',
-      });
+      const response = await browserApi.delete(`/api/notifications/${notificationId}`);
 
-      if (response.ok) {
+      if (response.success) {
         setState(prev => {
           const notification = prev.notifications.find(n => n.id === notificationId);
           return {
@@ -156,11 +150,9 @@ export function NotificationCenter({
 
   const clearAllNotifications = useCallback(async () => {
     try {
-      const response = await fetch('/api/notifications', {
-        method: 'DELETE',
-      });
+      const response = await browserApi.delete('/api/notifications');
 
-      if (response.ok) {
+      if (response.success) {
         setState({
           notifications: [],
           unreadCount: 0,

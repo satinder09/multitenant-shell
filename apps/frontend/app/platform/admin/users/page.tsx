@@ -12,6 +12,7 @@ import { AlertTriangle } from 'lucide-react';
 import { ConfigDrivenModulePage } from '@/shared/modules/ConfigDrivenModulePage';
 import { registerModule } from '@/shared/modules/module-registry';
 import { UsersConfig } from './users.config';
+import { browserApi } from '@/shared/services/api-client';
 
 // 🚀 EARLY REGISTRATION: Register BEFORE component definition
 registerModule({
@@ -46,15 +47,16 @@ async function createUserAction(formData: FormData, roles: Role[]) {
   const roleId = formData.get('role') as string;
   const password = formData.get('password') as string;
   const role = getRoleNameById(roles, roleId);
-  const res = await fetch('/api/platform/admin/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, role, password: password || undefined }),
+  
+  const res = await browserApi.post('/api/platform/admin/users', { 
+    name, 
+    email, 
+    role, 
+    password: password || undefined 
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to create user');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to create user');
   }
 }
 
@@ -64,17 +66,12 @@ async function updateUserAction(id: string, formData: FormData, roles: Role[]) {
   const roleId = formData.get('role') as string;
   const role = getRoleNameById(roles, roleId);
   
-  const res = await fetch(`/api/platform/admin/users/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, role }),
-  });
+  const res = await browserApi.patch(`/api/platform/admin/users/${id}`, { name, email, role });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update user');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to update user');
   }
-  return await res.json();
+  return res.data;
 }
 
 export default function PlatformUsersPage() {
@@ -89,10 +86,9 @@ export default function PlatformUsersPage() {
   useEffect(() => {
     async function fetchRoles() {
       try {
-        const rolesRes = await fetch('/api/platform-rbac/roles');
-        if (rolesRes.ok) {
-          const rolesData = await rolesRes.json();
-          setRoles(rolesData);
+        const rolesRes = await browserApi.get('/api/platform-rbac/roles');
+        if (rolesRes.success) {
+          setRoles(rolesRes.data as Role[]);
         } else {
           setRoles([
             { id: 'admin', name: 'Administrator', description: 'Full system access' },

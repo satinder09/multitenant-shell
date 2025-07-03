@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import { confirm } from '@/shared/utils/ui/dialogUtils';
 import { AlertTriangle, Edit, Trash2, Plus, Key, Shield, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { browserApi } from '@/shared/services/api-client';
 
 // Permission interface
 interface Permission {
@@ -36,48 +37,35 @@ interface Permission {
 }
 
 // Server actions
-async function createPermissionAction(formData: FormData) {
+async function createPermissionAction(formData: FormData): Promise<Permission> {
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
   
-  const res = await fetch('/api/platform-rbac/permissions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description }),
-  });
+  const res = await browserApi.post('/api/platform-rbac/permissions', { name, description });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to create permission');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to create permission');
   }
-  return await res.json();
+  return res.data as Permission;
 }
 
-async function updatePermissionAction(id: string, formData: FormData) {
+async function updatePermissionAction(id: string, formData: FormData): Promise<Permission> {
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
   
-  const res = await fetch(`/api/platform-rbac/permissions/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description }),
-  });
+  const res = await browserApi.put(`/api/platform-rbac/permissions/${id}`, { name, description });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to update permission');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to update permission');
   }
-  return await res.json();
+  return res.data as Permission;
 }
 
-async function deletePermissionAction(id: string) {
-  const res = await fetch(`/api/platform-rbac/permissions/${id}`, {
-    method: 'DELETE',
-  });
+async function deletePermissionAction(id: string): Promise<void> {
+  const res = await browserApi.delete(`/api/platform-rbac/permissions/${id}`);
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to delete permission');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to delete permission');
   }
 }
 
@@ -108,12 +96,11 @@ export default function PlatformPermissionsPage() {
         return;
       }
       try {
-        const response = await fetch('/api/platform-rbac/permissions');
-        if (!response.ok) {
+        const response = await browserApi.get('/api/platform-rbac/permissions');
+        if (!response.success) {
           throw new Error('Failed to fetch permissions');
         }
-        const data = await response.json();
-        setPermissions(data);
+        setPermissions(response.data as Permission[]);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {

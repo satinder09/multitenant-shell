@@ -12,6 +12,7 @@ import { Plus, Edit, Trash2, Shield } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
 import { confirm, DialogOverlay } from '@/shared/utils/ui/dialogUtils';
 import { usePlatform } from '@/context/PlatformContext';
+import { browserApi } from '@/shared/services/api-client';
 
 interface Role {
   id: string;
@@ -62,13 +63,12 @@ export default function AdminRolesPage() {
 
   const fetchRoles = async () => {
     try {
-      const response = await fetch('/api/rbac/roles');
-      if (response.ok) {
-        const data = await response.json();
-        setRoles(data);
+      const response = await browserApi.get('/api/rbac/roles');
+      if (response.success) {
+        setRoles(response.data as Role[]);
       } else {
-        const errorData = await response.json();
-        if (errorData.message && errorData.message.includes('tenant context')) {
+        const errorMessage = response.error || 'Failed to fetch roles';
+        if (errorMessage.includes('tenant context')) {
           toastNotify({
             variant: 'error',
             title: 'Tenant Context Required',
@@ -78,7 +78,7 @@ export default function AdminRolesPage() {
           toastNotify({
             variant: 'error',
             title: 'Failed to fetch roles',
-            description: errorData.message || 'Please try again later.'
+            description: errorMessage || 'Please try again later.'
           });
         }
       }
@@ -95,13 +95,12 @@ export default function AdminRolesPage() {
 
   const fetchPermissions = async () => {
     try {
-      const response = await fetch('/api/rbac/permissions');
-      if (response.ok) {
-        const data = await response.json();
-        setPermissions(data);
+      const response = await browserApi.get('/api/rbac/permissions');
+      if (response.success) {
+        setPermissions(response.data as Permission[]);
       } else {
-        const errorData = await response.json();
-        if (errorData.message && errorData.message.includes('tenant context')) {
+        const errorMessage = response.error || 'Failed to fetch permissions';
+        if (errorMessage.includes('tenant context')) {
           toastNotify({
             variant: 'error',
             title: 'Tenant Context Required',
@@ -111,7 +110,7 @@ export default function AdminRolesPage() {
           toastNotify({
             variant: 'error',
             title: 'Failed to fetch permissions',
-            description: errorData.message || 'Please try again later.'
+            description: errorMessage || 'Please try again later.'
           });
         }
       }
@@ -126,13 +125,9 @@ export default function AdminRolesPage() {
 
   const handleCreateRole = async () => {
     try {
-      const response = await fetch('/api/rbac/roles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const response = await browserApi.post('/api/rbac/roles', formData);
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({
           variant: 'success',
           title: 'Role created successfully',
@@ -142,11 +137,10 @@ export default function AdminRolesPage() {
         setFormData({ name: '', permissionIds: [] });
         fetchRoles();
       } else {
-        const error = await response.json();
         toastNotify({
           variant: 'error',
           title: 'Failed to create role',
-          description: error.error || 'An unexpected error occurred.'
+          description: response.error || 'An unexpected error occurred.'
         });
       }
     } catch {
@@ -162,13 +156,9 @@ export default function AdminRolesPage() {
     if (!selectedRole) return;
 
     try {
-      const response = await fetch(`/api/rbac/roles/${selectedRole.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const response = await browserApi.put(`/api/rbac/roles/${selectedRole.id}`, formData);
 
-      if (response.ok) {
+      if (response.success) {
         toastNotify({
           variant: 'success',
           title: 'Role updated successfully',
@@ -179,11 +169,10 @@ export default function AdminRolesPage() {
         setFormData({ name: '', permissionIds: [] });
         fetchRoles();
       } else {
-        const error = await response.json();
         toastNotify({
           variant: 'error',
           title: 'Failed to update role',
-          description: error.error || 'An unexpected error occurred.'
+          description: response.error || 'An unexpected error occurred.'
         });
       }
     } catch {
@@ -204,11 +193,9 @@ export default function AdminRolesPage() {
       variant: 'critical',
       onConfirm: async () => {
         try {
-          const response = await fetch(`/api/rbac/roles/${roleId}`, {
-            method: 'DELETE',
-          });
+          const response = await browserApi.delete(`/api/rbac/roles/${roleId}`);
 
-          if (response.ok) {
+          if (response.success) {
             toastNotify({
               variant: 'success',
               title: 'Role deleted successfully',
@@ -216,11 +203,10 @@ export default function AdminRolesPage() {
             });
             fetchRoles();
           } else {
-            const error = await response.json();
             toastNotify({
               variant: 'error',
               title: 'Failed to delete role',
-              description: error.error || 'An unexpected error occurred.'
+              description: response.error || 'An unexpected error occurred.'
             });
           }
         } catch {

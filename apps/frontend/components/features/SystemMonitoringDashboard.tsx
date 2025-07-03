@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Server
 } from 'lucide-react';
+import { browserApi } from '@/shared/services/api-client';
 
 interface HealthStatus {
   status: string;
@@ -28,8 +29,8 @@ export function SystemMonitoringDashboard() {
 
   const fetchData = async () => {
     try {
-      const healthRes = await fetch('/api/health');
-      if (healthRes.ok) setHealth(await healthRes.json());
+      const healthRes = await browserApi.get('/api/health');
+      if (healthRes.success) setHealth(healthRes.data as HealthStatus);
     } catch (error) {
       console.error('Failed to fetch monitoring data:', error);
     } finally {

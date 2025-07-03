@@ -1,4 +1,5 @@
 import { PlatformUser, Role } from '../types';
+import { browserApi } from '@/shared/services/api-client';
 
 // Utility function to normalize role names for matching
 export const normalizeRoleName = (roleName: string): string => {
@@ -65,20 +66,15 @@ export async function createUserAction(formData: FormData, roles: Role[]): Promi
   const password = formData.get('password') as string;
   const role = getRoleNameById(roles, roleId);
   
-  const res = await fetch('/api/platform/admin/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      name, 
-      email, 
-      role, 
-      password: password || undefined 
-    }),
+  const res = await browserApi.post('/api/platform/admin/users', { 
+    name, 
+    email, 
+    role, 
+    password: password || undefined 
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to create user');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to create user');
   }
 }
 
@@ -88,41 +84,28 @@ export async function updateUserAction(id: string, formData: FormData, roles: Ro
   const roleId = formData.get('role') as string;
   const role = getRoleNameById(roles, roleId);
   
-  const res = await fetch(`/api/platform/admin/users/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, role }),
-  });
+  const res = await browserApi.patch(`/api/platform/admin/users/${id}`, { name, email, role });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update user');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to update user');
   }
-  return await res.json();
+  return res.data as PlatformUser;
 }
 
 export async function updateUserStatusAction(id: string, isActive: boolean): Promise<PlatformUser> {
-  const res = await fetch(`/api/platform/admin/users/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ isActive }),
-  });
+  const res = await browserApi.patch(`/api/platform/admin/users/${id}`, { isActive });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update user status');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to update user status');
   }
-  return await res.json();
+  return res.data as PlatformUser;
 }
 
 export async function deleteUserAction(id: string): Promise<void> {
-  const res = await fetch(`/api/platform/admin/users/${id}`, {
-    method: 'DELETE',
-  });
+  const res = await browserApi.delete(`/api/platform/admin/users/${id}`);
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to delete user');
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to delete user');
   }
 }
 
