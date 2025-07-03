@@ -1,48 +1,48 @@
-# 📋 Pending Items - MultiTenant Shell
+# 📋 Pending Items - MultiTenant Shell Platform Foundation
 
 ## 🚨 Critical Issues (High Priority)
 
-### 1. **Tenant Module Architecture Refactoring**
+### 1. **Platform Module Architecture Refactoring**
 **Priority**: 🔥 Critical | **Timeline**: 1-2 weeks
 
 **Issues**:
-- Architectural fragmentation with tenant functionality split across multiple domains
+- Architectural fragmentation with platform-tenant management functionality
 - Inconsistent API client patterns between `TenantApiClient` and `browserApi`
-- Type definition duplication across `domains/tenant/types` and `domains/platform/types`
-- Inefficient hook patterns in `useTenantMutations`
+- Type definition duplication across platform and tenant management modules
+- Inefficient hook patterns in tenant metadata management components
 
 **Tasks**:
-- [ ] **Phase 1**: Consolidate Type System
-  - [ ] Create unified type definitions in `/shared/types/tenant.types.ts`
-  - [ ] Merge duplicate types from `domains/tenant/types/` and `domains/platform/types/`
-  - [ ] Ensure type safety across all tenant operations
-  - [ ] Update all imports to use unified types
+- [ ] **Phase 1**: Consolidate Platform Type System
+  - [ ] Create unified type definitions in `/shared/types/platform.types.ts`
+  - [ ] Merge duplicate types across platform and tenant management modules
+  - [ ] Ensure type safety across all platform operations
+  - [ ] Update all imports to use unified platform types
 
-- [ ] **Phase 2**: Refactor API Architecture
-  - [ ] Eliminate `TenantApiClient` class
-  - [ ] Implement tenant-aware API service using unified `browserApi`
-  - [ ] Create tenant context provider for consistent state management
-  - [ ] Fix broken `getCurrentTenantId()` method
+- [ ] **Phase 2**: Refactor Platform API Architecture
+  - [ ] Eliminate inconsistent API client patterns
+  - [ ] Implement platform-focused API service using unified `browserApi`
+  - [ ] Create platform context provider for consistent state management
+  - [ ] Fix broken tenant metadata resolution methods
 
-- [ ] **Phase 3**: Modernize Hook Patterns
-  - [ ] Replace `useTenantMutations` with individual React Query mutation hooks
-  - [ ] Implement proper error handling and loading states
-  - [ ] Add optimistic updates for tenant operations
-  - [ ] Add proper query invalidation strategies
+- [ ] **Phase 3**: Modernize Platform Hook Patterns
+  - [ ] Replace inefficient mutation patterns with proper React Query hooks
+  - [ ] Implement proper error handling and loading states for platform operations
+  - [ ] Add optimistic updates for tenant metadata management
+  - [ ] Add proper query invalidation strategies for platform data
 
-### 2. **Fix Broken Tenant Context Resolution**
+### 2. **Fix Broken Platform Context Resolution**
 **Priority**: 🔥 Critical | **Timeline**: 2-3 days
 
 **Issues**:
-- `getCurrentTenantId()` returns `null` as placeholder
-- Tenant context not properly resolved from URL/headers
-- Inconsistent tenant identification across components
+- Tenant metadata resolution methods return `null` as placeholder
+- Platform context not properly resolved across components
+- Inconsistent tenant metadata identification in platform operations
 
 **Tasks**:
-- [ ] Implement proper tenant ID resolution from subdomain
-- [ ] Add fallback mechanisms for tenant context
-- [ ] Update all components using tenant context
-- [ ] Add proper error handling for invalid tenant contexts
+- [ ] Implement proper tenant metadata resolution from platform database
+- [ ] Add fallback mechanisms for platform context
+- [ ] Update all platform components using tenant metadata
+- [ ] Add proper error handling for invalid platform contexts
 
 ### 3. **API Client Consolidation**
 **Priority**: 🔥 Critical | **Timeline**: 1 week
