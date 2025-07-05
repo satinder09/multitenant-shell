@@ -184,6 +184,15 @@ export interface PlatformTenantPermission {
   user: PlatformUser;
 }
 
+/**
+ * Tenant user interface for impersonation and access
+ */
+export interface TenantUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 // =============================================================================
 // PLATFORM USER MANAGEMENT
 // =============================================================================

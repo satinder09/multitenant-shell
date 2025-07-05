@@ -36,8 +36,139 @@ export async function getModuleConfig(moduleName: string): Promise<ModuleConfig 
     return config;
   }
   
-  // Note: This is expected during SSR/API calls before client-side registration
+  // SERVER-SIDE FALLBACK: Try to load config directly during SSR/API calls
+  if (typeof window === 'undefined') {
+    try {
+      // Try to load known module configurations for server-side API routes
+      const moduleConfig = await loadServerSideModuleConfig(moduleName);
+      if (moduleConfig) {
+        // Cache it for future use
+        CONFIG_CACHE.set(moduleName, moduleConfig);
+        return moduleConfig;
+      }
+    } catch (error) {
+      console.warn(`Failed to load server-side config for module: ${moduleName}`, error);
+    }
+  }
+  
   return null;
+}
+
+// SERVER-SIDE MODULE CONFIG LOADER
+async function loadServerSideModuleConfig(moduleName: string): Promise<ModuleConfig | null> {
+  switch (moduleName) {
+    case 'tenants':
+      try {
+        // Create server-safe tenants config without browser-specific functionality
+        return {
+          sourceTable: 'tenants',
+          primaryKey: 'id',
+          
+          columns: [
+            {
+              field: 'id',
+              display: 'ID',
+              type: 'string',
+              visible: false,
+              sortable: false,
+              searchable: false,
+              filterable: false
+            },
+            {
+              field: 'name',
+              display: 'Tenant Name',
+              type: 'string',
+              visible: true,
+              sortable: true,
+              searchable: true,
+              filterable: true,
+              width: 200
+            },
+            {
+              field: 'subdomain',
+              display: 'Subdomain',
+              type: 'string',
+              visible: true,
+              sortable: true,
+              searchable: true,
+              filterable: true,
+              width: 150
+            },
+            {
+              field: 'isActive',
+              display: 'Status',
+              type: 'boolean',
+              visible: true,
+              sortable: true,
+              searchable: false,
+              filterable: true,
+              options: [
+                { value: true, label: 'Active' },
+                { value: false, label: 'Inactive' }
+              ],
+              width: 100
+            },
+            {
+              field: 'dbName',
+              display: 'Database',
+              type: 'string',
+              visible: false,
+              sortable: false,
+              searchable: false,
+              filterable: false
+            },
+            {
+              field: 'createdAt',
+              display: 'Created At',
+              type: 'datetime',
+              visible: true,
+              sortable: true,
+              searchable: false,
+              filterable: true,
+              width: 120
+            },
+            {
+              field: 'updatedAt',
+              display: 'Updated',
+              type: 'datetime',
+              visible: false,
+              sortable: true,
+              searchable: false,
+              filterable: true,
+              width: 120
+            }
+          ],
+          
+          // Minimal actions for server-side (no actual functions)
+          actions: {
+            rowActions: [],
+            bulkActions: [],
+            headerActions: []
+          },
+          
+          display: {
+            defaultColumns: ['name', 'subdomain', 'isActive', 'createdAt'],
+            defaultSort: { field: 'createdAt', direction: 'desc' },
+            pageSize: 25,
+            selectable: true
+          },
+          
+          module: {
+            name: 'tenants',
+            title: 'Tenants',
+            description: 'Advanced tenant management',
+            // icon: undefined // Skip icon for server-side to avoid import issues
+          }
+        };
+      } catch (error) {
+        console.error('Failed to create server-side tenants config:', error);
+        return null;
+      }
+    
+    // Add other known modules here as needed
+    default:
+      return null;
+  }
 }
 
 // UTILITY FUNCTIONS

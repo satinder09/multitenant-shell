@@ -235,6 +235,29 @@ export class TenantService {
     if (!tenant || !tenant.isActive) {
       throw new NotFoundException('Tenant not found');
     }
+    
+    // Return the full tenant object for platform context
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      subdomain: tenant.subdomain,
+      url: `https://${tenant.subdomain}.${process.env.NEXT_PUBLIC_BASE_DOMAIN || 'lvh.me'}`,
+      isActive: tenant.isActive,
+      createdAt: tenant.createdAt.toISOString(),
+      updatedAt: tenant.updatedAt.toISOString(),
+      planType: 'standard', // Default plan type
+      features: ['basic'], // Default features
+      userCount: 0, // TODO: Calculate actual user count if needed
+    };
+  }
+
+  async resolveTenantForMiddleware(subdomain: string) {
+    const tenant = await this.masterPrisma.tenant.findUnique({
+      where: { subdomain },
+    });
+    if (!tenant || !tenant.isActive) {
+      throw new NotFoundException('Tenant not found');
+    }
     const databaseUrl = this.decryptUrl(tenant.encryptedDbUrl);
     return { id: tenant.id, databaseUrl };
   }

@@ -3,34 +3,38 @@
 import { useAuth } from '@/context/AuthContext';
 import { usePlatform } from '@/context/PlatformContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { isPlatform, tenantSubdomain } = usePlatform();
   const router = useRouter();
+  const hasRedirected = useRef(false);
   
   console.log('[DashboardPage] Rendering with state:', { 
     isPlatform, 
     tenantSubdomain, 
     userEmail: user?.email,
     isSuperAdmin: user?.isSuperAdmin,
-    pathname: typeof window !== 'undefined' ? window.location.pathname : 'server'
+    pathname: typeof window !== 'undefined' ? window.location.pathname : 'server',
+    hasRedirected: hasRedirected.current
   });
   
   // CRITICAL: Platform users should NEVER be on the root route
   // Always redirect them to /platform to get the proper layout
   useEffect(() => {
-    if (isPlatform && user?.isSuperAdmin) {
+    // Only redirect if we haven't already redirected and conditions are met
+    if (!hasRedirected.current && isPlatform && user?.isSuperAdmin) {
       console.log('[DashboardPage] Platform admin on root route, redirecting to /platform');
+      hasRedirected.current = true;
       router.replace('/platform');
       return;
     }
   }, [isPlatform, user?.isSuperAdmin, router]);
   
   // Show loading state while redirecting platform users
-  if (isPlatform && user?.isSuperAdmin) {
+  if (isPlatform && user?.isSuperAdmin && hasRedirected.current) {
     console.log('[DashboardPage] Platform admin detected, showing loading while redirecting');
     return (
       <div className="container mx-auto py-10">

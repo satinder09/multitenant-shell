@@ -153,8 +153,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Initialize CSRF protection
       initializeCsrfProtection();
       
-      // Check current auth state (use cache if available)
-      await refreshUser(false);
+      // Skip auth check on public pages to avoid unnecessary 401 errors
+      const isPublicPage = typeof window !== 'undefined' && (
+        window.location.pathname === '/login' || 
+        window.location.pathname === '/signup' ||
+        window.location.pathname === '/forgot-password' ||
+        window.location.pathname === '/reset-password'
+      );
+      
+      if (!isPublicPage) {
+        // Check current auth state (use cache if available)
+        await refreshUser(false);
+      } else {
+        // On public pages, check cache only (no API call)
+        const cachedUser = AuthCache.get();
+        if (cachedUser) {
+          setUser(cachedUser);
+        }
+      }
       
       if (mounted) {
         setIsInitialized(true);

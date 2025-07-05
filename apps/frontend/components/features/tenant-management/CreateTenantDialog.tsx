@@ -13,10 +13,10 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
-import { CreateTenantDialogProps } from '@/domains/platform/types/tenant.types';
+import { CreatePlatformTenantDialogProps } from '@/shared/types/platform.types';
 import { createTenantAction } from '@/domains/platform/utils/tenantHelpers';
 
-const CreateTenantDialog: React.FC<CreateTenantDialogProps> = ({
+const CreateTenantDialog: React.FC<CreatePlatformTenantDialogProps> = ({
   open,
   onOpenChange,
   onTenantCreated,

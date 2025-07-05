@@ -1,4 +1,4 @@
-import { TenantModel, Tenant, TenantAccessInfo, TenantAccessOption } from '@/domains/platform/types/tenant.types';
+import { PlatformTenantModel, PlatformTenant, PlatformTenantAccessInfo, PlatformTenantAccessOption } from '@/shared/types/platform.types';
 import { browserApi } from '@/shared/services/api-client';
 
 // Utility function to get access level color
@@ -17,22 +17,27 @@ export const getAccessLevelColor = (level: string): string => {
 
 // Utility function to merge tenant data with access info
 export const mergeTenantWithAccessInfo = (
-  tenant: Tenant,
-  accessInfo?: TenantAccessInfo
-): TenantModel => {
+  tenant: PlatformTenant,
+  accessInfo?: PlatformTenantAccessInfo
+): PlatformTenantModel => {
   return {
     ...tenant,
     canAccess: accessInfo?.canAccess || false,
     canImpersonate: accessInfo?.canImpersonate || false,
     accessLevel: accessInfo?.accessLevel || 'read',
     lastAccessed: accessInfo?.lastAccessed ? new Date(accessInfo.lastAccessed) : undefined,
-    userCount: 0, // Default value, should be provided by API
+    userCount: tenant.userCount || 0, // Use provided value or default
     permissions: [], // Default empty array, should be provided by API
+    // Convert string dates to Date objects
+    lastActivityAt: tenant.lastActivityAt ? new Date(tenant.lastActivityAt) : undefined,
+    // Handle string to PlatformUser mapping - set createdById from createdBy string
+    createdById: tenant.createdBy || undefined,
+    createdBy: undefined, // This should be populated by the API when needed
   };
 };
 
-// Utility function to convert TenantModel to TenantAccessOption for modals
-export const tenantToAccessOption = (tenant: TenantModel): TenantAccessOption => {
+// Utility function to convert PlatformTenantModel to PlatformTenantAccessOption for modals
+export const tenantToAccessOption = (tenant: PlatformTenantModel): PlatformTenantAccessOption => {
   return {
     tenantId: tenant.id,
     tenantName: tenant.name,

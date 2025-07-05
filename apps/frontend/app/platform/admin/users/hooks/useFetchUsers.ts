@@ -3,38 +3,38 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { 
   PlatformUser, 
-  UseFetchUsersReturn, 
-  UserQueryParams, 
-  UserFilters, 
-  UserSortParams,
-  UserListResponse,
-  Role
-} from '@/domains/platform/types/user.types';
+  UsePlatformUsersReturn, 
+  PlatformUserQueryParams, 
+  PlatformUserFilters, 
+  PlatformUserSortParams,
+  PlatformUserListResponse,
+  PlatformRole
+} from '@/shared/types/platform.types';
 import { browserApi } from '@/shared/services/api-client';
 
 const DEFAULT_LIMIT = 10;
-const DEFAULT_FILTERS: UserFilters = {
+const DEFAULT_FILTERS: PlatformUserFilters = {
   search: '',
   status: 'all',
   role: 'all',
   tenantCount: 'all',
 };
-const DEFAULT_SORT: UserSortParams = {
+const DEFAULT_SORT: PlatformUserSortParams = {
   field: 'name',
   direction: 'asc',
 };
 
-export function useFetchUsers(): UseFetchUsersReturn {
+export function useFetchUsers(): UsePlatformUsersReturn {
   const [data, setData] = useState<PlatformUser[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [roles, setRoles] = useState<PlatformRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRoles, setIsLoadingRoles] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rolesError, setRolesError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<UserListResponse['pagination'] | null>(null);
+  const [pagination, setPagination] = useState<PlatformUserListResponse['pagination'] | null>(null);
   
   // Query parameters state
-  const [queryParams, setQueryParams] = useState<UserQueryParams>({
+  const [queryParams, setQueryParams] = useState<PlatformUserQueryParams>({
     page: 1,
     limit: DEFAULT_LIMIT,
     filters: DEFAULT_FILTERS,
@@ -50,14 +50,14 @@ export function useFetchUsers(): UseFetchUsersReturn {
       const response = await browserApi.get('/api/platform-rbac/roles');
       
       if (response.success) {
-        setRoles(response.data as Role[]);
+        setRoles(response.data as PlatformRole[]);
       } else {
         // Fallback to default roles if API fails
         console.warn('Failed to fetch roles, using fallback');
         setRoles([
-          { id: 'admin', name: 'Administrator', description: 'Full system access' },
-          { id: 'user', name: 'User', description: 'Standard user access' },
-          { id: 'viewer', name: 'Viewer', description: 'Read-only access' }
+          { id: 'admin', name: 'Administrator', description: 'Full system access', permissions: [] },
+          { id: 'user', name: 'User', description: 'Standard user access', permissions: [] },
+          { id: 'viewer', name: 'Viewer', description: 'Read-only access', permissions: [] }
         ]);
       }
     } catch (err) {
@@ -65,9 +65,9 @@ export function useFetchUsers(): UseFetchUsersReturn {
       setRolesError(err instanceof Error ? err.message : 'Failed to fetch roles');
       // Fallback roles
       setRoles([
-        { id: 'admin', name: 'Administrator', description: 'Full system access' },
-        { id: 'user', name: 'User', description: 'Standard user access' },
-        { id: 'viewer', name: 'Viewer', description: 'Read-only access' }
+        { id: 'admin', name: 'Administrator', description: 'Full system access', permissions: [] },
+        { id: 'user', name: 'User', description: 'Standard user access', permissions: [] },
+        { id: 'viewer', name: 'Viewer', description: 'Read-only access', permissions: [] }
       ]);
     } finally {
       setIsLoadingRoles(false);
@@ -111,7 +111,7 @@ export function useFetchUsers(): UseFetchUsersReturn {
         throw new Error(`Failed to fetch users: ${response.error || 'Unknown error'}`);
       }
       
-      const responseData = response.data as UserListResponse;
+      const responseData = response.data as PlatformUserListResponse;
       
       setData(responseData.data);
       setPagination(responseData.pagination);
@@ -145,10 +145,10 @@ export function useFetchUsers(): UseFetchUsersReturn {
   }, []);
 
   // Filter controls
-  const setFilters = useCallback((filters: Partial<UserFilters>) => {
+  const setFilters = useCallback((filters: Partial<PlatformUserFilters>) => {
     setQueryParams(prev => ({ 
       ...prev, 
-      filters: { ...prev.filters, ...filters } as UserFilters, 
+      filters: { ...prev.filters, ...filters } as PlatformUserFilters, 
       page: 1 // Reset to first page when filters change
     }));
   }, []);
@@ -162,7 +162,7 @@ export function useFetchUsers(): UseFetchUsersReturn {
   }, []);
 
   // Sort controls
-  const setSort = useCallback((sort: UserSortParams) => {
+  const setSort = useCallback((sort: PlatformUserSortParams) => {
     setQueryParams(prev => ({ ...prev, sort, page: 1 })); // Reset to first page
   }, []);
 

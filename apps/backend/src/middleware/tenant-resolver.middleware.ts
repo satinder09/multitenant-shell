@@ -48,7 +48,7 @@ export class TenantResolverMiddleware implements NestMiddleware {
 
     try {
       const { id, databaseUrl } =
-        await this.tenantService.findBySubdomain(subdomain);
+        await this.tenantService.resolveTenantForMiddleware(subdomain);
       this.logger.debug(`Tenant found: id=${id}, databaseUrl=${databaseUrl}`);
       console.log(`[TenantResolver] Setting req.tenant = { id: ${id}, databaseUrl: ${databaseUrl} }`);
       req.tenant = { id, databaseUrl };

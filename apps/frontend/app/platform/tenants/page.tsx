@@ -7,7 +7,7 @@ import { TenantsConfig } from './tenants.config';
 import CreateTenantDialog from '@/components/features/tenant-management/CreateTenantDialog';
 import { SecureLoginModal } from '@/components/features/tenant-management/SecureLoginModal';
 import { ImpersonationModal } from '@/components/features/tenant-management/ImpersonationModal';
-import type { TenantAccessOption } from '@/domains/platform/types/tenant.types';
+import type { PlatformTenantAccessOption } from '@/shared/types/platform.types';
 
 // 🚀 EARLY REGISTRATION: Register BEFORE component definition to ensure it's available immediately
 registerModule({
@@ -22,10 +22,10 @@ export default function TenantsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [secureLoginModalOpen, setSecureLoginModalOpen] = useState(false);
   const [impersonationModalOpen, setImpersonationModalOpen] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<TenantAccessOption | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<PlatformTenantAccessOption | null>(null);
 
   // Helper function to convert tenant data to access option format
-  const tenantToAccessOption = (tenant: any): TenantAccessOption => ({
+  const tenantToAccessOption = (tenant: any): PlatformTenantAccessOption => ({
     tenantId: tenant.id,
     tenantName: tenant.name,
     subdomain: tenant.subdomain,

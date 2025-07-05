@@ -121,6 +121,20 @@ export class PlatformContextService {
   }
 
   /**
+   * Get current state (for React integration)
+   */
+  public getState(): PlatformContextState {
+    return { ...this.state };
+  }
+
+  /**
+   * Refresh tenant metadata (public method for React integration)
+   */
+  public async refreshTenantMetadata(subdomain: string): Promise<void> {
+    return this.resolveTenantMetadata(subdomain);
+  }
+
+  /**
    * Resolve tenant metadata from subdomain
    */
   private async resolveTenantMetadata(subdomain: string): Promise<void> {

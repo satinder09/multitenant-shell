@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { UserCheck, Loader2 } from 'lucide-react';
-import { TenantUser, ImpersonationModalProps } from '@/domains/platform/types/tenant.types';
+import { TenantUser, PlatformImpersonationModalProps } from '@/shared/types/platform.types';
 import { browserApi } from '@/shared/services/api-client';
 
-export function ImpersonationModal({ tenant, open, onOpenChange }: ImpersonationModalProps) {
+export function ImpersonationModal({ tenant, open, onOpenChange }: PlatformImpersonationModalProps) {
   const [selectedUser, setSelectedUser] = useState('');
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [reason, setReason] = useState('');

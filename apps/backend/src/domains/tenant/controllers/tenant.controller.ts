@@ -18,6 +18,7 @@ import { User } from '../../../../generated/master-prisma';
 import { AuthUser } from '../../../shared/decorators/auth-user.decorator';
 import { BulkUpdateTenantsDto } from '../dto/bulk-update-tenants.dto';
 import { BulkDeleteTenantsDto } from '../dto/bulk-delete-tenants.dto';
+import { Public } from '../../../shared/decorators/public.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('tenants')
@@ -51,6 +52,12 @@ export class TenantController {
   @Delete('bulk')
   bulkDelete(@Body() dto: BulkDeleteTenantsDto) {
     return this.tenantService.bulkDelete(dto.ids);
+  }
+
+  @Public()
+  @Get('by-subdomain/:subdomain')
+  findBySubdomain(@Param('subdomain') subdomain: string) {
+    return this.tenantService.findBySubdomain(subdomain);
   }
 
   @Get(':id')

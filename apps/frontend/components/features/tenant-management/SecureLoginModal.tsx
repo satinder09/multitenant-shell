@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Shield, Loader2 } from 'lucide-react';
-import { SecureLoginModalProps } from '@/domains/platform/types/tenant.types';
+import { PlatformSecureLoginModalProps } from '@/shared/types/platform.types';
 import { browserApi } from '@/shared/services/api-client';
 
-export function SecureLoginModal({ tenant, open, onOpenChange }: SecureLoginModalProps) {
+export function SecureLoginModal({ tenant, open, onOpenChange }: PlatformSecureLoginModalProps) {
   const [duration, setDuration] = useState(60);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
