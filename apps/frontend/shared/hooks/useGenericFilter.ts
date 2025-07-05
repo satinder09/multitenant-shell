@@ -367,10 +367,16 @@ export function useGenericFilter<
 
     const shouldFetchDebounced = queryParams.filters?.search;
 
+    // Always fetch when complexFilter changes (including when cleared to null)
+    // This ensures table refreshes when filters are added, modified, or removed
     if (shouldFetchImmediately) {
       fetchData(queryParams);
     } else if (shouldFetchDebounced) {
       debouncedFetchData(queryParams);
+    } else {
+      // If the effect ran due to complexFilter changing (including clearing to null),
+      // we should still fetch to ensure table refreshes when filters are removed
+      fetchData(queryParams);
     }
   }, [
     queryParams.page,
