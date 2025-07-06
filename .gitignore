@@ -52,4 +52,4 @@ apps/backend/generated/
 *.temp
 cookies.txt
 *_cookies.txt
-migration_lock.toml 
+# migration_lock.toml should be committed to track database provider 
