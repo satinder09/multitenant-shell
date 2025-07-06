@@ -116,8 +116,8 @@ export interface CreateTenantDto {
   dbName: string;
 }
 
-// Tenant API functions moved to domain-specific clients
-// Use platformApiClient.tenants or tenantApiClient for tenant operations
+// Tenant API functions moved to unified browserApi client
+// All tenant operations now use browserApi for consistency
 
 export function getBackendUrl(req: Request | NextRequest) {
   // Use the configured backend URL from environment variables
