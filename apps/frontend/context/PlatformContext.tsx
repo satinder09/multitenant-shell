@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
+import React, { createContext, useContext, useMemo, useEffect, useState, useCallback } from 'react';
 import { isPlatformHost, getTenantSubdomain } from '@/shared/utils/contextUtils';
 import { platformContextService } from '@/shared/services/platform-context.service';
 import { PlatformTenant } from '@/shared/types/platform.types';
@@ -17,6 +17,9 @@ interface PlatformContextType {
   // Enhanced features
   getPerformanceMetrics: () => any;
   getDebugInfo: () => any;
+  // New optimization features
+  retryTenantResolution: () => Promise<void>;
+  clearError: () => void;
 }
 
 const PlatformContext = createContext<PlatformContextType>({ 
@@ -30,6 +33,8 @@ const PlatformContext = createContext<PlatformContextType>({
   refreshTenant: async () => {},
   getPerformanceMetrics: () => null,
   getDebugInfo: () => null,
+  retryTenantResolution: async () => {},
+  clearError: () => {},
 });
 
 // Export the context for testing
@@ -72,8 +77,9 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     error: null,
   });
 
-  // State update polling for reactive updates
-  const [, forceUpdate] = useState({});
+  // Performance optimization: Use refs to track latest state without causing re-renders
+  const latestStateRef = React.useRef(tenantState);
+  latestStateRef.current = tenantState;
 
   const baseValue = useMemo(() => {
     let isPlatform = true;
@@ -105,101 +111,160 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return { isPlatform, tenantSubdomain, baseDomain };
   }, []);
 
-  // Sync with enhanced service state
+  // Optimized state synchronization with event-driven approach
+  const syncWithService = useCallback(() => {
+    const serviceState = platformContextService.getState();
+    const errorMessage: string | null = serviceState.error ? serviceState.error.userMessage : null;
+    
+    const newState = {
+      currentTenant: serviceState.currentTenant,
+      isLoading: serviceState.isLoading,
+      error: errorMessage,
+    };
+    
+    // Only update state if something actually changed
+    if (
+      newState.currentTenant !== latestStateRef.current.currentTenant ||
+      newState.isLoading !== latestStateRef.current.isLoading ||
+      newState.error !== latestStateRef.current.error
+    ) {
+      setTenantState(newState);
+      
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+        console.log('[PlatformContext] State synchronized:', newState);
+      }
+    }
+  }, []);
+
+  // Replace polling with more efficient approach
   useEffect(() => {
-    const updateTenantState = () => {
-      const serviceState = platformContextService.getState();
-      const errorMessage: string | null = serviceState.error ? serviceState.error.userMessage : null;
-      setTenantState({
-        currentTenant: serviceState.currentTenant,
-        isLoading: serviceState.isLoading,
-        error: errorMessage,
-      });
+    // Initial synchronization
+    syncWithService();
+
+    // Set up more efficient state checking with reduced frequency
+    // Use requestAnimationFrame for optimal performance
+    let animationFrameId: number;
+    let lastCheckTime = 0;
+    const CHECK_INTERVAL = 250; // Reduced from 100ms to 250ms
+
+    const checkForUpdates = (currentTime: number) => {
+      if (currentTime - lastCheckTime >= CHECK_INTERVAL) {
+        syncWithService();
+        lastCheckTime = currentTime;
+      }
+      animationFrameId = requestAnimationFrame(checkForUpdates);
     };
 
-    // Initial update
-    updateTenantState();
+    animationFrameId = requestAnimationFrame(checkForUpdates);
 
-    // Set up polling for state changes (simple reactive approach)
-    const interval = setInterval(() => {
-      const serviceState = platformContextService.getState();
-      const currentError: string | null = serviceState.error ? serviceState.error.userMessage : null;
-      
-      if (
-        serviceState.currentTenant !== tenantState.currentTenant ||
-        serviceState.isLoading !== tenantState.isLoading ||
-        currentError !== tenantState.error
-      ) {
-        updateTenantState();
-        forceUpdate({});
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
-    }, 100); // Check every 100ms for state changes
+    };
+  }, [syncWithService]);
 
-    return () => clearInterval(interval);
-  }, [tenantState.currentTenant, tenantState.isLoading, tenantState.error]);
+  // Optimized tenant metadata resolution with better error handling
+  const resolveTenantMetadata = useCallback(async (subdomain: string, isRetry: boolean = false) => {
+    try {
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+        console.log(`[PlatformContext] ${isRetry ? 'Retrying' : 'Resolving'} tenant metadata for:`, subdomain);
+      }
 
-  // Initialize tenant metadata resolution
+      await platformContextService.refreshTenantMetadata(subdomain);
+      
+      // Success - sync immediately
+      syncWithService();
+      
+    } catch (error) {
+      console.error('Failed to resolve tenant metadata:', error);
+      
+      // Enhanced error handling with fallback mechanisms
+      if (process.env.NODE_ENV === 'development') {
+        const debugInfo = platformContextService.getDebugInfo();
+        if (debugInfo) {
+          console.log('[PlatformContext] Debug info after error:', debugInfo);
+        }
+      }
+      
+      // Sync state to reflect error
+      syncWithService();
+      
+      // Don't re-throw on initial load, but do on explicit retries
+      if (isRetry) {
+        throw error;
+      }
+    }
+  }, [syncWithService]);
+
+  // Enhanced tenant metadata initialization with better public page detection
   useEffect(() => {
-    // Only fetch tenant metadata if we have a subdomain and haven't loaded yet
-    // Skip fetching on public pages (login, signup) to avoid unnecessary auth errors
     if (baseValue.tenantSubdomain && !tenantState.currentTenant && !tenantState.isLoading) {
       const isPublicPage = typeof window !== 'undefined' && (
         window.location.pathname === '/login' || 
         window.location.pathname === '/signup' ||
         window.location.pathname === '/forgot-password' ||
-        window.location.pathname === '/reset-password'
+        window.location.pathname === '/reset-password' ||
+        window.location.pathname.startsWith('/auth/') ||
+        window.location.pathname.startsWith('/public/')
       );
       
       if (!isPublicPage) {
-        platformContextService.refreshTenantMetadata(baseValue.tenantSubdomain).catch((error) => {
-          console.error('Failed to refresh tenant metadata:', error);
-          
-          // Enhanced error logging with performance data
-          if (process.env.NODE_ENV === 'development') {
-            const debugInfo = platformContextService.getDebugInfo();
-            if (debugInfo) {
-              console.log('[PlatformContext] Debug info after error:', debugInfo);
-            }
-          }
-        });
+        resolveTenantMetadata(baseValue.tenantSubdomain);
+      } else {
+        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
+          console.log('[PlatformContext] Skipping tenant metadata resolution on public page:', window.location.pathname);
+        }
       }
     }
-  }, [baseValue.tenantSubdomain, tenantState.currentTenant, tenantState.isLoading]);
+  }, [baseValue.tenantSubdomain, tenantState.currentTenant, tenantState.isLoading, resolveTenantMetadata]);
 
-  const refreshTenant = useMemo(() => async () => {
+  // Optimized refresh function with better error handling
+  const refreshTenant = useCallback(async () => {
     if (baseValue.tenantSubdomain) {
       try {
-        await platformContextService.refreshTenantMetadata(baseValue.tenantSubdomain);
-        // State will be updated by the polling effect
+        await resolveTenantMetadata(baseValue.tenantSubdomain, true);
       } catch (error) {
         console.error('Failed to refresh tenant metadata:', error);
-        
-        // Enhanced error logging
-        if (process.env.NODE_ENV === 'development') {
-          const debugInfo = platformContextService.getDebugInfo();
-          if (debugInfo) {
-            console.log('[PlatformContext] Debug info after refresh error:', debugInfo);
-          }
-        }
-        
         throw error; // Re-throw for caller to handle
       }
     }
-  }, [baseValue.tenantSubdomain]);
+  }, [baseValue.tenantSubdomain, resolveTenantMetadata]);
 
+  // New retry function for better error recovery
+  const retryTenantResolution = useCallback(async () => {
+    if (baseValue.tenantSubdomain) {
+      try {
+        await resolveTenantMetadata(baseValue.tenantSubdomain, true);
+      } catch (error) {
+        console.error('Failed to retry tenant resolution:', error);
+        throw error;
+      }
+    }
+  }, [baseValue.tenantSubdomain, resolveTenantMetadata]);
+
+  // New error clearing function
+  const clearError = useCallback(() => {
+    if (tenantState.error) {
+      setTenantState(prev => ({ ...prev, error: null }));
+    }
+  }, [tenantState.error]);
+
+  // Optimized tenant ID computation
   const tenantId = useMemo(() => {
     return platformContextService.getCurrentTenantId();
   }, [tenantState.currentTenant]);
 
-  // Performance monitoring functions
-  const getPerformanceMetrics = useMemo(() => () => {
+  // Performance monitoring functions (memoized for efficiency)
+  const getPerformanceMetrics = useCallback(() => {
     return platformContextService.getPerformanceMetrics();
   }, []);
 
-  const getDebugInfo = useMemo(() => () => {
+  const getDebugInfo = useCallback(() => {
     return platformContextService.getDebugInfo();
   }, []);
 
+  // Optimized context value with better memoization
   const value = useMemo(() => ({
     ...baseValue,
     ...tenantState,
@@ -207,8 +272,20 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshTenant,
     getPerformanceMetrics,
     getDebugInfo,
-  }), [baseValue, tenantState, tenantId, refreshTenant, getPerformanceMetrics, getDebugInfo]);
+    retryTenantResolution,
+    clearError,
+  }), [
+    baseValue, 
+    tenantState, 
+    tenantId, 
+    refreshTenant, 
+    getPerformanceMetrics, 
+    getDebugInfo,
+    retryTenantResolution,
+    clearError
+  ]);
   
+  // Performance monitoring in development
   if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PLATFORM) {
     console.log('[PlatformContext] Providing context value:', value);
     

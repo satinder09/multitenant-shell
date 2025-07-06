@@ -1,4 +1,5 @@
 import { FilterSource } from '../../modules/types';
+import { browserApi } from '@/shared/services/api-client';
 
 export interface FilterOption {
   value: any;
@@ -106,73 +107,52 @@ class FilterSourceService {
     }
 
     const { api } = source;
-    let url = api.url;
     const method = api.method || 'GET';
     
-    // Build query parameters
-    const params = new URLSearchParams();
-    
-    // Add base parameters
-    if (api.params) {
-      Object.entries(api.params).forEach(([key, value]) => {
-        params.append(key, String(value));
-      });
-    }
+    // Prepare parameters
+    const params: Record<string, any> = { ...api.params };
     
     // Add search parameter
     if (searchTerm && api.searchable?.enabled) {
       const minLength = api.searchable.minLength || 0;
       if (searchTerm.length >= minLength) {
-        params.append(api.searchable.param, searchTerm);
+        params[api.searchable.param] = searchTerm;
       }
     }
     
     // Add pagination parameters
     if (api.pagination?.enabled && page !== undefined && pageSize !== undefined) {
-      params.append(api.pagination.pageParam, String(page));
-      params.append(api.pagination.sizeParam, String(pageSize));
+      params[api.pagination.pageParam] = page;
+      params[api.pagination.sizeParam] = pageSize;
     }
 
-    // Append params to URL for GET requests
-    if (method === 'GET' && params.toString()) {
-      url += (url.includes('?') ? '&' : '?') + params.toString();
-    }
+    // Prepare request data for POST requests
+    let requestData: any = undefined;
+    let requestParams: Record<string, any> | undefined = undefined;
 
-    const requestOptions: RequestInit = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...api.headers
-      }
-    };
-
-    // Add body for POST requests
     if (method === 'POST') {
-      const body = { ...api.body };
-      
-      // Add search to body
-      if (searchTerm && api.searchable?.enabled) {
-        body[api.searchable.param] = searchTerm;
-      }
-      
-      // Add pagination to body
-      if (api.pagination?.enabled && page !== undefined && pageSize !== undefined) {
-        body[api.pagination.pageParam] = page;
-        body[api.pagination.sizeParam] = pageSize;
-      }
-      
-      requestOptions.body = JSON.stringify(body);
+      requestData = {
+        ...api.body,
+        ...params
+      };
+    } else {
+      requestParams = params;
     }
 
-    // TODO: This service needs to be refactored to use browserApi
-    // Currently keeping fetch as this is a utility service that may need redesign
-    const response = await fetch(url, requestOptions);
-    
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    // Make API request using browserApi
+    const response = await browserApi.request({
+      url: api.url,
+      method: method as any,
+      params: requestParams,
+      data: requestData,
+      headers: api.headers
+    });
+
+    if (!response.success) {
+      throw new Error(`API request failed: ${response.error || 'Unknown error'}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
     
     // Extract data array from response
     let items = data;
@@ -218,26 +198,21 @@ class FilterSourceService {
       throw new Error('Query configuration is required for query type');
     }
 
-    // This would typically call a backend API that executes the SQL query
-    const response = await fetch('/api/filters/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sql: source.query.sql,
-        params: source.query.params,
-        mapping: source.query.mapping,
-        search: searchTerm,
-        page,
-        pageSize
-      })
+    // Call backend API that executes the SQL query using browserApi
+    const response = await browserApi.post('/api/filters/query', {
+      sql: source.query.sql,
+      params: source.query.params,
+      mapping: source.query.mapping,
+      search: searchTerm,
+      page,
+      pageSize
     });
 
-    if (!response.ok) {
-      throw new Error(`Query request failed: ${response.status} ${response.statusText}`);
+    if (!response.success) {
+      throw new Error(`Query request failed: ${response.error || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    return data;
+    return response.data as FilterDataResponse;
   }
 
   /**
@@ -253,24 +228,19 @@ class FilterSourceService {
       throw new Error('Table configuration is required for table type');
     }
 
-    // This would typically call a backend API that queries the table
-    const response = await fetch('/api/filters/table', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...source.table,
-        search: searchTerm,
-        page,
-        pageSize
-      })
+    // Call backend API that queries the table using browserApi
+    const response = await browserApi.post('/api/filters/table', {
+      ...source.table,
+      search: searchTerm,
+      page,
+      pageSize
     });
 
-    if (!response.ok) {
-      throw new Error(`Table request failed: ${response.status} ${response.statusText}`);
+    if (!response.success) {
+      throw new Error(`Table request failed: ${response.error || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    return data;
+    return response.data as FilterDataResponse;
   }
 
   /**
@@ -286,26 +256,20 @@ class FilterSourceService {
       throw new Error('Function configuration is required for function type');
     }
 
-    // This would typically call a backend API that executes the function
-    // TODO: Replace with browserApi for security
-    const response = await fetch('/api/filters/function', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: source.function.name,
-        params: source.function.params,
-        search: searchTerm,
-        page,
-        pageSize
-      })
+    // Call backend API that executes the function using browserApi
+    const response = await browserApi.post('/api/filters/function', {
+      name: source.function.name,
+      params: source.function.params,
+      search: searchTerm,
+      page,
+      pageSize
     });
 
-    if (!response.ok) {
-      throw new Error(`Function request failed: ${response.status} ${response.statusText}`);
+    if (!response.success) {
+      throw new Error(`Function request failed: ${response.error || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    return data;
+    return response.data as FilterDataResponse;
   }
 
   /**
