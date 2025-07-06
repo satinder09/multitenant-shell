@@ -184,6 +184,13 @@ export class PlatformContextService {
 
   /**
    * Get current platform context state
+   * @returns {PlatformContextState} Complete state object with tenant info, loading status, and errors
+   * @example
+   * ```typescript
+   * const context = service.getContext();
+   * console.log('Is platform?', context.isPlatform);
+   * console.log('Current tenant:', context.currentTenant);
+   * ```
    */
   public getContext(): PlatformContextState {
     return { ...this.state };
@@ -191,6 +198,15 @@ export class PlatformContextService {
 
   /**
    * Check if current context is platform (not tenant)
+   * @returns {boolean} True if on platform domain, false if on tenant subdomain
+   * @example
+   * ```typescript
+   * if (service.isPlatformContext()) {
+   *   // Show platform-specific UI
+   * } else {
+   *   // Show tenant-specific UI
+   * }
+   * ```
    */
   public isPlatformContext(): boolean {
     return this.state.isPlatform;
@@ -198,6 +214,12 @@ export class PlatformContextService {
 
   /**
    * Get current tenant subdomain
+   * @returns {string | null} The tenant subdomain or null if on platform
+   * @example
+   * ```typescript
+   * const subdomain = service.getCurrentTenantSubdomain();
+   * // Returns 'acme' for acme.example.com
+   * ```
    */
   public getCurrentTenantSubdomain(): string | null {
     return this.state.tenantSubdomain;
@@ -205,13 +227,28 @@ export class PlatformContextService {
 
   /**
    * Get current tenant metadata
+   * @returns {PlatformTenant | null} Complete tenant object or null if not resolved
+   * @example
+   * ```typescript
+   * const tenant = service.getCurrentTenant();
+   * if (tenant) {
+   *   console.log('Tenant name:', tenant.name);
+   *   console.log('Tenant plan:', tenant.plan);
+   * }
+   * ```
    */
   public getCurrentTenant(): PlatformTenant | null {
     return this.state.currentTenant;
   }
 
   /**
-   * Get tenant ID from subdomain (for API calls)
+   * Get current tenant ID for API calls
+   * @returns {string | null} The tenant ID or subdomain as fallback
+   * @example
+   * ```typescript
+   * const tenantId = service.getCurrentTenantId();
+   * // Use for API calls: `/api/tenants/${tenantId}/...`
+   * ```
    */
   public getCurrentTenantId(): string | null {
     if (this.state.currentTenant) {
@@ -224,13 +261,25 @@ export class PlatformContextService {
 
   /**
    * Get current state (for React integration)
+   * @returns {PlatformContextState} Complete state object
+   * @deprecated Use getContext() instead for consistency
    */
   public getState(): PlatformContextState {
     return { ...this.state };
   }
 
   /**
-   * Get performance metrics and insights
+   * Get real-time performance metrics and insights
+   * @returns {object | null} Performance metrics object or null if monitoring disabled
+   * @example
+   * ```typescript
+   * const metrics = service.getPerformanceMetrics();
+   * if (metrics) {
+   *   console.log('Cache hit ratio:', metrics.hitRatio);
+   *   console.log('Avg response time:', metrics.averageResolutionTime);
+   *   console.log('Performance score:', metrics.insights.score);
+   * }
+   * ```
    */
   public getPerformanceMetrics() {
     if (!this.config.monitoring.enabled) {
