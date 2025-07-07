@@ -36,6 +36,11 @@
     "clean": "rm -rf apps/*/node_modules apps/*/dist apps/*/.next apps/*/coverage && npm cache clean --force",
     "clean:install": "npm run clean && npm install",
     "docs:generate": "npm run docs:generate --workspace=apps/docs",
+    "api:generate": "node scripts/generate-api-docs.cjs",
+    "api:spec": "npm run api:generate --workspace=apps/backend",
+    "api:sync": "npm run api:sync --workspace=apps/docs",
+    "api:dev": "npm run api:generate && npm run dev:docs",
+    "api:build": "npm run api:generate && npm run build:docs",
     "postinstall": "npm run build:backend --if-present",
     "setup": "npm install && npm run build:backend"
   },
@@ -58,7 +63,10 @@
     "enterprise",
     "nestjs",
     "nextjs",
-    "fumadocs"
+    "fumadocs",
+    "api-documentation",
+    "openapi",
+    "swagger"
   ],
   "author": "Your Organization",
   "license": "MIT"

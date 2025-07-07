@@ -1,91 +1,140 @@
 ---
 title: Users API
-description: users endpoints in My Application
+description: Complete user management API for tenant operations
 ---
 
-# Users API
+# Multitenant Shell - Users API
 
+Comprehensive Users API documentation for the multitenant shell application.
 
-## Get Users
+This API provides complete user management functionality including creation, retrieval, updating, and deletion of users within tenant contexts.
 
-`GET /users`
+## Key Features
 
-Retrieve all users
+- **Complete CRUD Operations**: Create, read, update, and delete users
+- **Advanced Filtering**: Search users by name, email, role, and status
+- **Pagination**: Efficient handling of large user datasets
+- **Role-based Access**: Support for different user roles (user, admin, manager)
+- **Status Management**: Handle active, inactive, and suspended users
+- **Comprehensive Validation**: Robust input validation with detailed error messages
 
-### Authentication Required
+## Authentication
 
-This endpoint requires a valid JWT token.
+This API uses JWT-based authentication with two supported methods:
+1. **Bearer Token**: Include JWT in Authorization header
+2. **HTTP-Only Cookie**: Automatic cookie-based authentication
 
-### Example Request
+## Rate Limiting
 
-```bash
-curl -X GET "https://api.myapp.com/v1/users" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json"
-```
+Standard API rate limiting applies to all endpoints to ensure fair usage.
 
-### Response
+## API Information
+
+- **Version**: 1.0.0
+- **Base URL**: http://localhost:4000
+- **Total Endpoints**: 2
+- **Authentication**: Bearer Token / Cookie-based
+
+## Available Operations
+
+### GET /users
+Retrieve a paginated list of users with filtering and sorting options.
+
+### POST /users
+Create a new user in the current tenant.
+
+### GET /users/\{id\}
+Get detailed information about a specific user.
+
+### PATCH /users/\{id\}
+Update user information (partial update).
+
+### DELETE /users/\{id\}
+Permanently delete a user from the tenant.
+
+## Authentication
+
+This API uses JWT-based authentication. You can authenticate using:
+
+1. **Bearer Token**: Include the JWT token in the Authorization header
+   ```
+   Authorization: Bearer <your-jwt-token>
+   ```
+
+2. **HTTP-Only Cookie**: The API automatically reads JWT tokens from the 'Authentication' cookie
+
+## User Roles
+
+The API supports three user roles:
+- **user**: Standard user with basic permissions
+- **admin**: Administrative user with elevated permissions
+- **manager**: Management user with intermediate permissions
+
+## User Status
+
+Users can have the following statuses:
+- **active**: User can access the system
+- **inactive**: User account is temporarily disabled
+- **suspended**: User account is suspended due to policy violations
+
+## Rate Limiting
+
+Standard API rate limiting applies to all endpoints to ensure fair usage and prevent abuse.
+
+## Error Handling
+
+All endpoints return consistent error responses:
 
 ```json
 {
-  "status": "success",
-  "data": {}
+  "statusCode": 400,
+  "message": ["email must be a valid email"],
+  "error": "Bad Request"
 }
 ```
 
+Common HTTP status codes:
+- **200**: Success
+- **201**: Created
+- **400**: Bad Request (validation errors)
+- **401**: Unauthorized (authentication required)
+- **403**: Forbidden (insufficient permissions)
+- **404**: Not Found (user doesn't exist)
+- **409**: Conflict (email already exists)
 
-## Create User
+## Example Usage
 
-`POST /users`
-
-Add new user
-
-### Authentication Required
-
-This endpoint requires a valid JWT token.
-
-### Example Request
+### Create a New User
 
 ```bash
-curl -X POST "https://api.myapp.com/v1/users" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json"
+curl -X POST http://localhost:4000/users \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "user"
+  }'
 ```
 
-### Response
-
-```json
-{
-  "status": "success",
-  "data": {}
-}
-```
-
-
-## Get User Profile
-
-`GET /users/{id}`
-
-Get user details
-
-### Authentication Required
-
-This endpoint requires a valid JWT token.
-
-### Example Request
+### Get Users with Filtering
 
 ```bash
-curl -X GET "https://api.myapp.com/v1/users/{id}" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json"
+curl -X GET "http://localhost:4000/users?page=1&limit=10&role=user&status=active" \
+  -H "Authorization: Bearer your-jwt-token"
 ```
 
-### Response
+### Update User
 
-```json
-{
-  "status": "success",
-  "data": {}
-}
+```bash
+curl -X PATCH http://localhost:4000/users/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Jonathan",
+    "role": "manager"
+  }'
 ```
 
+Generated on: 2025-07-07T03:55:20.787Z

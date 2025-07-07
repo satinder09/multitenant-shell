@@ -42,13 +42,11 @@ export class TenantController {
     return this.tenantService.findWithComplexQuery(queryDto);
   }
 
-  // Bulk update tenant statuses or other fields - MUST come before :id route
   @Patch('bulk')
   bulkUpdate(@Body() dto: BulkUpdateTenantsDto) {
     return this.tenantService.bulkUpdate(dto.ids, dto.data);
   }
 
-  // Bulk delete tenants - MUST come before :id route
   @Delete('bulk')
   bulkDelete(@Body() dto: BulkDeleteTenantsDto) {
     return this.tenantService.bulkDelete(dto.ids);

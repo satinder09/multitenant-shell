@@ -1,0 +1,292 @@
+---
+title: Users API Reference
+description: Complete technical reference for all Users API endpoints
+---
+
+# Users API Reference
+
+Complete technical documentation for all Users API endpoints.
+
+
+## GET /users
+
+**Get all users**
+
+Retrieves a paginated list of users in the current tenant with optional filtering and sorting capabilities.
+
+
+### Parameters
+
+| Name | Type | In | Required | Description |
+|------|------|----|---------|-----------| 
+| page | integer | query | ❌ | Page number for pagination (starts from 1) |
+| limit | integer | query | ❌ | Number of users per page (maximum 100) |
+| search | string | query | ❌ | Search term to filter users by name or email |
+| role | string | query | ❌ | Filter users by role |
+| status | string | query | ❌ | Filter users by status |
+| sortBy | string | query | ❌ | Field to sort by |
+| sortOrder | string | query | ❌ | Sort order |
+
+
+### Responses
+
+
+#### 200 - Users retrieved successfully
+
+**Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/User"
+      }
+    },
+    "pagination": {
+      "$ref": "#/components/schemas/PaginationInfo"
+    },
+    "filters": {
+      "$ref": "#/components/schemas/FilterInfo"
+    }
+  }
+}
+```
+
+
+#### 401 - No description
+
+
+#### 403 - No description
+
+
+### Security
+
+This endpoint requires authentication:
+- Authentication
+- JWT-auth
+
+
+---
+
+
+## POST /users
+
+**Create a new user**
+
+Creates a new user in the current tenant with the provided details. Requires authentication and appropriate permissions.
+
+
+### Request Body
+
+User creation data
+
+**Schema:**
+
+```json
+{
+  "$ref": "#/components/schemas/CreateUserDto"
+}
+```
+
+
+### Responses
+
+
+#### 201 - User created successfully
+
+**Schema:**
+
+```json
+{
+  "$ref": "#/components/schemas/UserResponse"
+}
+```
+
+
+#### 400 - No description
+
+
+#### 401 - No description
+
+
+#### 403 - No description
+
+
+#### 409 - No description
+
+
+### Security
+
+This endpoint requires authentication:
+- Authentication
+- JWT-auth
+
+
+---
+
+
+## GET /users/\{id\}
+
+**Get user by ID**
+
+Retrieves a specific user by their unique identifier. Returns detailed user information.
+
+
+### Parameters
+
+| Name | Type | In | Required | Description |
+|------|------|----|---------|-----------| 
+| id | string | path | ✅ | Unique user identifier |
+
+
+### Responses
+
+
+#### 200 - User found and retrieved successfully
+
+**Schema:**
+
+```json
+{
+  "$ref": "#/components/schemas/UserDetailResponse"
+}
+```
+
+
+#### 401 - No description
+
+
+#### 403 - No description
+
+
+#### 404 - No description
+
+
+### Security
+
+This endpoint requires authentication:
+- Authentication
+- JWT-auth
+
+
+---
+
+
+## PATCH /users/\{id\}
+
+**Update user**
+
+Updates a user with the provided data. Only provided fields will be updated (partial update).
+
+
+### Parameters
+
+| Name | Type | In | Required | Description |
+|------|------|----|---------|-----------| 
+| id | string | path | ✅ | Unique user identifier |
+
+
+### Request Body
+
+User update data (all fields are optional)
+
+**Schema:**
+
+```json
+{
+  "$ref": "#/components/schemas/UpdateUserDto"
+}
+```
+
+
+### Responses
+
+
+#### 200 - User updated successfully
+
+**Schema:**
+
+```json
+{
+  "$ref": "#/components/schemas/UserUpdateResponse"
+}
+```
+
+
+#### 400 - No description
+
+
+#### 401 - No description
+
+
+#### 403 - No description
+
+
+#### 404 - No description
+
+
+#### 409 - No description
+
+
+### Security
+
+This endpoint requires authentication:
+- Authentication
+- JWT-auth
+
+
+---
+
+
+## DELETE /users/\{id\}
+
+**Delete user**
+
+Permanently deletes a user from the tenant. This action cannot be undone. Consider deactivating users instead of deleting them.
+
+
+### Parameters
+
+| Name | Type | In | Required | Description |
+|------|------|----|---------|-----------| 
+| id | string | path | ✅ | Unique user identifier |
+
+
+### Responses
+
+
+#### 200 - User deleted successfully
+
+**Schema:**
+
+```json
+{
+  "$ref": "#/components/schemas/UserDeleteResponse"
+}
+```
+
+
+#### 401 - No description
+
+
+#### 403 - No description
+
+
+#### 404 - No description
+
+
+#### 409 - No description
+
+
+### Security
+
+This endpoint requires authentication:
+- Authentication
+- JWT-auth
+
+
+---
+

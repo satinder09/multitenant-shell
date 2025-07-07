@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import 'fumadocs-ui/style.css';
+
 @layer base {
   * {
     @apply border-gray-200 dark:border-gray-700;
@@ -9,6 +11,77 @@
   body {
     @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100;
   }
+}
+
+/* Fumadocs specific styles */
+.prose {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+.prose h1 {
+  @apply text-3xl font-bold tracking-tight mb-4;
+}
+
+.prose h2 {
+  @apply text-2xl font-semibold mt-8 mb-4;
+}
+
+.prose h3 {
+  @apply text-xl font-semibold mt-6 mb-3;
+}
+
+.prose p {
+  @apply mb-4 leading-relaxed;
+}
+
+.prose .lead {
+  @apply text-lg text-gray-600 dark:text-gray-400 mb-6;
+}
+
+.prose ul {
+  @apply mb-4 pl-6;
+}
+
+.prose li {
+  @apply mb-2;
+}
+
+.prose code {
+  @apply bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 text-sm;
+}
+
+.prose pre {
+  @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto mb-4;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0;
+}
+
+/* Custom components */
+.not-prose {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+/* Card component enhancements */
+.docs-card {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.docs-card:hover {
+  @apply border-blue-500 dark:border-blue-400;
+}
+
+.docs-button {
+  @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.docs-button-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700 h-10 py-2 px-4;
+}
+
+.docs-button-secondary {
+  @apply bg-gray-200 text-gray-900 hover:bg-gray-300 h-10 py-2 px-4;
 }
 
 /* Documentation specific styles */
@@ -28,58 +101,6 @@
   @apply prose dark:prose-invert max-w-none;
 }
 
-.docs-content h1 {
-  @apply text-3xl font-bold mb-6;
-}
-
-.docs-content h2 {
-  @apply text-2xl font-semibold mt-8 mb-4;
-}
-
-.docs-content h3 {
-  @apply text-xl font-semibold mt-6 mb-3;
-}
-
-.docs-content p {
-  @apply mb-4 leading-relaxed;
-}
-
-.docs-content ul {
-  @apply mb-4 pl-6;
-}
-
-.docs-content li {
-  @apply mb-2;
-}
-
-.docs-content code {
-  @apply bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 text-sm;
-}
-
-.docs-content pre {
-  @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto mb-4;
-}
-
-.docs-content pre code {
-  @apply bg-transparent p-0;
-}
-
 .docs-search {
   @apply w-full max-w-md px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800;
-}
-
-.docs-card {
-  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow;
-}
-
-.docs-button {
-  @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
-}
-
-.docs-button-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 h-10 py-2 px-4;
-}
-
-.docs-button-secondary {
-  @apply bg-gray-200 text-gray-900 hover:bg-gray-300 h-10 py-2 px-4;
 } 

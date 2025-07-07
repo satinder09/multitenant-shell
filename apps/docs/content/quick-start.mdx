@@ -1,0 +1,106 @@
+---
+title: Quick Start
+description: Get started with the Multitenant Shell in minutes
+---
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Node.js** (v18 or later)
+- **PostgreSQL** (v14 or later)
+- **Redis** (v6 or later)
+- **Git** for version control
+
+## Installation
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd multitenant-shell
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment Setup
+
+Copy the environment example and configure your settings:
+
+```bash
+cp .env.example .env.local
+```
+
+Update your `.env.local` file:
+
+```env
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/multitenant_db"
+
+# Redis
+REDIS_URL="redis://localhost:6379"
+
+# JWT
+JWT_SECRET="your-secure-jwt-secret"
+
+# Application URLs
+FRONTEND_URL="http://localhost:3000"
+BACKEND_URL="http://localhost:4000"
+DOCS_URL="http://localhost:3001"
+```
+
+### 4. Database Setup
+
+Initialize the database:
+
+```bash
+# Backend setup
+cd apps/backend
+npm run db:migrate
+npm run db:seed
+```
+
+### 5. Start Development
+
+Start all applications:
+
+```bash
+# From root directory
+npm run dev
+```
+
+This will start:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:4000
+- **Documentation**: http://localhost:3001
+
+## Verification
+
+Test that everything is working:
+
+1. **Frontend**: Visit http://localhost:3000
+2. **API Health**: GET http://localhost:4000/health
+3. **Documentation**: Visit http://localhost:3001/docs
+
+## Next Steps
+
+- Explore the [API Reference](/docs/api) to understand available endpoints
+- Check the backend API at http://localhost:4000
+- Start building your tenant management features
+
+## Development Workflow
+
+```bash
+# Run tests
+npm run test
+
+# Build for production
+npm run build
+
+# Run linting
+npm run lint
+``` 

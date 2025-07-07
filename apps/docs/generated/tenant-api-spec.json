@@ -1,0 +1,682 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Multitenant Shell - Tenant API",
+    "description": "API documentation for tenant-side operations in the multitenant shell application.\n\nThis API provides comprehensive tenant management, authentication, access control, and search functionality for multi-tenant SaaS applications.\n\n## Authentication\n\nThis API uses JWT-based authentication with two supported methods:\n1. **Bearer Token**: Include JWT in Authorization header\n2. **HTTP-Only Cookie**: Automatic cookie-based authentication\n\n## Rate Limiting\n\nDifferent endpoints have varying rate limits:\n- Authentication endpoints: Anti-brute force protection\n- Standard API endpoints: Normal rate limiting\n- Admin operations: Additional restrictions\n\nGenerated on: 2025-07-07T03:39:30.300Z",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "api-support@yourcompany.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000",
+      "description": "Local development server"
+    },
+    {
+      "url": "http://tenant.lvh.me:4000",
+      "description": "Local tenant subdomain"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Tenant authentication and session management"
+    },
+    {
+      "name": "Tenants",
+      "description": "Tenant management operations"
+    },
+    {
+      "name": "Tenant Access",
+      "description": "Tenant access control and impersonation"
+    },
+    {
+      "name": "Search",
+      "description": "Universal search functionality across tenant data"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Login to tenant",
+        "description": "Authenticates user and returns JWT token. Can be used for both platform and tenant login.",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "securePassword123"
+                  },
+                  "tenantSubdomain": {
+                    "type": "string",
+                    "description": "Optional tenant subdomain for tenant-specific login",
+                    "example": "acme"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string",
+                      "description": "JWT access token"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "429": {
+            "description": "Too many login attempts"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get current user",
+        "description": "Returns the currently authenticated user information.",
+        "operationId": "getCurrentUser",
+        "security": [
+          {
+            "Authentication": []
+          },
+          {
+            "JWT-auth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "firstName": {
+                      "type": "string"
+                    },
+                    "lastName": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Logout user",
+        "description": "Logs out the current user and clears the authentication cookie.",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many logout attempts"
+          }
+        }
+      }
+    },
+    "/tenants": {
+      "get": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Get all tenants",
+        "description": "Retrieves a list of all tenants with optional filtering and pagination.",
+        "operationId": "getAllTenants",
+        "security": [
+          {
+            "Authentication": []
+          },
+          {
+            "JWT-auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number for pagination"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "description": "Number of items per page"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search term for filtering tenants"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tenants retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Tenant"
+                      }
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "limit": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Create a new tenant",
+        "description": "Creates a new tenant with the provided details. Requires authentication.",
+        "operationId": "createTenant",
+        "security": [
+          {
+            "Authentication": []
+          },
+          {
+            "JWT-auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tenant created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid tenant data"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/tenants/by-subdomain/{subdomain}": {
+      "get": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Get tenant by subdomain",
+        "description": "Retrieves tenant information by subdomain. This endpoint is public.",
+        "operationId": "getTenantBySubdomain",
+        "parameters": [
+          {
+            "name": "subdomain",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tenant subdomain",
+            "example": "acme"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant not found"
+          }
+        }
+      }
+    },
+    "/tenant-access/options": {
+      "get": {
+        "tags": [
+          "Tenant Access"
+        ],
+        "summary": "Get tenant access options",
+        "description": "Retrieves all tenants that the current user can access with their permission levels.",
+        "operationId": "getTenantAccessOptions",
+        "security": [
+          {
+            "Authentication": []
+          },
+          {
+            "JWT-auth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant access options retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantAccessOption"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/search/universal": {
+      "post": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "Universal search",
+        "description": "Performs a universal search across tenant data with advanced filtering, sorting, and pagination capabilities.",
+        "operationId": "universalSearch",
+        "security": [
+          {
+            "Authentication": []
+          },
+          {
+            "JWT-auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UniversalSearchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid search parameters"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "JWT-auth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token for API authentication"
+      },
+      "Authentication": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "Authentication",
+        "description": "JWT token stored in httpOnly cookie"
+      }
+    },
+    "schemas": {
+      "Tenant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Acme Corporation"
+          },
+          "subdomain": {
+            "type": "string",
+            "example": "acme"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "suspended"
+            ],
+            "example": "active"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateTenantDto": {
+        "type": "object",
+        "required": [
+          "name",
+          "subdomain"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "Acme Corporation"
+          },
+          "subdomain": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 2,
+            "maxLength": 50,
+            "example": "acme"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "A leading technology company"
+          }
+        }
+      },
+      "TenantAccessOption": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "subdomain": {
+            "type": "string"
+          },
+          "canAccess": {
+            "type": "boolean"
+          },
+          "canImpersonate": {
+            "type": "boolean"
+          },
+          "accessLevel": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "admin"
+            ]
+          },
+          "lastAccessed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "UniversalSearchDto": {
+        "type": "object",
+        "required": [
+          "sourceTable",
+          "primaryKey",
+          "fields",
+          "page",
+          "limit",
+          "fieldMappings"
+        ],
+        "properties": {
+          "sourceTable": {
+            "type": "string",
+            "example": "users",
+            "description": "The table/entity to search in"
+          },
+          "primaryKey": {
+            "type": "string",
+            "example": "id",
+            "description": "Primary key field name"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "id",
+              "email",
+              "firstName",
+              "lastName"
+            ],
+            "description": "Fields to include in results"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1,
+            "description": "Page number for pagination"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "example": 10,
+            "description": "Number of results per page"
+          },
+          "fieldMappings": {
+            "type": "object",
+            "description": "Field type mappings and operators",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "operators": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "SearchResults": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Search result records"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number"
+              },
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "sourceTable": {
+                "type": "string"
+              },
+              "executionTime": {
+                "type": "number"
+              },
+              "fieldCount": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -24,25 +24,22 @@ export default async function Page({ params }: PageProps) {
     return (
       <DocsPage 
         toc={[
-          { title: 'Introduction', url: '#introduction', depth: 2 },
-          { title: 'Quick Start', url: '#quick-start', depth: 2 },
-          { title: 'What\'s Next?', url: '#whats-next', depth: 2 },
+          { title: 'Overview', url: '#overview', depth: 2 },
+          { title: 'Features', url: '#features', depth: 2 },
+          { title: 'Getting Started', url: '#getting-started', depth: 2 },
         ]}
         full={frontMatter.full}
         tableOfContent={{
           enabled: true,
         }}
+        lastUpdate={new Date()}
       >
         <DocsBody>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            {frontMatter.title}
-          </h1>
-          {frontMatter.description && (
-            <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
-              {frontMatter.description}
-            </p>
-          )}
-          <div className="mt-6 prose prose-gray dark:prose-invert max-w-none">
+          <div className="prose prose-gray dark:prose-invert max-w-none">
+            <h1>{frontMatter.title}</h1>
+            {frontMatter.description && (
+              <p className="lead">{frontMatter.description}</p>
+            )}
             <MDXRemote 
               source={content} 
               components={{ Card, Cards }} 
@@ -52,16 +49,18 @@ export default async function Page({ params }: PageProps) {
       </DocsPage>
     );
   } catch (error) {
+    console.error('Error loading page:', error);
     notFound();
   }
 }
 
 export function generateStaticParams() {
   return [
-    { slug: [] },
-    { slug: ['getting-started'] },
-    { slug: ['features'] },
-    { slug: ['api', 'reports'] },
-    { slug: ['integrations'] },
+    { slug: [] }, // Introduction
+    { slug: ['quick-start'] },
+    { slug: ['api'] },
+    { slug: ['api', 'authentication'] },
+    { slug: ['api', 'tenants'] },
+    { slug: ['api', 'users'] },
   ];
 } 

@@ -1,0 +1,203 @@
+---
+title: API Reference
+description: Complete API documentation for the multitenant shell Users API
+---
+
+# Users API Reference
+
+Welcome to the comprehensive Users API documentation for the multitenant shell application. This API provides complete user management functionality within tenant contexts.
+
+## Overview
+
+The Users API is designed to handle all user-related operations in a multitenant environment. It provides:
+
+- **Complete CRUD Operations**: Create, read, update, and delete users
+- **Advanced Filtering**: Search users by name, email, role, and status  
+- **Pagination**: Efficient handling of large user datasets
+- **Role-based Access**: Support for different user roles (user, admin, manager)
+- **Status Management**: Handle active, inactive, and suspended users
+- **Comprehensive Validation**: Robust input validation with detailed error messages
+
+## Base URL
+
+```
+http://localhost:4000
+```
+
+For tenant-specific operations:
+```
+http://tenant.lvh.me:4000
+```
+
+## Authentication
+
+All API endpoints require authentication. The API supports two authentication methods:
+
+### Bearer Token
+
+Include the JWT token in the Authorization header:
+
+```bash
+Authorization: Bearer <your-jwt-token>
+```
+
+### HTTP-Only Cookie
+
+The API automatically reads JWT tokens from the 'Authentication' cookie. This is used for browser-based requests.
+
+## API Endpoints
+
+### Users Resource
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/users` | Retrieve paginated list of users |
+| `POST` | `/users` | Create a new user |
+| `GET` | `/users/{id}` | Get specific user details |
+| `PATCH` | `/users/{id}` | Update user information |
+| `DELETE` | `/users/{id}` | Delete a user |
+
+## User Roles
+
+The API supports three user roles:
+
+- **`user`**: Standard user with basic permissions
+- **`admin`**: Administrative user with elevated permissions  
+- **`manager`**: Management user with intermediate permissions
+
+## User Status
+
+Users can have the following statuses:
+
+- **`active`**: User can access the system
+- **`inactive`**: User account is temporarily disabled
+- **`suspended`**: User account is suspended due to policy violations
+
+## Rate Limiting
+
+Standard API rate limiting applies to all endpoints to ensure fair usage and prevent abuse.
+
+## Error Handling
+
+All endpoints return consistent error responses with appropriate HTTP status codes:
+
+```json
+{
+  "statusCode": 400,
+  "message": ["email must be a valid email"],
+  "error": "Bad Request"
+}
+```
+
+### Common HTTP Status Codes
+
+- **200**: Success
+- **201**: Created
+- **400**: Bad Request (validation errors)
+- **401**: Unauthorized (authentication required)
+- **403**: Forbidden (insufficient permissions)
+- **404**: Not Found (resource doesn't exist)
+- **409**: Conflict (resource already exists)
+
+## Quick Start Examples
+
+### Create a New User
+
+```bash
+curl -X POST http://localhost:4000/users \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "user"
+  }'
+```
+
+### Get Users with Filtering
+
+```bash
+curl -X GET "http://localhost:4000/users?page=1&limit=10&role=user&status=active" \
+  -H "Authorization: Bearer your-jwt-token"
+```
+
+### Update User
+
+```bash
+curl -X PATCH http://localhost:4000/users/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Jonathan",
+    "role": "manager"
+  }'
+```
+
+### Delete User
+
+```bash
+curl -X DELETE http://localhost:4000/users/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Authorization: Bearer your-jwt-token"
+```
+
+## Response Examples
+
+### Successful User Creation
+
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "email": "john.doe@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "role": "user",
+  "status": "active",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "createdBy": "456e4567-e89b-12d3-a456-426614174001"
+}
+```
+
+### Paginated User List
+
+```json
+{
+  "data": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "email": "john.doe@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "user",
+      "status": "active",
+      "lastLogin": "2024-01-01T10:30:00.000Z",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "total": 25,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 3,
+    "hasNext": true,
+    "hasPrev": false
+  },
+  "filters": {
+    "search": null,
+    "role": "user",
+    "status": "active",
+    "sortBy": "lastName",
+    "sortOrder": "asc"
+  }
+}
+```
+
+## Need Help?
+
+- Check the detailed endpoint documentation for comprehensive examples
+- Review the authentication guide for setup instructions
+- Contact the development team for additional support
+
+Generated automatically from OpenAPI specification. 

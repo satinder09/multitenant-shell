@@ -56,7 +56,6 @@ export interface UniversalSearchDto {
     operators: string[];
     options?: any[];
   }>;
-  // NEW: Multi-table support
   relations?: Record<string, RelationConfig>;
   virtualFields?: Record<string, VirtualFieldConfig>;
   computedFields?: Record<string, string>;
@@ -69,7 +68,6 @@ export class SearchController {
 
   @Post('universal')
   async universalSearch(@Body() searchDto: UniversalSearchDto) {
-    console.log(`🔍 Universal Search: Processing search for table "${searchDto.sourceTable}"`);
     return this.searchService.universalSearch(searchDto);
   }
 } 

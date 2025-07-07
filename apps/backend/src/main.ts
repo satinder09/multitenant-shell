@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import helmet from 'helmet';
@@ -61,6 +62,86 @@ async function bootstrap() {
     next();
   });
 
+  // Swagger/OpenAPI Configuration for Tenant API Documentation
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Multitenant Shell - Tenant API')
+    .setDescription('API documentation for tenant-side operations in the multitenant shell application')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addCookieAuth('Authentication', {
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'Authentication',
+      description: 'JWT token stored in httpOnly cookie',
+    })
+    .addServer('http://localhost:4000', 'Local development server')
+    .addServer('http://tenant.lvh.me:4000', 'Local tenant subdomain')
+    .addTag('Authentication', 'Tenant authentication endpoints')
+    .addTag('Tenants', 'Tenant management operations')
+    .addTag('Tenant Access', 'Tenant access control and impersonation')
+    .addTag('Search', 'Universal search functionality')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig, {
+    include: [], // We'll specify modules manually
+    operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
+  });
+
+  // Filter out platform-only endpoints, keeping only tenant-relevant ones
+  const tenantDocument = {
+    ...document,
+    paths: Object.keys(document.paths).reduce((acc, path) => {
+      // Include tenant-related endpoints only
+      if (
+        path.includes('/auth') ||
+        path.includes('/tenants') ||
+        path.includes('/tenant-access') ||
+        path.includes('/search') ||
+        path.includes('/health') // Include health for tenant monitoring
+      ) {
+        // Exclude platform-specific endpoints
+        if (
+          !path.includes('/platform/') &&
+          !path.includes('/platform-rbac') &&
+          !path.includes('/platform/admin') &&
+          !path.includes('/metrics') &&
+          !path.includes('/performance')
+        ) {
+          acc[path] = document.paths[path];
+        }
+      }
+      return acc;
+    }, {} as any),
+  };
+
+  SwaggerModule.setup('api-docs', app, tenantDocument, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+      filter: true,
+      showRequestDuration: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
+    },
+    customSiteTitle: 'Multitenant Shell - Tenant API Documentation',
+    customfavIcon: '/favicon.ico',
+    customCss: `
+      .swagger-ui .topbar { display: none }
+      .swagger-ui .info .title { color: #1f2937; }
+      .swagger-ui .scheme-container { background: #f8fafc; border: 1px solid #e2e8f0; }
+    `,
+  });
+
   const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
   const frontendPort = process.env.FRONTEND_PORT || '3000';
   
@@ -93,6 +174,7 @@ async function bootstrap() {
   const port = parseInt(config.get<string>('PORT') || '4000', 10);
   await app.listen(port);
   logger.log(`🚀 Backend listening on http://${baseDomain}:${port}`);
+  logger.log(`📚 Swagger UI available at http://${baseDomain}:${port}/api-docs`);
   logger.log(`🔒 Security middleware enabled`);
   logger.log(`🌐 CORS configured for ${baseDomain}`);
 }

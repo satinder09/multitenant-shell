@@ -16,6 +16,10 @@
     "docs:new-page": "tsx scripts/create-page.ts",
     "docs:api-sync": "tsx scripts/sync-api-docs.ts",
     "docs:setup-domain": "tsx scripts/setup-domain.ts",
+    "api:sync": "node scripts/integrate-api-spec.js",
+    "api:dev": "npm run api:sync && npm run dev",
+    "api:build": "npm run api:sync && npm run build",
+    "api:check": "node -e \"console.log('Checking for OpenAPI spec...'); const fs = require('fs'); const path = require('path'); const specPath = path.join(__dirname, 'generated', 'tenant-api-spec.json'); if (fs.existsSync(specPath)) { console.log('✅ OpenAPI spec found'); } else { console.log('❌ OpenAPI spec not found. Run npm run api:generate from project root.'); process.exit(1); }\"",
     "clean": "rm -rf .next dist coverage"
   },
   "dependencies": {

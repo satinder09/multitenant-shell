@@ -1,5 +1,15 @@
 {
-  "title": "Documentation",
-  "description": "Complete documentation for your application",
-  "pages": ["index", "getting-started", "features", "api", "integrations"]
-} 
+  "title": "API Documentation",
+  "pages": [
+    "index",
+    "quick-start",
+    {
+      "title": "API Reference",
+      "pages": [
+        "api",
+        "api/users",
+        "api/users-reference"
+      ]
+    }
+  ]
+}

@@ -16,6 +16,15 @@ import {
   Ip,
   Headers,
 } from '@nestjs/common';
+import { 
+  ApiTags, 
+  ApiOperation, 
+  ApiResponse, 
+  ApiBody, 
+  ApiCookieAuth,
+  ApiBearerAuth,
+  ApiHeader
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { TenantContext, GetTenantContext } from '../../../shared/types/tenant-context';
 import { AuthService } from '../services/auth.service';
@@ -25,6 +34,7 @@ import { LoginResponse } from '../interfaces/login-response.interface';
 import { JwtAuthGuard, SkipAuth } from '../../../shared/guards';
 import { AuthRateLimit, SkipRateLimit } from '../../../shared/decorators/multitenant-rate-limit.decorator';
 
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -32,8 +42,33 @@ export class AuthController {
     private readonly tenantService: TenantService,
   ) {}
 
-  /** Issue a new JWT (in HttpOnly cookie) */
   @Post('login')
+  @ApiOperation({ 
+    summary: 'Login to tenant',
+    description: 'Authenticates user and returns JWT token. Can be used for both platform and tenant login.'
+  })
+  @ApiBody({ 
+    type: LoginDto,
+    description: 'User login credentials'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Login successful',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string', description: 'JWT access token' }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({ status: 400, description: 'Invalid request data' })
+  @ApiResponse({ status: 429, description: 'Too many login attempts' })
+  @ApiHeader({
+    name: 'x-forwarded-host',
+    description: 'Tenant subdomain for tenant-specific login',
+    required: false
+  })
   @AuthRateLimit()
   @HttpCode(HttpStatus.OK)
   async login(
@@ -68,8 +103,29 @@ export class AuthController {
     return { accessToken };
   }
 
-  /** Return the current user (validated from the cookie) */
   @Get('me')
+  @ApiOperation({ 
+    summary: 'Get current user',
+    description: 'Returns the currently authenticated user information.'
+  })
+  @ApiCookieAuth('Authentication')
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Current user information',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        email: { type: 'string' },
+        firstName: { type: 'string' },
+        lastName: { type: 'string' },
+        role: { type: 'string' },
+        tenantId: { type: 'string', nullable: true }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @SkipRateLimit() // /me endpoint used frequently for auth verification
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -81,8 +137,21 @@ export class AuthController {
     return user;
   }
 
-  /** Get CSRF token */
   @Get('csrf-token')
+  @ApiOperation({ 
+    summary: 'Get CSRF token',
+    description: 'Returns a CSRF token for secure form submissions.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'CSRF token',
+    schema: {
+      type: 'object',
+      properties: {
+        csrfToken: { type: 'string', nullable: true }
+      }
+    }
+  })
   @SkipRateLimit() // CSRF tokens are fetched frequently for security
   @HttpCode(HttpStatus.OK)
   getCsrfToken(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -95,8 +164,22 @@ export class AuthController {
     return { csrfToken: null };
   }
 
-  /** Clear the JWT cookie */
   @Post('logout')
+  @ApiOperation({ 
+    summary: 'Logout user',
+    description: 'Logs out the current user and clears the authentication cookie.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Logout successful',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' }
+      }
+    }
+  })
+  @ApiResponse({ status: 429, description: 'Too many logout attempts' })
   @AuthRateLimit()
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {

@@ -1,3 +1,3 @@
 import { toRuntime } from "fumadocs-mdx"
-export const meta = []
 export const docs = []
+export const meta = []

@@ -28,7 +28,6 @@ export interface TenantAccessOption {
 export class TenantAccessController {
   constructor(private readonly authService: AuthService) {}
 
-  // Get tenant access options for current user
   @Get('options')
   @ApiRateLimit()
   @UseGuards(JwtAuthGuard)
@@ -37,7 +36,6 @@ export class TenantAccessController {
     return this.authService.getTenantAccessOptions(user.id);
   }
 
-  // Secure login to tenant
   @Post('secure-login')
   @AuthRateLimit()
   @UseGuards(JwtAuthGuard)
@@ -84,7 +82,6 @@ export class TenantAccessController {
     return { redirectUrl: redirectUrlWithToken };
   }
 
-  // Start impersonation
   @Post('impersonate')
   @AdminRateLimit()
   @RequireAdmin()
@@ -111,24 +108,18 @@ export class TenantAccessController {
       req.get('User-Agent')
     );
 
-    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
-    const frontendPort = process.env.FRONTEND_PORT || '3000';
-    // Set cookie for impersonation session (cross-subdomain, local dev)
-    res.cookie('Authentication', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: dto.duration * 60 * 1000,
-      domain: `.${baseDomain}`,
-    });
+    const redirectUrlWithToken = `${redirectUrl}?impersonateToken=${encodeURIComponent(accessToken)}`;
 
-    return { redirectUrl };
+    console.log('🎭 Impersonation started successfully:', {
+      redirectUrl: redirectUrlWithToken
+    });
+    return { redirectUrl: redirectUrlWithToken };
   }
 
-  // End impersonation session
-  @Post('impersonate/end')
-  @AuthRateLimit()
-  @UseGuards(JwtAuthGuard)
+  @Post('end-impersonation')
+  @AdminRateLimit()
+  @RequireAdmin()
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
   async endImpersonation(
     @Body() dto: { sessionId?: string },
     @Req() req: Request,
@@ -136,29 +127,34 @@ export class TenantAccessController {
   ): Promise<{ redirectUrl: string }> {
     const user = req.user as any;
 
-    const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
-    const frontendPort = process.env.FRONTEND_PORT || '3000';
-    
+    console.log('🔚 Ending impersonation session:', {
+      userId: user.id,
+      sessionId: dto.sessionId
+    });
+
     // Use sessionId from body if provided, otherwise fall back to user's current session
     const sessionId = dto.sessionId || user.impersonationSessionId;
-    
+
     if (sessionId && user.accessType === 'impersonation') {
-      // End impersonation session in DB
-      const { redirectUrl } = await this.authService.endImpersonation(
+      const result = await this.authService.endImpersonation(
         sessionId,
-        req.ip,
-        req.get('User-Agent')
+        user.id
       );
-      res.clearCookie('Authentication');
-      return { redirectUrl };
+
+      const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
+      const frontendPort = process.env.FRONTEND_PORT || '3000';
+      
+      // Handle both string and object return types
+      const redirectUrl = typeof result === 'string' ? result : result.redirectUrl;
+      const finalRedirectUrl = redirectUrl || `http://platform.${baseDomain}:${frontendPort}`;
+      
+      console.log('🔚 Impersonation ended successfully, redirectUrl:', finalRedirectUrl);
+      return { redirectUrl: finalRedirectUrl };
     } else {
-      // Secure login: just clear cookie and redirect to master
-      res.clearCookie('Authentication');
-      return { redirectUrl: `http://${baseDomain}:${frontendPort}/platform` };
+      throw new ForbiddenException('No active impersonation session found');
     }
   }
 
-  // Get tenant users for impersonation
   @Get('tenants/:tenantId/users')
   @AdminRateLimit()
   @RequireAdmin()
@@ -168,14 +164,14 @@ export class TenantAccessController {
     @Req() req: Request,
   ): Promise<any[]> {
     const user = req.user as any;
-    
+
     // Validate user can impersonate in this tenant
-    const canImpersonate = await this.authService.validateImpersonationPermission(
-      user.id, 
+    const hasAccess = await this.authService.validateImpersonationPermission(
+      user.id,
       tenantId
     );
-    
-    if (!canImpersonate) {
+
+    if (!hasAccess) {
       throw new ForbiddenException('Cannot impersonate users in this tenant.');
     }
 
