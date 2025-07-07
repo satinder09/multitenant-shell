@@ -1,0 +1,129 @@
+---
+title: Getting Started
+description: Get started with the Multitenant Shell platform
+---
+
+# Getting Started
+
+Get your multitenant application up and running in minutes.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Node.js 18+** - [Download here](https://nodejs.org/)
+- **PostgreSQL 14+** - [Download here](https://www.postgresql.org/download/)
+- **Redis** (optional, for caching) - [Download here](https://redis.io/download)
+- **Git** - [Download here](https://git-scm.com/)
+
+## Installation
+
+Follow these steps to set up your development environment:
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd multitenant-shell
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment Configuration
+
+Create your environment files:
+
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file with your configuration:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/multitenant_db"
+
+# JWT Configuration
+JWT_SECRET="your-super-secret-jwt-key"
+JWT_REFRESH_SECRET="your-super-secret-refresh-key"
+
+# Redis (optional)
+REDIS_URL="redis://localhost:6379"
+
+# API Configuration
+API_PORT=4000
+FRONTEND_PORT=3000
+```
+
+### 4. Database Setup
+
+Initialize the database:
+
+```bash
+cd apps/backend
+npx prisma migrate dev
+npx prisma db seed
+```
+
+### 5. Start Development Servers
+
+Start all services:
+
+```bash
+# Terminal 1: Backend API (port 4000)
+cd apps/backend
+npm run start:dev
+
+# Terminal 2: Frontend (port 3000)
+cd apps/frontend
+npm run dev
+
+# Terminal 3: Documentation (port 3001)
+cd apps/docs
+npm run dev
+```
+
+## Verification
+
+Once everything is running, verify your setup:
+
+1. **Backend API**: Visit http://localhost:4000/health
+2. **Frontend**: Visit http://localhost:3000
+3. **Documentation**: Visit http://localhost:3001/docs
+
+## Next Steps
+
+Now that you have the platform running:
+
+1. **Explore the API**: Check out the [Users API](/docs/api/users) documentation
+2. **Set up your first tenant**: Use the platform admin interface
+3. **Configure authentication**: Customize JWT settings
+4. **Deploy to production**: Follow our deployment guide
+
+## Troubleshooting
+
+### Common Issues
+
+**Port Already in Use**
+```bash
+# Find and kill process using port
+lsof -ti:4000 | xargs kill -9
+```
+
+**Database Connection Issues**
+- Ensure PostgreSQL is running
+- Check your DATABASE_URL in .env
+- Verify database credentials
+
+**Module Not Found**
+```bash
+# Clear cache and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+Need help? Check our [FAQ](/docs/faq) or [contact support](/docs/support). 

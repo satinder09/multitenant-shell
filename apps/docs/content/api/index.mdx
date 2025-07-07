@@ -1,0 +1,96 @@
+---
+title: API Reference
+description: Complete API documentation for the multitenant shell
+---
+
+# API Reference
+
+Welcome to the comprehensive API documentation for the multitenant shell application.
+
+## Users API
+
+The Users API provides complete user management functionality within tenant contexts with full CRUD operations, advanced filtering, and role-based access control.
+
+**Key Features:**
+- Complete CRUD operations for users
+- Advanced filtering and search capabilities
+- Pagination support for large datasets
+- Role-based access control (user, admin, manager)
+- Status management (active, inactive, suspended)
+- Profile management and settings
+
+[Explore Users API →](/docs/api/users)
+
+## Authentication
+
+All API endpoints require authentication using JWT tokens. You can authenticate using:
+
+### Bearer Token Authentication
+Include the JWT token in the Authorization header:
+```bash
+Authorization: Bearer <your-jwt-token>
+```
+
+### Cookie Authentication
+Automatic cookie-based authentication for web applications (HTTP-Only cookies).
+
+## Base URLs
+
+- **Development**: `http://localhost:4000`
+- **Tenant-specific**: `http://tenant.lvh.me:4000`
+- **Production**: `https://api.yourdomain.com`
+
+## Request/Response Format
+
+All API endpoints use JSON format:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Operation completed successfully"
+}
+```
+
+### Error Responses
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid request data",
+    "details": { ... }
+  }
+}
+```
+
+## Rate Limiting
+
+Standard rate limiting applies to all endpoints:
+
+- **Authenticated users**: 1000 requests per hour
+- **Unauthenticated**: 100 requests per hour
+
+Rate limit headers are included in all responses:
+```
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 999
+X-RateLimit-Reset: 1640995200
+```
+
+## API Versioning
+
+The API uses URL versioning:
+- Current version: `v1`
+- All endpoints are prefixed with `/api/v1/`
+
+## Interactive Documentation
+
+Use our interactive API documentation to:
+- Test API endpoints directly
+- View request/response examples
+- Understand authentication requirements
+- Explore all available parameters
+
+[Try the Users API →](/docs/api/users) 

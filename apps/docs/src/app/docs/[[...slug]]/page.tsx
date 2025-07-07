@@ -4,7 +4,6 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { Card, Cards } from '@/components/mdx-components';
 
 interface PageProps {
   params: {
@@ -14,7 +13,14 @@ interface PageProps {
 
 export default async function Page({ params }: PageProps) {
   const slug = params.slug || [];
-  const filePath = slug.length === 0 ? 'index.mdx' : `${slug.join('/')}.mdx`;
+  
+  // Map slug to file path
+  let filePath: string;
+  if (slug.length === 0) {
+    filePath = 'index.mdx';
+  } else {
+    filePath = `${slug.join('/')}.mdx`;
+  }
   
   try {
     const fullPath = path.join(process.cwd(), 'content', filePath);
@@ -23,11 +29,7 @@ export default async function Page({ params }: PageProps) {
 
     return (
       <DocsPage 
-        toc={[
-          { title: 'Overview', url: '#overview', depth: 2 },
-          { title: 'Features', url: '#features', depth: 2 },
-          { title: 'Getting Started', url: '#getting-started', depth: 2 },
-        ]}
+        toc={[]}
         full={frontMatter.full}
         tableOfContent={{
           enabled: true,
@@ -35,14 +37,16 @@ export default async function Page({ params }: PageProps) {
         lastUpdate={new Date()}
       >
         <DocsBody>
+          <h1>{frontMatter.title}</h1>
+          {frontMatter.description && (
+            <p className="lead text-lg text-muted-foreground mb-6">{frontMatter.description}</p>
+          )}
           <div className="prose prose-gray dark:prose-invert max-w-none">
-            <h1>{frontMatter.title}</h1>
-            {frontMatter.description && (
-              <p className="lead">{frontMatter.description}</p>
-            )}
             <MDXRemote 
-              source={content} 
-              components={{ Card, Cards }} 
+              source={content}
+              options={{
+                parseFrontmatter: true,
+              }}
             />
           </div>
         </DocsBody>
@@ -56,11 +60,9 @@ export default async function Page({ params }: PageProps) {
 
 export function generateStaticParams() {
   return [
-    { slug: [] }, // Introduction
-    { slug: ['quick-start'] },
-    { slug: ['api'] },
-    { slug: ['api', 'authentication'] },
-    { slug: ['api', 'tenants'] },
-    { slug: ['api', 'users'] },
+    { slug: [] }, // /docs
+    { slug: ['getting-started'] }, // /docs/getting-started
+    { slug: ['api'] }, // /docs/api
+    { slug: ['api', 'users'] }, // /docs/api/users
   ];
 } 

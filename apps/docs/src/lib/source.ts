@@ -1,47 +1,43 @@
-// Clean source configuration for multitenant shell documentation
+// Simple source configuration for basic documentation
 export const source = {
   pageTree: {
     name: 'Documentation',
-    type: 'folder' as const,
     children: [
       {
         name: 'Introduction',
-        type: 'page' as const,
         url: '/docs',
+        type: 'page' as const,
       },
       {
-        name: 'Quick Start',
+        name: 'Getting Started',
+        url: '/docs/getting-started',
         type: 'page' as const,
-        url: '/docs/quick-start',
       },
       {
         name: 'API Reference',
+        url: '/docs/api',
         type: 'folder' as const,
         children: [
           {
             name: 'Overview',
-            type: 'page' as const,
             url: '/docs/api',
+            type: 'page' as const,
           },
           {
-            name: 'Authentication',
-            type: 'page' as const,
-            url: '/docs/api/authentication',
-          },
-          {
-            name: 'Tenants',
-            type: 'page' as const,
-            url: '/docs/api/tenants',
-          },
-          {
-            name: 'Users',
-            type: 'page' as const,
+            name: 'Users API',
             url: '/docs/api/users',
+            type: 'page' as const,
           },
         ],
       },
     ],
   },
+  // Simple page getter that doesn't exist - will be handled by the page component
+  getPage: () => null,
+  generateParams: () => [],
 };
+
+// For now, export null for openapi until we fix the integration
+export const openapi = null;
 
 export default source; 

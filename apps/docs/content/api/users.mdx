@@ -1,140 +1,214 @@
 ---
 title: Users API
-description: Complete user management API for tenant operations
+description: Complete user management API with interactive examples
 ---
 
-# Multitenant Shell - Users API
+# Users API
 
-Comprehensive Users API documentation for the multitenant shell application.
+The Users API provides comprehensive user management functionality within tenant contexts.
 
-This API provides complete user management functionality including creation, retrieval, updating, and deletion of users within tenant contexts.
+## Overview
 
-## Key Features
+The Users API allows you to:
 
-- **Complete CRUD Operations**: Create, read, update, and delete users
-- **Advanced Filtering**: Search users by name, email, role, and status
-- **Pagination**: Efficient handling of large user datasets
-- **Role-based Access**: Support for different user roles (user, admin, manager)
-- **Status Management**: Handle active, inactive, and suspended users
-- **Comprehensive Validation**: Robust input validation with detailed error messages
+- **Create new users** with complete profile information
+- **List all users** with advanced filtering and pagination
+- **Get user details** by ID
+- **Update user information** including roles and status
+- **Delete users** when necessary
+
+## Base URL
+
+All API requests should be made to:
+```
+http://localhost:4000/api/v1/users
+```
 
 ## Authentication
 
-This API uses JWT-based authentication with two supported methods:
-1. **Bearer Token**: Include JWT in Authorization header
-2. **HTTP-Only Cookie**: Automatic cookie-based authentication
+All endpoints require authentication using JWT tokens:
 
-## Rate Limiting
+```bash
+Authorization: Bearer <your-jwt-token>
+```
 
-Standard API rate limiting applies to all endpoints to ensure fair usage.
+## Endpoints
 
-## API Information
+### Create User
 
-- **Version**: 1.0.0
-- **Base URL**: http://localhost:4000
-- **Total Endpoints**: 2
-- **Authentication**: Bearer Token / Cookie-based
-
-## Available Operations
-
-### GET /users
-Retrieve a paginated list of users with filtering and sorting options.
-
-### POST /users
 Create a new user in the current tenant.
 
-### GET /users/\{id\}
-Get detailed information about a specific user.
+**POST** `/users`
 
-### PATCH /users/\{id\}
-Update user information (partial update).
+**Request Body:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@example.com",
+  "role": "user",
+  "status": "active"
+}
+```
 
-### DELETE /users/\{id\}
-Permanently delete a user from the tenant.
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "user-123",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "role": "user",
+    "status": "active",
+    "createdAt": "2024-01-01T12:00:00Z"
+  }
+}
+```
 
-## Authentication
+### List Users
 
-This API uses JWT-based authentication. You can authenticate using:
+Get a paginated list of users with optional filtering.
 
-1. **Bearer Token**: Include the JWT token in the Authorization header
-   ```
-   Authorization: Bearer <your-jwt-token>
-   ```
+**GET** `/users`
 
-2. **HTTP-Only Cookie**: The API automatically reads JWT tokens from the 'Authentication' cookie
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10, max: 100)
+- `search` (optional): Search by name or email
+- `role` (optional): Filter by role (`user`, `admin`, `manager`)
+- `status` (optional): Filter by status (`active`, `inactive`, `suspended`)
 
-## User Roles
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "user-123",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@example.com",
+      "role": "user",
+      "status": "active"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "pages": 1
+  }
+}
+```
 
-The API supports three user roles:
-- **user**: Standard user with basic permissions
-- **admin**: Administrative user with elevated permissions
-- **manager**: Management user with intermediate permissions
+### Get User
 
-## User Status
+Get details of a specific user by ID.
 
-Users can have the following statuses:
-- **active**: User can access the system
-- **inactive**: User account is temporarily disabled
-- **suspended**: User account is suspended due to policy violations
+**GET** `/users/:id`
 
-## Rate Limiting
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "user-123",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "role": "user",
+    "status": "active",
+    "createdAt": "2024-01-01T12:00:00Z",
+    "updatedAt": "2024-01-01T12:00:00Z"
+  }
+}
+```
 
-Standard API rate limiting applies to all endpoints to ensure fair usage and prevent abuse.
+### Update User
 
-## Error Handling
+Update user information.
+
+**PATCH** `/users/:id`
+
+**Request Body:**
+```json
+{
+  "firstName": "Jane",
+  "role": "admin",
+  "status": "active"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "user-123",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "role": "admin",
+    "status": "active",
+    "updatedAt": "2024-01-01T13:00:00Z"
+  }
+}
+```
+
+### Delete User
+
+Delete a user by ID.
+
+**DELETE** `/users/:id`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User deleted successfully"
+}
+```
+
+## Error Responses
 
 All endpoints return consistent error responses:
 
 ```json
 {
-  "statusCode": 400,
-  "message": ["email must be a valid email"],
-  "error": "Bad Request"
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid request data",
+    "details": {
+      "email": "Invalid email format"
+    }
+  }
 }
 ```
 
-Common HTTP status codes:
+## Status Codes
+
 - **200**: Success
 - **201**: Created
-- **400**: Bad Request (validation errors)
-- **401**: Unauthorized (authentication required)
-- **403**: Forbidden (insufficient permissions)
-- **404**: Not Found (user doesn't exist)
-- **409**: Conflict (email already exists)
+- **400**: Bad Request
+- **401**: Unauthorized
+- **403**: Forbidden
+- **404**: Not Found
+- **422**: Validation Error
+- **500**: Internal Server Error
 
-## Example Usage
+## Interactive Documentation
 
-### Create a New User
+For interactive API testing with a beautiful UI, we're working on integrating Fumadocs OpenAPI components that will provide:
 
-```bash
-curl -X POST http://localhost:4000/users \
-  -H "Authorization: Bearer your-jwt-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john.doe@example.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "role": "user"
-  }'
-```
+- **Try it out** functionality
+- **Code samples** in multiple languages
+- **Request/response examples**
+- **Parameter validation**
+- **Authentication testing**
 
-### Get Users with Filtering
+Coming soon with full OpenAPI 3.0 specification integration!
 
-```bash
-curl -X GET "http://localhost:4000/users?page=1&limit=10&role=user&status=active" \
-  -H "Authorization: Bearer your-jwt-token"
-```
-
-### Update User
-
-```bash
-curl -X PATCH http://localhost:4000/users/123e4567-e89b-12d3-a456-426614174000 \
-  -H "Authorization: Bearer your-jwt-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "firstName": "Jonathan",
-    "role": "manager"
-  }'
-```
-
-Generated on: 2025-07-07T03:55:20.787Z
+Generated on: 2025-07-07T04:23:59.166Z
