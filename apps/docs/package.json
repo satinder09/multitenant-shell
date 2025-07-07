@@ -34,7 +34,7 @@
     "framer-motion": "^11.5.0",
     "fumadocs-core": "^13.4.10",
     "fumadocs-mdx": "^10.0.2",
-    "fumadocs-openapi": "^6.0.0",
+    "fumadocs-openapi": "6.3.0",
     "fumadocs-ui": "^13.4.10",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0",
