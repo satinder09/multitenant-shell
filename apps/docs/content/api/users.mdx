@@ -1,0 +1,91 @@
+---
+title: Users API
+description: users endpoints in My Application
+---
+
+# Users API
+
+
+## Get Users
+
+`GET /users`
+
+Retrieve all users
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X GET "https://api.myapp.com/v1/users" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+
+## Create User
+
+`POST /users`
+
+Add new user
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X POST "https://api.myapp.com/v1/users" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+
+## Get User Profile
+
+`GET /users/{id}`
+
+Get user details
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X GET "https://api.myapp.com/v1/users/{id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+

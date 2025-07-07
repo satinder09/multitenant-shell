@@ -1,0 +1,147 @@
+---
+title: Core API
+description: core endpoints in My Application
+---
+
+# Core API
+
+
+## Get Items
+
+`GET /items`
+
+Retrieve all items
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X GET "https://api.myapp.com/v1/items" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+
+## Create Item
+
+`POST /items`
+
+Create a new item
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X POST "https://api.myapp.com/v1/items" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+
+## Get Item
+
+`GET /items/{id}`
+
+Get specific item
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X GET "https://api.myapp.com/v1/items/{id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+
+## Update Item
+
+`PUT /items/{id}`
+
+Update existing item
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X PUT "https://api.myapp.com/v1/items/{id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+
+## Delete Item
+
+`DELETE /items/{id}`
+
+Delete item
+
+### Authentication Required
+
+This endpoint requires a valid JWT token.
+
+### Example Request
+
+```bash
+curl -X DELETE "https://api.myapp.com/v1/items/{id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+

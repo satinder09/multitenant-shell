@@ -92,15 +92,15 @@ USER nestjs
 
 # Environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=4000
 ENV LOG_LEVEL=info
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+    CMD node -e "require('http').get('http://localhost:4000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Expose port
-EXPOSE 3000
+EXPOSE 4000
 
 # Use tini as init system for proper signal handling
 ENTRYPOINT ["tini", "--"]
@@ -127,10 +127,10 @@ RUN mkdir -p /app/logs /app/uploads /app/temp
 
 # Development environment
 ENV NODE_ENV=development
-ENV PORT=3000
+ENV PORT=4000
 
 # Expose port and debugging port
-EXPOSE 3000 9229
+EXPOSE 4000 9229
 
 # Development start command with hot reload and debugging
 CMD ["npm", "run", "start:dev"]

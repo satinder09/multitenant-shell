@@ -1,0 +1,5 @@
+{
+  "title": "Documentation",
+  "description": "Complete documentation for your application",
+  "pages": ["index", "getting-started", "features", "api", "integrations"]
+} 

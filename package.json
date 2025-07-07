@@ -1,0 +1,65 @@
+{
+  "name": "multitenant-shell-monorepo",
+  "version": "1.0.0",
+  "description": "Modern SaaS Enterprise Multitenant Shell with Backend, Frontend, and Documentation",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"Backend,Frontend,Docs\" -c \"blue,green,yellow\" \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:docs\"",
+    "dev:single": "./dev-start.sh",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:docs": "npm run dev --workspace=apps/docs",
+    "build": "npm run build:backend && npm run build:frontend && npm run build:docs",
+    "build:backend": "npm run build --workspace=apps/backend",
+    "build:frontend": "npm run build --workspace=apps/frontend",
+    "build:docs": "npm run build --workspace=apps/docs",
+    "start": "concurrently -n \"Backend,Frontend,Docs\" -c \"blue,green,yellow\" \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:docs\"",
+    "start:backend": "npm run start --workspace=apps/backend",
+    "start:frontend": "npm run start --workspace=apps/frontend",
+    "start:docs": "npm run start --workspace=apps/docs",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "npm run test --workspace=apps/backend",
+    "test:frontend": "npm run test --workspace=apps/frontend",
+    "lint": "npm run lint:backend && npm run lint:frontend && npm run lint:docs",
+    "lint:backend": "npm run lint --workspace=apps/backend",
+    "lint:frontend": "npm run lint --workspace=apps/frontend",
+    "lint:docs": "npm run lint --workspace=apps/docs",
+    "format": "npm run format:backend && npm run format:frontend && npm run format:docs",
+    "format:backend": "npm run format --workspace=apps/backend",
+    "format:frontend": "npm run format --workspace=apps/frontend",
+    "format:docs": "npm run format --workspace=apps/docs",
+    "typecheck": "npm run typecheck --workspace=apps/backend && npm run typecheck --workspace=apps/frontend && npm run typecheck --workspace=apps/docs",
+    "clean": "rm -rf apps/*/node_modules apps/*/dist apps/*/.next apps/*/coverage && npm cache clean --force",
+    "clean:install": "npm run clean && npm install",
+    "docs:generate": "npm run docs:generate --workspace=apps/docs",
+    "postinstall": "npm run build:backend --if-present",
+    "setup": "npm install && npm run build:backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/multitenant-shell.git"
+  },
+  "keywords": [
+    "multitenant",
+    "saas",
+    "enterprise",
+    "nestjs",
+    "nextjs",
+    "fumadocs"
+  ],
+  "author": "Your Organization",
+  "license": "MIT"
+}

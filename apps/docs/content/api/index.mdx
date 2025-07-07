@@ -1,0 +1,168 @@
+---
+title: API Reference
+description: Complete API documentation for My Application
+---
+
+# API Reference
+
+The My Application API provides programmatic access to all features.
+
+## Base URL
+
+```
+https://api.myapp.com/v1
+```
+
+## Authentication
+
+JWT Bearer token authentication
+
+### Usage
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://api.myapp.com/v1/endpoint
+```
+
+## Endpoints by Category
+
+
+### Core
+
+
+#### Get Items
+
+`GET /items`
+
+Retrieve all items
+
+🔒 **Authentication required**
+
+[View details](/docs/api/core#get-items)
+
+
+#### Create Item
+
+`POST /items`
+
+Create a new item
+
+🔒 **Authentication required**
+
+[View details](/docs/api/core#create-item)
+
+
+#### Get Item
+
+`GET /items/{id}`
+
+Get specific item
+
+🔒 **Authentication required**
+
+[View details](/docs/api/core#get-item)
+
+
+#### Update Item
+
+`PUT /items/{id}`
+
+Update existing item
+
+🔒 **Authentication required**
+
+[View details](/docs/api/core#update-item)
+
+
+#### Delete Item
+
+`DELETE /items/{id}`
+
+Delete item
+
+🔒 **Authentication required**
+
+[View details](/docs/api/core#delete-item)
+
+
+
+### Users
+
+
+#### Get Users
+
+`GET /users`
+
+Retrieve all users
+
+🔒 **Authentication required**
+
+[View details](/docs/api/users#get-users)
+
+
+#### Create User
+
+`POST /users`
+
+Add new user
+
+🔒 **Authentication required**
+
+[View details](/docs/api/users#create-user)
+
+
+#### Get User Profile
+
+`GET /users/{id}`
+
+Get user details
+
+🔒 **Authentication required**
+
+[View details](/docs/api/users#get-user-profile)
+
+
+
+### Reports
+
+
+#### Get Reports
+
+`GET /reports`
+
+Generate reports
+
+🔒 **Authentication required**
+
+[View details](/docs/api/reports#get-reports)
+
+
+#### Export Data
+
+`POST /export`
+
+Export application data
+
+🔒 **Authentication required**
+
+[View details](/docs/api/reports#export-data)
+
+
+
+## Quick Examples
+
+### Get Items
+
+```bash
+curl -X GET "https://api.myapp.com/v1/items" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Create Item
+
+```bash
+curl -X POST "https://api.myapp.com/v1/items" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "New Item", "description": "Item description"}'
+```
