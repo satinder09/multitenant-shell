@@ -1,0 +1,194 @@
+###
+# 🔐 TWO-FACTOR AUTHENTICATION API TESTING
+# Use with VS Code REST Client extension or import into Postman
+###
+
+@baseUrl = http://localhost:4000
+@platformUser = platform-user-id-123
+@tenantUser = tenant-user-id-456
+@tenantId = tenant-123
+
+### 1. PLATFORM ADMIN 2FA TESTING
+
+# Get Platform User 2FA Status
+GET {{baseUrl}}/platform/2fa/status
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+###
+
+# Setup TOTP for Platform User
+POST {{baseUrl}}/platform/2fa/setup
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+{
+  "methodType": "TOTP",
+  "name": "My Authenticator App"
+}
+
+###
+
+# Verify TOTP Code for Platform User
+POST {{baseUrl}}/platform/2fa/verify
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+{
+  "methodType": "TOTP",
+  "code": "123456"
+}
+
+###
+
+# Enable 2FA Method for Platform User
+POST {{baseUrl}}/platform/2fa/enable
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+{
+  "methodId": "method-id-from-setup-response"
+}
+
+###
+
+# Generate Backup Codes for Platform User
+POST {{baseUrl}}/platform/2fa/backup-codes/generate
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+###
+
+# Verify Backup Code for Platform User
+POST {{baseUrl}}/platform/2fa/backup-codes/verify
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+{
+  "code": "ABCD1234"
+}
+
+###
+
+# Get Recovery Info for Platform User
+GET {{baseUrl}}/platform/2fa/recovery
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+###
+
+# Disable 2FA Method for Platform User
+DELETE {{baseUrl}}/platform/2fa/method/method-id-123
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json
+
+### 2. TENANT USER 2FA TESTING
+
+# Get Tenant User 2FA Status
+GET {{baseUrl}}/tenant/2fa/status
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+###
+
+# Setup TOTP for Tenant User
+POST {{baseUrl}}/tenant/2fa/setup
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+{
+  "methodType": "TOTP",
+  "name": "Tenant User Authenticator"
+}
+
+###
+
+# Verify TOTP Code for Tenant User
+POST {{baseUrl}}/tenant/2fa/verify
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+{
+  "methodType": "TOTP",
+  "code": "654321"
+}
+
+###
+
+# Enable 2FA Method for Tenant User
+POST {{baseUrl}}/tenant/2fa/enable
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+{
+  "methodId": "tenant-method-id-from-setup-response"
+}
+
+###
+
+# Generate Backup Codes for Tenant User
+POST {{baseUrl}}/tenant/2fa/backup-codes/generate
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+###
+
+# Verify Backup Code for Tenant User
+POST {{baseUrl}}/tenant/2fa/backup-codes/verify
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+{
+  "code": "EFGH5678"
+}
+
+###
+
+# Get Recovery Info for Tenant User
+GET {{baseUrl}}/tenant/2fa/recovery
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+###
+
+# Disable 2FA Method for Tenant User
+DELETE {{baseUrl}}/tenant/2fa/method/tenant-method-id-456
+Authorization: Bearer your-jwt-token-here
+X-Tenant-ID: {{tenantId}}
+Content-Type: application/json
+
+### 3. AUTHENTICATION FLOW TESTING
+
+# Standard Login (for getting JWT token)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@platform.com",
+  "password": "your-password"
+}
+
+###
+
+# Secure Login with Enhanced Security
+POST {{baseUrl}}/auth/security/login
+Content-Type: application/json
+
+{
+  "email": "admin@platform.com",
+  "password": "your-password"
+}
+
+###
+
+# Get Current User Info
+GET {{baseUrl}}/auth/me
+Authorization: Bearer your-jwt-token-here
+Content-Type: application/json 

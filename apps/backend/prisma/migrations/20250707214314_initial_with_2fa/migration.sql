@@ -4,6 +4,12 @@ CREATE TYPE "ImpersonationStatus" AS ENUM ('ACTIVE', 'ENDED', 'EXPIRED', 'REVOKE
 -- CreateEnum
 CREATE TYPE "AccessType" AS ENUM ('SECURE_LOGIN', 'IMPERSONATION', 'DIRECT_ACCESS');
 
+-- CreateEnum
+CREATE TYPE "TwoFactorMethodType" AS ENUM ('TOTP', 'SMS', 'EMAIL', 'WEBAUTHN', 'BACKUP_CODES');
+
+-- CreateEnum
+CREATE TYPE "TwoFactorAction" AS ENUM ('SETUP', 'ENABLE', 'DISABLE', 'VERIFY_SUCCESS', 'VERIFY_FAILURE', 'BACKUP_USED', 'RESET', 'DELETE');
+
 -- CreateTable
 CREATE TABLE "Tenant" (
     "id" TEXT NOT NULL,
@@ -27,8 +33,40 @@ CREATE TABLE "User" (
     "isSuperAdmin" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "twoFactorBackupCodes" TEXT[],
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TwoFactorMethod" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "methodType" "TwoFactorMethodType" NOT NULL,
+    "isEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "secretData" TEXT,
+    "name" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "lastUsedAt" TIMESTAMP(3),
+
+    CONSTRAINT "TwoFactorMethod_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TwoFactorAuditLog" (
+    "id" TEXT NOT NULL,
+    "methodId" TEXT NOT NULL,
+    "action" "TwoFactorAction" NOT NULL,
+    "success" BOOLEAN NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "metadata" JSONB,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "TwoFactorAuditLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -131,6 +169,9 @@ CREATE UNIQUE INDEX "Tenant_dbName_key" ON "Tenant"("dbName");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "TwoFactorMethod_userId_methodType_key" ON "TwoFactorMethod"("userId", "methodType");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ImpersonationSession_sessionId_key" ON "ImpersonationSession"("sessionId");
 
 -- CreateIndex
@@ -138,6 +179,12 @@ CREATE UNIQUE INDEX "Role_name_key" ON "Role"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Permission_name_key" ON "Permission"("name");
+
+-- AddForeignKey
+ALTER TABLE "TwoFactorMethod" ADD CONSTRAINT "TwoFactorMethod_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TwoFactorAuditLog" ADD CONSTRAINT "TwoFactorAuditLog_methodId_fkey" FOREIGN KEY ("methodId") REFERENCES "TwoFactorMethod"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "TenantUserPermission" ADD CONSTRAINT "TenantUserPermission_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -6,8 +6,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './controllers/auth.controller';
 import { TenantAccessController } from './controllers/tenant-access.controller';
 import { SecurityController } from './controllers/security.controller';
+import { PlatformTwoFactorController } from './controllers/platform-two-factor.controller';
+import { TenantTwoFactorController } from './controllers/tenant-two-factor.controller';
 import { AuthService } from './services/auth.service';
 import { AuthSecurityService } from './services/auth-security.service';
+import { TwoFactorAuthService } from './services/two-factor-auth.service';
+import { TwoFactorMethodRegistryService } from './services/two-factor-method-registry.service';
+import { BackupCodesService } from './services/backup-codes.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { DatabaseModule } from '../database/database.module';
 import { TenantModule } from '../tenant/tenant.module';
@@ -30,10 +35,13 @@ import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
     DatabaseModule,
     TenantModule,
   ],
-  controllers: [AuthController, TenantAccessController, SecurityController],
+  controllers: [AuthController, TenantAccessController, SecurityController, PlatformTwoFactorController, TenantTwoFactorController],
   providers: [
     AuthService,
     AuthSecurityService,
+    TwoFactorAuthService,
+    TwoFactorMethodRegistryService,
+    BackupCodesService,
     JwtStrategy,
     JwtAuthGuard,
     AuthorizationGuard,

@@ -520,4 +520,65 @@ export class AuthSecurityService {
     
     this.logger.log('Security monitoring initialized');
   }
+
+  // =============================================================================
+  // ENCRYPTION/DECRYPTION METHODS FOR 2FA
+  // =============================================================================
+
+  /**
+   * Encrypt sensitive data for secure storage (e.g., 2FA secrets)
+   */
+  async encrypt(data: string): Promise<string> {
+    try {
+      const algorithm = 'aes-256-cbc';
+      const key = this.configService.get<string>('CRYPTO_KEY') || 'default-secret-key-32-chars-long';
+      const iv = crypto.randomBytes(16);
+      
+      const cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
+      let encrypted = cipher.update(data, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      
+      return iv.toString('hex') + ':' + encrypted;
+    } catch (error) {
+      this.logger.error('Failed to encrypt data', error);
+      throw new Error('Encryption failed');
+    }
+  }
+
+  /**
+   * Decrypt sensitive data from secure storage (e.g., 2FA secrets)
+   */
+  async decrypt(encryptedData: string): Promise<string> {
+    try {
+      const algorithm = 'aes-256-cbc';
+      const key = this.configService.get<string>('CRYPTO_KEY') || 'default-secret-key-32-chars-long';
+      
+      const [ivHex, encrypted] = encryptedData.split(':');
+      const iv = Buffer.from(ivHex, 'hex');
+      
+      const decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      return decrypted;
+    } catch (error) {
+      this.logger.error('Failed to decrypt data', error);
+      throw new Error('Decryption failed');
+    }
+  }
+
+  /**
+   * Generate a cryptographically secure random secret
+   */
+  generateSecret(length: number = 32): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const bytes = crypto.randomBytes(length);
+    
+    for (let i = 0; i < length; i++) {
+      result += chars[bytes[i] % chars.length];
+    }
+    
+    return result;
+  }
 } 

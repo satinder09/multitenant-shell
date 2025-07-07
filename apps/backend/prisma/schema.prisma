@@ -32,10 +32,53 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // 2FA Support - Extensible for multiple methods
+  twoFactorEnabled     Boolean  @default(false)
+  twoFactorBackupCodes String[] // Encrypted backup codes
+
   permissions TenantUserPermission[]
   initiatedImpersonations ImpersonationSession[] @relation("OriginalUser")
   accessLogs TenantAccessLog[]
   userRoles UserRole[]
+  twoFactorMethods TwoFactorMethod[]
+}
+
+// Extensible 2FA Methods Model
+model TwoFactorMethod {
+  id            String              @id @default(cuid())
+  userId        String
+  methodType    TwoFactorMethodType
+  isEnabled     Boolean             @default(false)
+  isPrimary     Boolean             @default(false)
+  
+  // Method-specific data (encrypted)
+  secretData    String? // TOTP secret, SMS phone number, etc.
+  
+  // Metadata
+  name          String? // User-friendly name
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastUsedAt    DateTime?
+  
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Audit trail
+  auditLogs     TwoFactorAuditLog[]
+
+  @@unique([userId, methodType])
+}
+
+model TwoFactorAuditLog {
+  id              String           @id @default(cuid())
+  methodId        String
+  action          TwoFactorAction
+  success         Boolean
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  timestamp       DateTime         @default(now())
+  
+  method          TwoFactorMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
 }
 
 model TenantUserPermission {
@@ -111,6 +154,26 @@ enum AccessType {
   SECURE_LOGIN
   IMPERSONATION
   DIRECT_ACCESS
+}
+
+// 2FA Enums for extensibility
+enum TwoFactorMethodType {
+  TOTP          // Time-based One-Time Password (Google Authenticator, etc.)
+  SMS           // SMS-based OTP
+  EMAIL         // Email-based OTP
+  WEBAUTHN      // WebAuthn/FIDO2 (Hardware keys, biometric)
+  BACKUP_CODES  // Backup recovery codes
+}
+
+enum TwoFactorAction {
+  SETUP
+  ENABLE
+  DISABLE
+  VERIFY_SUCCESS
+  VERIFY_FAILURE
+  BACKUP_USED
+  RESET
+  DELETE
 }
 
 model Role {
