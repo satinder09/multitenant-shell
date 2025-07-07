@@ -1,4 +1,4 @@
-// Simple source configuration for basic documentation
+// Minimal source configuration for documentation
 export const source = {
   pageTree: {
     name: 'Documentation',
@@ -32,12 +32,25 @@ export const source = {
       },
     ],
   },
-  // Simple page getter that doesn't exist - will be handled by the page component
+  getPage: (slug: string[]) => {
+    // For now, return null - pages will be handled directly by the page component
+    return null;
+  },
+  generateParams: () => {
+    // Return basic page routes
+    return [
+      { slug: [] },
+      { slug: ['getting-started'] },
+      { slug: ['api'] },
+      { slug: ['api', 'users'] },
+    ];
+  },
+};
+
+// Placeholder for OpenAPI integration - will be enhanced in next step
+export const openapi = {
   getPage: () => null,
   generateParams: () => [],
 };
-
-// For now, export null for openapi until we fix the integration
-export const openapi = null;
 
 export default source; 

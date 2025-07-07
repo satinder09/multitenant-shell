@@ -4,103 +4,701 @@
 
 @import 'fumadocs-ui/style.css';
 
+/* Import Google Fonts for better typography */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
 @layer base {
-  * {
-    @apply border-gray-200 dark:border-gray-700;
+  /* Enhanced CSS Custom Properties for better theming */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.75rem;
+    
+    /* Enhanced font family variables */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+    
+    /* Smooth transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Enhanced shadows for depth */
+    --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-medium: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-large: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    
+    /* Dark mode shadows */
+    --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadow-medium: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-large: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+  }
+  
+  /* Enhanced base typography */
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
   body {
-    @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: -0.011em;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Enhanced headings with better typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    color: hsl(var(--foreground));
+  }
+  
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+  }
+  
+  h2 {
+    font-size: 1.875rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  /* Enhanced code and monospace */
+  code, pre, kbd, samp {
+    font-family: var(--font-mono);
+    font-feature-settings: 'liga' 0;
+  }
+  
+  /* Smooth transitions for all interactive elements */
+  * {
+    @apply border-border;
+    transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+  }
+  
+  /* Enhanced focus states */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: var(--radius);
   }
 }
 
-/* Fumadocs specific styles */
+@layer utilities {
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+  
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+  
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+  
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+  
+  .bg-secondary {
+    background-color: hsl(var(--secondary));
+  }
+  
+  .text-secondary-foreground {
+    color: hsl(var(--secondary-foreground));
+  }
+  
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+  
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .bg-accent {
+    background-color: hsl(var(--accent));
+  }
+  
+  .text-accent-foreground {
+    color: hsl(var(--accent-foreground));
+  }
+  
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
+  }
+  
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+  
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+  
+  .border-ring {
+    border-color: hsl(var(--ring));
+  }
+  
+  .border-input {
+    border-color: hsl(var(--input));
+  }
+  
+  .border-primary {
+    border-color: hsl(var(--primary));
+  }
+  
+  .border-secondary {
+    border-color: hsl(var(--secondary));
+  }
+  
+  .border-muted {
+    border-color: hsl(var(--muted));
+  }
+  
+  .border-accent {
+    border-color: hsl(var(--accent));
+  }
+  
+  .border-destructive {
+    border-color: hsl(var(--destructive));
+  }
+  
+  .bg-input {
+    background-color: hsl(var(--input));
+  }
+  
+  .ring-ring {
+    --tw-ring-color: hsl(var(--ring));
+  }
+  
+  /* Enhanced shadow utilities */
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-medium {
+    box-shadow: var(--shadow-medium);
+  }
+  
+  .shadow-large {
+    box-shadow: var(--shadow-large);
+  }
+  
+  .shadow-xl {
+    box-shadow: var(--shadow-xl);
+  }
+}
+
+/* Enhanced scrollbar with smoother appearance */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+  transition: background-color var(--transition-fast);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Enhanced API Documentation specific styles */
+.api-endpoint-card {
+  @apply bg-card border border-border rounded-xl p-6 shadow-soft;
+  transition: all var(--transition-normal);
+  backdrop-filter: blur(8px);
+}
+
+.api-endpoint-card:hover {
+  @apply shadow-medium;
+  transform: translateY(-1px);
+}
+
+.api-method-get {
+  @apply bg-blue-50 text-blue-700 border-blue-200;
+  box-shadow: 0 0 0 1px rgb(59 130 246 / 0.1);
+}
+
+.api-method-post {
+  @apply bg-green-50 text-green-700 border-green-200;
+  box-shadow: 0 0 0 1px rgb(34 197 94 / 0.1);
+}
+
+.api-method-put {
+  @apply bg-orange-50 text-orange-700 border-orange-200;
+  box-shadow: 0 0 0 1px rgb(249 115 22 / 0.1);
+}
+
+.api-method-patch {
+  @apply bg-yellow-50 text-yellow-700 border-yellow-200;
+  box-shadow: 0 0 0 1px rgb(245 158 11 / 0.1);
+}
+
+.api-method-delete {
+  @apply bg-red-50 text-red-700 border-red-200;
+  box-shadow: 0 0 0 1px rgb(239 68 68 / 0.1);
+}
+
+.code-block {
+  @apply bg-muted p-4 rounded-lg font-mono text-sm shadow-soft;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  line-height: 1.6;
+  border: 1px solid hsl(var(--border));
+}
+
+/* Responsive utilities with smooth transitions */
+@media (max-width: 768px) {
+  .api-endpoint-card {
+    @apply p-4;
+  }
+  
+  .code-block {
+    @apply p-3 text-xs;
+  }
+  
+  h1 {
+    font-size: 1.875rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/*----------------------------
+ 🌐 Enhanced Global Resets & Typography
+-----------------------------*/
+@layer base {
+  html,
+  body {
+    padding: 0;
+    margin: 0;
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'ss01' 1;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+
+  /* Enhanced interactive elements */
+  button, input, select, textarea {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+  }
+  
+  button {
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  
+  button:hover {
+    transform: translateY(-1px);
+  }
+  
+  button:active {
+    transform: translateY(0);
+  }
+}
+
+/*----------------------------
+ 📖 Enhanced Fumadocs & Prose Styling
+-----------------------------*/
 .prose {
-  @apply text-gray-900 dark:text-gray-100;
+  @apply text-foreground;
+  font-family: var(--font-sans);
+  line-height: 1.75;
+  letter-spacing: -0.011em;
 }
 
 .prose h1 {
-  @apply text-3xl font-bold tracking-tight mb-4;
+  @apply text-4xl font-bold tracking-tight mb-6 text-foreground;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
 }
 
 .prose h2 {
-  @apply text-2xl font-semibold mt-8 mb-4;
+  @apply text-3xl font-semibold mt-12 mb-6 text-foreground;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
 }
 
 .prose h3 {
-  @apply text-xl font-semibold mt-6 mb-3;
+  @apply text-2xl font-semibold mt-8 mb-4 text-foreground;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
 }
 
 .prose p {
-  @apply mb-4 leading-relaxed;
+  @apply mb-6 leading-relaxed text-muted-foreground;
+  font-size: 1rem;
+  line-height: 1.75;
 }
 
 .prose .lead {
-  @apply text-lg text-gray-600 dark:text-gray-400 mb-6;
+  @apply text-xl text-muted-foreground mb-8;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: -0.011em;
 }
 
 .prose ul {
-  @apply mb-4 pl-6;
+  @apply mb-6 pl-6;
 }
 
 .prose li {
-  @apply mb-2;
+  @apply mb-3;
+  line-height: 1.7;
 }
 
 .prose code {
-  @apply bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 text-sm;
+  @apply bg-muted rounded-md px-2 py-1 text-sm text-foreground;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  border: 1px solid hsl(var(--border));
 }
 
 .prose pre {
-  @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto mb-4;
+  @apply bg-muted rounded-xl p-6 overflow-x-auto mb-6 shadow-soft;
+  font-family: var(--font-mono);
+  border: 1px solid hsl(var(--border));
 }
 
 .prose pre code {
   @apply bg-transparent p-0;
+  border: none;
 }
 
-/* Custom components */
+.prose blockquote {
+  @apply border-l-4 border-primary pl-6 my-6 italic text-muted-foreground;
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+/*----------------------------
+ 🧩 Enhanced Custom Components
+-----------------------------*/
 .not-prose {
-  @apply text-gray-900 dark:text-gray-100;
+  @apply text-foreground;
+  font-family: var(--font-sans);
 }
 
-/* Card component enhancements */
+/* Enhanced card components with smooth interactions */
 .docs-card {
-  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow;
+  @apply bg-card border border-border rounded-xl p-8 shadow-soft;
+  transition: all var(--transition-normal);
+  backdrop-filter: blur(8px);
+  background: linear-gradient(145deg, 
+    hsl(var(--card)), 
+    hsl(var(--card) / 0.95)
+  );
 }
 
 .docs-card:hover {
-  @apply border-blue-500 dark:border-blue-400;
+  @apply shadow-large;
+  border-color: hsl(var(--ring) / 0.3);
+  transform: translateY(-2px);
 }
 
+/* Enhanced button components with smooth animations */
 .docs-button {
-  @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+  @apply inline-flex items-center justify-center rounded-lg text-sm font-medium;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.011em;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-soft);
+}
+
+.docs-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-medium);
+}
+
+.docs-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-soft);
 }
 
 .docs-button-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 h-10 py-2 px-4;
+  @apply bg-primary text-primary-foreground h-11 py-3 px-6;
+  background: linear-gradient(145deg, 
+    hsl(var(--primary)), 
+    hsl(var(--primary) / 0.9)
+  );
+}
+
+.docs-button-primary:hover {
+  background: linear-gradient(145deg, 
+    hsl(var(--primary) / 0.9), 
+    hsl(var(--primary) / 0.8)
+  );
 }
 
 .docs-button-secondary {
-  @apply bg-gray-200 text-gray-900 hover:bg-gray-300 h-10 py-2 px-4;
+  @apply bg-secondary text-secondary-foreground h-11 py-3 px-6;
+  border: 1px solid hsl(var(--border));
 }
 
-/* Documentation specific styles */
+.docs-button-secondary:hover {
+  background-color: hsl(var(--secondary) / 0.8);
+  border-color: hsl(var(--border) / 0.8);
+}
+
+/*----------------------------
+ 📚 Enhanced Documentation Layout
+-----------------------------*/
 .docs-container {
-  @apply max-w-4xl mx-auto px-4 py-8;
+  @apply max-w-5xl mx-auto px-6 py-12;
 }
 
 .docs-nav {
-  @apply bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700;
+  @apply bg-background border-b border-border;
+  backdrop-filter: blur(8px);
+  background: hsl(var(--background) / 0.95);
 }
 
 .docs-sidebar {
-  @apply bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700;
+  @apply bg-background border-r border-border;
+  backdrop-filter: blur(8px);
 }
 
 .docs-content {
-  @apply prose dark:prose-invert max-w-none;
+  @apply prose max-w-none;
+  font-family: var(--font-sans);
 }
 
 .docs-search {
-  @apply w-full max-w-md px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800;
+  @apply w-full max-w-md px-4 py-3 rounded-lg border border-input bg-background text-foreground;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-soft);
+}
+
+.docs-search:focus {
+  @apply ring-2 ring-ring ring-offset-2;
+  border-color: hsl(var(--ring));
+  box-shadow: var(--shadow-medium);
+}
+
+/*----------------------------
+ 🎨 Enhanced API Documentation Styling
+-----------------------------*/
+.api-endpoint {
+  @apply bg-card border border-border rounded-xl p-6 mb-6 shadow-soft;
+  transition: all var(--transition-normal);
+}
+
+.api-endpoint:hover {
+  @apply shadow-medium;
+  border-color: hsl(var(--ring) / 0.2);
+}
+
+.api-method {
+  @apply inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all var(--transition-fast);
+}
+
+.api-parameter {
+  @apply border border-border rounded-lg p-4 mb-4 shadow-soft;
+  background-color: hsl(var(--muted) / 0.5);
+  transition: all var(--transition-fast);
+}
+
+.api-parameter:hover {
+  background-color: hsl(var(--muted) / 0.7);
+  border-color: hsl(var(--border) / 0.8);
+}
+
+.api-response {
+  @apply bg-muted rounded-xl p-6 mt-6 shadow-soft;
+  border: 1px solid hsl(var(--border));
+  font-family: var(--font-mono);
+}
+
+/*----------------------------
+ 🔧 Enhanced Interactive Components
+-----------------------------*/
+.code-sample-tabs {
+  @apply border border-border rounded-xl overflow-hidden shadow-soft;
+  background: linear-gradient(145deg, 
+    hsl(var(--card)), 
+    hsl(var(--card) / 0.95)
+  );
+}
+
+.code-sample-tab {
+  @apply px-6 py-3 bg-muted text-muted-foreground cursor-pointer;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  border-right: 1px solid hsl(var(--border));
+}
+
+.code-sample-tab:hover {
+  @apply text-foreground;
+  background-color: hsl(var(--muted) / 0.7);
+}
+
+.code-sample-tab.active {
+  @apply bg-background text-foreground;
+  border-bottom: 2px solid hsl(var(--primary));
+  position: relative;
+}
+
+.code-sample-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    hsl(var(--primary)), 
+    hsl(var(--primary) / 0.8)
+  );
+}
+
+.try-it-button {
+  @apply bg-primary text-primary-foreground px-6 py-3 rounded-lg text-sm font-semibold;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-soft);
+  background: linear-gradient(145deg, 
+    hsl(var(--primary)), 
+    hsl(var(--primary) / 0.9)
+  );
+}
+
+.try-it-button:hover {
+  background: linear-gradient(145deg, 
+    hsl(var(--primary) / 0.9), 
+    hsl(var(--primary) / 0.8)
+  );
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-medium);
+}
+
+/*----------------------------
+ 📱 Enhanced Responsive Design
+-----------------------------*/
+@layer components {
+  /* Ensure content doesn't overflow in any state */
+  .sidebar-content-wrapper,
+  [data-sidebar="inset"] > div {
+    @apply min-w-0;
+  }
+  
+  /* Enhanced mobile navigation */
+  @media (max-width: 768px) {
+    .docs-container {
+      @apply px-4 py-8;
+    }
+    
+    .docs-card {
+      @apply p-6;
+    }
+    
+    .api-endpoint {
+      @apply p-4;
+    }
+    
+    .code-sample-tab {
+      @apply px-4 py-2 text-sm;
+    }
+    
+    .docs-button {
+      @apply h-10 px-4 text-sm;
+    }
+  }
 } 

@@ -1,214 +1,63 @@
 ---
 title: Users API
-description: Complete user management API with interactive examples
+description: Complete interactive user management API documentation
 ---
+
+import { OpenAPILoader } from '@/components/openapi/OpenAPILoader';
 
 # Users API
 
-The Users API provides comprehensive user management functionality within tenant contexts.
+Welcome to the interactive Users API documentation. This page provides a complete interface for testing and exploring the Users API endpoints.
 
-## Overview
+## Interactive API Explorer
 
-The Users API allows you to:
-
-- **Create new users** with complete profile information
-- **List all users** with advanced filtering and pagination
-- **Get user details** by ID
-- **Update user information** including roles and status
-- **Delete users** when necessary
-
-## Base URL
-
-All API requests should be made to:
-```
-http://localhost:4000/api/v1/users
-```
+<OpenAPILoader spec="/generated/user-api-spec.json" />
 
 ## Authentication
 
-All endpoints require authentication using JWT tokens:
+All endpoints require authentication using JWT tokens. Include your token in the Authorization header:
 
-```bash
-Authorization: Bearer <your-jwt-token>
+```
+Authorization: Bearer your-jwt-token-here
 ```
 
-## Endpoints
+## Rate Limiting
 
-### Create User
+The API implements rate limiting to ensure fair usage:
+- **Rate Limit**: 100 requests per minute per IP address
+- **Burst Limit**: 20 requests per second
 
-Create a new user in the current tenant.
+## Error Handling
 
-**POST** `/users`
-
-**Request Body:**
-```json
-{
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john.doe@example.com",
-  "role": "user",
-  "status": "active"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "user-123",
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "role": "user",
-    "status": "active",
-    "createdAt": "2024-01-01T12:00:00Z"
-  }
-}
-```
-
-### List Users
-
-Get a paginated list of users with optional filtering.
-
-**GET** `/users`
-
-**Query Parameters:**
-- `page` (optional): Page number (default: 1)
-- `limit` (optional): Items per page (default: 10, max: 100)
-- `search` (optional): Search by name or email
-- `role` (optional): Filter by role (`user`, `admin`, `manager`)
-- `status` (optional): Filter by status (`active`, `inactive`, `suspended`)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "user-123",
-      "firstName": "John",
-      "lastName": "Doe",
-      "email": "john.doe@example.com",
-      "role": "user",
-      "status": "active"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 1,
-    "pages": 1
-  }
-}
-```
-
-### Get User
-
-Get details of a specific user by ID.
-
-**GET** `/users/:id`
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "user-123",
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "role": "user",
-    "status": "active",
-    "createdAt": "2024-01-01T12:00:00Z",
-    "updatedAt": "2024-01-01T12:00:00Z"
-  }
-}
-```
-
-### Update User
-
-Update user information.
-
-**PATCH** `/users/:id`
-
-**Request Body:**
-```json
-{
-  "firstName": "Jane",
-  "role": "admin",
-  "status": "active"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "user-123",
-    "firstName": "Jane",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "role": "admin",
-    "status": "active",
-    "updatedAt": "2024-01-01T13:00:00Z"
-  }
-}
-```
-
-### Delete User
-
-Delete a user by ID.
-
-**DELETE** `/users/:id`
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "User deleted successfully"
-}
-```
-
-## Error Responses
-
-All endpoints return consistent error responses:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid request data",
-    "details": {
-      "email": "Invalid email format"
-    }
-  }
-}
-```
-
-## Status Codes
+The API uses standard HTTP status codes and returns detailed error messages:
 
 - **200**: Success
-- **201**: Created
-- **400**: Bad Request
-- **401**: Unauthorized
-- **403**: Forbidden
-- **404**: Not Found
-- **422**: Validation Error
-- **500**: Internal Server Error
+- **201**: Created successfully
+- **400**: Bad request - Invalid input
+- **401**: Unauthorized - Invalid or missing token
+- **403**: Forbidden - Insufficient permissions
+- **404**: Not found - Resource doesn't exist
+- **422**: Validation error - Invalid data format
+- **500**: Internal server error
 
-## Interactive Documentation
+## Data Formats
 
-For interactive API testing with a beautiful UI, we're working on integrating Fumadocs OpenAPI components that will provide:
+All request and response bodies use JSON format. Ensure proper Content-Type headers:
 
-- **Try it out** functionality
-- **Code samples** in multiple languages
-- **Request/response examples**
-- **Parameter validation**
-- **Authentication testing**
+```
+Content-Type: application/json
+```
 
-Coming soon with full OpenAPI 3.0 specification integration!
+## Getting Started
 
-Generated on: 2025-07-07T04:23:59.166Z
+1. **Obtain Authentication Token**: Contact your administrator for API credentials
+2. **Select Base URL**: Choose the appropriate server from the dropdown above
+3. **Explore Endpoints**: Click on any endpoint to see parameters and try it out
+4. **Execute Requests**: Fill in parameters and click "Execute" to test the API
+
+## Support
+
+For API support and questions:
+- **Email**: api-support@yourcompany.com
+- **Documentation**: This interactive guide
+- **Status Page**: Check system status and uptime

@@ -10,6 +10,12 @@
         "api/users",
         "api/users-reference"
       ]
+    },
+    {
+      "title": "Design System",
+      "pages": [
+        "test-typography"
+      ]
     }
   ]
 }
