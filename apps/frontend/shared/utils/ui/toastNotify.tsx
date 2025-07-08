@@ -64,38 +64,34 @@ export interface ToastNotifyOptions {
   icon?: ReactNode
   /** Position of the toast */
   position?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
+  /** Show progress bar for timed toasts */
+  showProgress?: boolean
 }
 
 const variantConfig = {
   success: {
-    icon: <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />,
-    borderColor: 'border-l-green-500',
-    bgColor: 'bg-green-50 dark:bg-green-950/50',
+    icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />,
+    bgColor: 'bg-white dark:bg-gray-900 border-l-2 border-l-green-500',
   },
   error: {
-    icon: <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />,
-    borderColor: 'border-l-red-500',
-    bgColor: 'bg-red-50 dark:bg-red-950/50',
+    icon: <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />,
+    bgColor: 'bg-white dark:bg-gray-900 border-l-2 border-l-red-500',
   },
   warning: {
-    icon: <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />,
-    borderColor: 'border-l-yellow-500',
-    bgColor: 'bg-yellow-50 dark:bg-yellow-950/50',
+    icon: <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />,
+    bgColor: 'bg-white dark:bg-gray-900 border-l-2 border-l-amber-500',
   },
   info: {
-    icon: <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
-    borderColor: 'border-l-blue-500',
-    bgColor: 'bg-blue-50 dark:bg-blue-950/50',
+    icon: <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />,
+    bgColor: 'bg-white dark:bg-gray-900 border-l-2 border-l-blue-500',
   },
   loading: {
-    icon: <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />,
-    borderColor: 'border-l-border',
-    bgColor: 'bg-muted/50',
+    icon: <Loader2 className="h-4 w-4 animate-spin text-gray-600 dark:text-gray-400" />,
+    bgColor: 'bg-white dark:bg-gray-900 border-l-2 border-l-gray-400',
   },
   default: {
-    icon: <Clock className="h-5 w-5 text-muted-foreground" />,
-    borderColor: 'border-l-border',
-    bgColor: 'bg-card',
+    icon: <Clock className="h-4 w-4 text-gray-600 dark:text-gray-400" />,
+    bgColor: 'bg-white dark:bg-gray-900 border-l-2 border-l-gray-400',
   },
 } as const
 
@@ -117,6 +113,7 @@ export function toastNotify({
   className,
   icon: customIcon,
   position = 'top-right',
+  showProgress = false,
 }: ToastNotifyOptions): string | number {
   if (dismissAll) {
     toast.dismiss()
@@ -134,6 +131,8 @@ export function toastNotify({
   }
 
   const toastId = toast.custom((t) => {
+    let progressTimer: NodeJS.Timeout | null = null
+    
     const startTimer = () => {
       clearTimer()
       if (!sticky && duration !== Infinity) {
@@ -166,22 +165,29 @@ export function toastNotify({
 
     const handleDismiss = () => {
       clearTimer()
+      if (progressTimer) {
+        clearTimeout(progressTimer)
+        progressTimer = null
+      }
       toast.dismiss(t)
     }
 
     return (
       <div
         className={cn(
-          // Base styles
-          'group relative flex items-start gap-3 w-full max-w-md p-4 rounded-lg shadow-lg transition-all duration-200',
-          // Border and background
-          'border border-l-4 border-border',
-          config.borderColor,
+          // Base styles - more compact and modern
+          'group relative flex items-center gap-3 w-full max-w-sm p-3 rounded-lg shadow-md transition-all duration-200',
+          // Border and background - cleaner design
+          'border border-transparent',
           config.bgColor,
-          // Interactive states
-          'hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]',
+          // Enhanced shadow
+          'shadow-lg hover:shadow-xl',
+          // Interactive states - subtle
+          'hover:scale-[1.01] active:scale-[0.99]',
           // Dark mode support
-          'dark:border-border dark:shadow-2xl',
+          'dark:shadow-xl',
+          // Animation entrance - quicker
+          'animate-in slide-in-from-right-1 fade-in-0 duration-300',
           className
         )}
         onMouseEnter={handleMouseEnter}
@@ -190,54 +196,75 @@ export function toastNotify({
         aria-live="polite"
         data-testid="toast-notification"
       >
-        {/* Icon */}
-        <div className="flex-shrink-0 mt-0.5">
+        {/* Icon - more minimal */}
+        <div className="flex-shrink-0">
           {displayIcon}
         </div>
 
-        {/* Content */}
+        {/* Content - more compact */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-semibold text-foreground leading-5">
+              <p className="text-sm font-medium text-foreground">
                 {title}
-              </h4>
-            {description && (
-                <p className="mt-1 text-sm text-muted-foreground leading-5">
+              </p>
+              {description && (
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {description}
                 </p>
-            )}
-          </div>
+              )}
+            </div>
 
-            {/* Action button */}
-          {actionLabel && (
-            <Button
-              variant="secondary"
-              size="sm"
+            {/* Action button - more compact */}
+            {actionLabel && (
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleActionClick}
-                className="ml-2 h-8 px-3 text-xs"
-            >
-              {actionLabel}
-            </Button>
-          )}
+                className="h-7 px-2 text-xs ml-2"
+              >
+                {actionLabel}
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Dismiss button */}
-          <button
+        {/* Minimal dismiss button */}
+        <button
           onClick={handleDismiss}
           className={cn(
-            'absolute top-2 right-2 flex items-center justify-center h-6 w-6 rounded-full',
+            'flex-shrink-0 flex items-center justify-center h-5 w-5 rounded',
             'text-muted-foreground hover:text-foreground',
-            'hover:bg-muted active:bg-muted/80',
+            'hover:bg-black/10 dark:hover:bg-white/10',
             'transition-colors duration-150',
-            'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-            'opacity-0 group-hover:opacity-100'
+            'focus:outline-none',
+            'ml-2'
           )}
           aria-label="Dismiss notification"
-          >
-            <X className="h-4 w-4" />
-          </button>
+        >
+          <X className="h-3 w-3" />
+        </button>
+
+        {/* Progress bar */}
+        {showProgress && !sticky && duration !== Infinity && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/10 rounded-b-xl overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-b-xl transition-all ease-linear',
+                variant === 'success' && 'bg-green-500',
+                variant === 'error' && 'bg-red-500',
+                variant === 'warning' && 'bg-amber-500',
+                variant === 'info' && 'bg-blue-500',
+                variant === 'loading' && 'bg-gray-500',
+                variant === 'default' && 'bg-gray-500'
+              )}
+              style={{
+                width: '100%',
+                animation: `toast-progress ${duration}ms linear forwards`,
+              }}
+            />
+          </div>
+        )}
       </div>
     )
   }, {
@@ -248,32 +275,44 @@ export function toastNotify({
   return toastId
 }
 
+// Add CSS animation for toast progress bar
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style')
+  style.textContent = `
+    @keyframes toast-progress {
+      from { width: 100%; }
+      to { width: 0%; }
+    }
+  `
+  document.head.appendChild(style)
+}
+
 /**
- * Quick success toast
+ * Quick success toast with progress bar
  */
 export const toastSuccess = (title: string, description?: string) =>
-  toastNotify({ variant: 'success', title, description })
+  toastNotify({ variant: 'success', title, description, showProgress: true })
 
 /**
- * Quick error toast
+ * Quick error toast with progress bar
  */
 export const toastError = (title: string, description?: string) =>
-  toastNotify({ variant: 'error', title, description })
+  toastNotify({ variant: 'error', title, description, showProgress: true })
 
 /**
- * Quick info toast
+ * Quick info toast with progress bar
  */
 export const toastInfo = (title: string, description?: string) =>
-  toastNotify({ variant: 'info', title, description })
+  toastNotify({ variant: 'info', title, description, showProgress: true })
 
 /**
- * Quick warning toast
+ * Quick warning toast with progress bar
  */
 export const toastWarning = (title: string, description?: string) =>
-  toastNotify({ variant: 'warning', title, description })
+  toastNotify({ variant: 'warning', title, description, showProgress: true })
 
 /**
- * Loading toast that can be updated
+ * Loading toast that can be updated (no progress bar for loading)
  */
 export const toastLoading = (title: string) =>
   toastNotify({ variant: 'loading', title, sticky: true })
@@ -308,5 +347,151 @@ export const toastPromise = <T,>(
       toastError(errorMessage)
       throw err
     })
+}
+
+/**
+ * Creates a smooth loading toast that can transition from loading to success/error
+ * without flickering. Perfect for async operations that need visual feedback.
+ */
+export const createLoadingToast = (loadingTitle: string) => {
+  const toastId = toastNotify({ 
+    variant: 'loading', 
+    title: loadingTitle, 
+    sticky: true 
+  })
+  
+  return {
+    success: (title: string, description?: string) => {
+      // Update the existing toast with success state
+      toast.custom((t) => {
+        const config = variantConfig['success']
+        return (
+          <div
+            className={cn(
+              'group relative flex items-center gap-3 w-full max-w-sm p-3 rounded-lg shadow-md transition-all duration-300',
+              'border border-transparent',
+              config.bgColor,
+              'shadow-lg hover:shadow-xl',
+              'hover:scale-[1.01] active:scale-[0.99]',
+              'dark:shadow-xl',
+              'animate-in slide-in-from-right-1 fade-in-0 duration-300',
+            )}
+            role="alert"
+            aria-live="polite"
+          >
+            <div className="flex-shrink-0 transition-all duration-200">
+              {config.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {title}
+                  </p>
+                  {description && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => toast.dismiss(t)}
+              className={cn(
+                'flex-shrink-0 flex items-center justify-center h-5 w-5 rounded',
+                'text-muted-foreground hover:text-foreground',
+                'hover:bg-black/10 dark:hover:bg-white/10',
+                'transition-colors duration-150',
+                'focus:outline-none',
+                'ml-2'
+              )}
+              aria-label="Dismiss notification"
+            >
+              <X className="h-3 w-3" />
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/10 rounded-b-xl overflow-hidden">
+              <div
+                className="h-full rounded-b-xl transition-all ease-linear bg-green-500"
+                style={{
+                  width: '100%',
+                  animation: `toast-progress 5000ms linear forwards`,
+                }}
+              />
+            </div>
+          </div>
+        )
+      }, {
+        id: toastId,
+        duration: 5000,
+      })
+    },
+    error: (title: string, description?: string) => {
+      // Update the existing toast with error state
+      toast.custom((t) => {
+        const config = variantConfig['error']
+        return (
+          <div
+            className={cn(
+              'group relative flex items-center gap-3 w-full max-w-sm p-3 rounded-lg shadow-md transition-all duration-300',
+              'border border-transparent',
+              config.bgColor,
+              'shadow-lg hover:shadow-xl',
+              'hover:scale-[1.01] active:scale-[0.99]',
+              'dark:shadow-xl',
+              'animate-in slide-in-from-right-1 fade-in-0 duration-300',
+            )}
+            role="alert"
+            aria-live="polite"
+          >
+            <div className="flex-shrink-0 transition-all duration-200">
+              {config.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {title}
+                  </p>
+                  {description && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => toast.dismiss(t)}
+              className={cn(
+                'flex-shrink-0 flex items-center justify-center h-5 w-5 rounded',
+                'text-muted-foreground hover:text-foreground',
+                'hover:bg-black/10 dark:hover:bg-white/10',
+                'transition-colors duration-150',
+                'focus:outline-none',
+                'ml-2'
+              )}
+              aria-label="Dismiss notification"
+            >
+              <X className="h-3 w-3" />
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/10 rounded-b-xl overflow-hidden">
+              <div
+                className="h-full rounded-b-xl transition-all ease-linear bg-red-500"
+                style={{
+                  width: '100%',
+                  animation: `toast-progress 5000ms linear forwards`,
+                }}
+              />
+            </div>
+          </div>
+        )
+      }, {
+        id: toastId,
+        duration: 5000,
+      })
+    },
+    toastId
+  }
 }
 

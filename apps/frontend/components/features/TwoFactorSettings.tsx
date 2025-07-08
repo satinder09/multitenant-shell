@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
-import { toastNotify } from '@/shared/utils/ui/toastNotify'
+import { toastNotify, createLoadingToast } from '@/shared/utils/ui/toastNotify'
 import { alert, confirm, dialog } from '@/shared/utils/ui/dialogUtils'
 
 interface TwoFactorStatus {
@@ -119,7 +119,7 @@ export function TwoFactorSettings() {
         const data = await response.json()
         setSetupData(data)
         setSetupStep('setup')
-        toastNotify({ variant: 'success', title: '2FA setup initiated!', description: 'Scan the QR code with your authenticator app.' })
+        toastNotify({ variant: 'success', title: '2FA setup initiated!', description: 'Scan the QR code with your authenticator app.', showProgress: true })
       } else {
         const error = await response.json()
         alert({
@@ -223,7 +223,7 @@ export function TwoFactorSettings() {
         setBackupCodes(data.backupCodes || [])
         console.log('Backup codes set:', data.backupCodes)
         setSetupStep('complete')
-        toastNotify({ variant: 'success', title: '2FA enabled successfully!' })
+        toastNotify({ variant: 'success', title: '2FA enabled successfully!', showProgress: true })
         await loadTwoFactorStatus()
         
         // Show success dialog with option to view backup codes immediately
@@ -329,7 +329,7 @@ export function TwoFactorSettings() {
           const clipboardText = await navigator.clipboard.readText()
           if (clipboardText === text) {
             console.log('Clipboard verified - copy successful')
-            toastNotify({ variant: 'success', title: successMessage })
+            toastNotify({ variant: 'success', title: successMessage, showProgress: true })
             return true
           } else {
             console.log('Clipboard verification failed')
@@ -337,7 +337,7 @@ export function TwoFactorSettings() {
           }
         } catch (readError) {
           console.log('Cannot verify clipboard (permission issue), assuming success')
-          toastNotify({ variant: 'success', title: successMessage })
+          toastNotify({ variant: 'success', title: successMessage, showProgress: true })
           return true
         }
       } else {
@@ -358,7 +358,7 @@ export function TwoFactorSettings() {
         
         console.log('execCommand result:', result)
         if (result) {
-          toastNotify({ variant: 'success', title: successMessage })
+          toastNotify({ variant: 'success', title: successMessage, showProgress: true })
           return true
         } else {
           throw new Error('Copy command failed')
@@ -420,7 +420,7 @@ export function TwoFactorSettings() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    toastNotify({ variant: 'success', title: 'Backup codes downloaded' })
+    toastNotify({ variant: 'success', title: 'Backup codes downloaded', showProgress: true })
   }
 
   const resetSetup = () => {
@@ -505,10 +505,10 @@ export function TwoFactorSettings() {
           label: 'Generate New Codes', 
           variant: 'destructive',
           onClick: async () => {
+            setProcessing(true)
+            const loadingToast = createLoadingToast('Generating new backup codes...')
+            
             try {
-              setProcessing(true)
-              toastNotify({ variant: 'loading', title: 'Generating new backup codes...' })
-              
                              const response = await fetch('/api/auth/2fa/backup-codes', {
                  method: 'GET',
                  headers: {
@@ -522,7 +522,9 @@ export function TwoFactorSettings() {
                  
                  if (data.codes && data.codes.length > 0) {
                    setBackupCodes(data.codes)
-                   toastNotify({ variant: 'success', title: 'New backup codes generated!' })
+                   
+                   // Smoothly transition to success toast
+                   loadingToast.success('New backup codes generated!')
                    
                    // Show the new codes immediately
                    setTimeout(() => {
@@ -538,6 +540,10 @@ export function TwoFactorSettings() {
                          } catch (error) {
                console.error('Error generating backup codes:', error)
                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+               
+               // Smoothly transition to error toast
+               loadingToast.error('Failed to generate backup codes', errorMessage)
+               
                alert({
                  title: 'Failed to Generate New Backup Codes',
                  description: `Unable to generate new backup codes: ${errorMessage}`,

@@ -234,9 +234,9 @@ const variantStyles: Record<DialogVariant, string> = {
 
 const sizeStyles: Record<DialogSize, string> = {
   sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
+  md: 'max-w-md', 
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
   full: 'max-w-full w-full mx-4',
 }
 
@@ -414,7 +414,7 @@ export function DialogOverlay(): React.JSX.Element {
       {alert && (
         <AlertDialog open onOpenChange={closeAlert}>
           <AlertDialogContent className={cn(
-            'max-w-md border-l-4 !bg-white dark:!bg-gray-800',
+            'max-w-md border-l-4 !bg-white dark:!bg-gray-800 !rounded-lg shadow-xl border border-gray-200 dark:border-gray-700',
             variantStyles[alert.variant || 'info'],
             alert.className
           )}>
@@ -446,7 +446,7 @@ export function DialogOverlay(): React.JSX.Element {
       {confirm && (
         <AlertDialog open onOpenChange={closeConfirm}>
           <AlertDialogContent className={cn(
-            'max-w-md border-l-4 !bg-white dark:!bg-gray-800',
+            'max-w-md border-l-4 !bg-white dark:!bg-gray-800 !rounded-lg shadow-xl border border-gray-200 dark:border-gray-700',
             variantStyles[confirm.variant || 'question'],
             confirm.className
           )}>
@@ -478,7 +478,7 @@ export function DialogOverlay(): React.JSX.Element {
       {dialog && (
         <AlertDialog open onOpenChange={closeDialog}>
           <AlertDialogContent className={cn(
-            'border-l-4 !bg-white dark:!bg-gray-800',
+            'border-l-4 !bg-white dark:!bg-gray-800 !rounded-lg shadow-xl border border-gray-200 dark:border-gray-700',
             sizeStyles[dialog.size || 'md'],
             variantStyles[dialog.variant || 'default'],
             dialog.className
