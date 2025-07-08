@@ -198,9 +198,9 @@ export const AUTH_ACCESS_LEVELS = {
  */
 export const AUTH_DEBUG = {
   /** Debug environment variables */
-  ENABLED: process.env.NODE_ENV === 'development',
-  DEBUG_AUTH: process.env.DEBUG_AUTH === 'true',
-  DEBUG_PLATFORM: process.env.DEBUG_PLATFORM === 'true',
+  ENABLED: true,
+  DEBUG_AUTH: process.env.DEBUG_AUTH === 'true' || true,
+  DEBUG_PLATFORM: process.env.DEBUG_PLATFORM === 'true' || true,
   DEBUG_CSRF: process.env.DEBUG_CSRF === 'true',
   
   /** Log levels */
@@ -242,14 +242,19 @@ export const AUTH_VALIDATORS = {
   
   /** Validate if a hostname is a platform host */
   isPlatformHost(hostname: string): boolean {
-    return AUTH_DOMAINS.PLATFORM_HOSTS.some(host => hostname === host || hostname.includes(host));
+    // Remove port for comparison
+    const cleanHostname = hostname.split(':')[0];
+    return AUTH_DOMAINS.PLATFORM_HOSTS.some(host => cleanHostname === host || cleanHostname === `${host}:${AUTH_DOMAINS.FRONTEND_PORT}`);
   },
   
   /** Extract tenant subdomain from hostname */
   getTenantSubdomain(hostname: string): string | null {
     const baseDomain = AUTH_DOMAINS.BASE_DOMAIN;
-    if (hostname.endsWith(`.${baseDomain}`) && !AUTH_VALIDATORS.isPlatformHost(hostname)) {
-      return hostname.replace(`.${baseDomain}`, '');
+    // Remove port for comparison
+    const cleanHostname = hostname.split(':')[0];
+    
+    if (cleanHostname.endsWith(`.${baseDomain}`) && !AUTH_VALIDATORS.isPlatformHost(hostname)) {
+      return cleanHostname.replace(`.${baseDomain}`, '');
     }
     return null;
   },

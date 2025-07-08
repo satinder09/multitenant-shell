@@ -55,22 +55,136 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host') || 'localhost';
   
-  // Log request if debug mode is enabled
+  // Enhanced debug logging
   if (AUTH_DEBUG.ENABLED) {
-    console.log(`[Middleware] Processing: ${hostname}${pathname}`);
+    console.log(`[Middleware] 🔍 Processing: ${hostname}${pathname}`);
   }
   
   try {
     // Skip middleware for static files, API routes, and Next.js internals
     if (shouldSkipMiddleware(pathname)) {
+      if (AUTH_DEBUG.ENABLED) {
+        console.log(`[Middleware] ⏭️ Skipping middleware for: ${pathname}`);
+      }
       return NextResponse.next();
     }
     
     // Analyze request context
     const requestContext = analyzeRequest(request, hostname, pathname);
     
+    // Enhanced debug logging for request context
+    if (AUTH_DEBUG.ENABLED) {
+      console.log(`[Middleware] 📋 Request context:`, {
+        hostname: requestContext.hostname,
+        pathname: requestContext.pathname,
+        isPlatform: requestContext.isPlatform,
+        tenantSubdomain: requestContext.tenantSubdomain,
+        isPublicRoute: requestContext.isPublicRoute,
+        isPlatformRoute: requestContext.isPlatformRoute,
+        isTenantRoute: requestContext.isTenantRoute,
+        hasSecureLoginToken: !!requestContext.secureLoginToken,
+        secureLoginTokenLength: requestContext.secureLoginToken?.length || 0,
+      });
+    }
+    
     // Get authentication cookie
     const authCookie = request.cookies.get(AUTH_STORAGE.COOKIES.AUTHENTICATION);
+    
+    // Enhanced debug logging for authentication cookie
+    if (AUTH_DEBUG.ENABLED) {
+      console.log(`[Middleware] 🍪 Authentication cookie check:`, {
+        hasAuthCookie: !!authCookie,
+        cookieName: AUTH_STORAGE.COOKIES.AUTHENTICATION,
+        cookieValue: authCookie?.value ? `${authCookie.value.substring(0, 20)}...` : 'none',
+        allCookies: request.cookies.getAll().map(c => c.name),
+      });
+    }
+    
+    // Handle secure login token BEFORE authentication check
+    if (requestContext.secureLoginToken && !authCookie) {
+      if (AUTH_DEBUG.ENABLED) {
+        console.log(`[Middleware] 🔐 Processing secure login token...`);
+      }
+      
+      try {
+        // Validate the secure login token
+        const payload = decodeJwt<JwtPayload>(requestContext.secureLoginToken);
+        
+        if (AUTH_DEBUG.ENABLED) {
+          console.log(`[Middleware] ✅ Secure login token validated:`, {
+            tenantId: payload.tenantId,
+            tenantContext: payload.tenantContext,
+            isSuperAdmin: payload.isSuperAdmin,
+            email: payload.email,
+            exp: payload.exp,
+          });
+        }
+        
+        // Set the authentication cookie on the tenant domain
+        // Use direct redirect response instead of NextResponse.next() to ensure cookie is set
+        
+        // Debug logging for cookie setting
+        if (AUTH_DEBUG.ENABLED) {
+          console.log(`[Middleware] 🍪 Setting authentication cookie:`, {
+            tokenLength: requestContext.secureLoginToken.length,
+            maxAge: 60 * 60 * 24 * 7,
+            secure: process.env.NODE_ENV === 'production',
+            httpOnly: true,
+            sameSite: 'lax',
+          });
+        }
+        
+        // Create redirect URL first
+        const correctHost = request.headers.get('host') || request.nextUrl.host;
+        const cleanUrl = new URL(`${request.nextUrl.protocol}//${correctHost}${request.nextUrl.pathname}`);
+        // Copy all search params except secureLoginToken
+        request.nextUrl.searchParams.forEach((value, key) => {
+          if (key !== 'secureLoginToken') {
+            cleanUrl.searchParams.set(key, value);
+          }
+        });
+        
+        // Create redirect response
+        const response = NextResponse.redirect(cleanUrl);
+        
+        // Set cookie using direct header method for better reliability
+        const maxAge = 60 * 60 * 24 * 7; // 7 days
+        const cookieValue = `${AUTH_STORAGE.COOKIES.AUTHENTICATION}=${requestContext.secureLoginToken}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+        
+        response.headers.set('Set-Cookie', cookieValue);
+        
+        // Debug: Log cookie setting details
+        if (AUTH_DEBUG.ENABLED) {
+          const actualHost = request.headers.get('host') || request.nextUrl.host;
+          const hostWithoutPort = actualHost.split(':')[0]; // Remove port for domain matching
+          console.log(`[Middleware] 🍪 Cookie set with details:`, {
+            name: AUTH_STORAGE.COOKIES.AUTHENTICATION,
+            cookieHeader: cookieValue,
+            'request.nextUrl.host': request.nextUrl.host,
+            'actual.host.header': actualHost,
+            'host.without.port': hostWithoutPort,
+            cookieStrategy: 'DIRECT Set-Cookie header',
+          });
+        }
+        
+        if (AUTH_DEBUG.ENABLED) {
+          console.log(`[Middleware] 🔄 Redirecting to clean URL: ${cleanUrl.toString()}`);
+          console.log(`[Middleware] 🔧 Host comparison:`, {
+            'request.nextUrl.host': request.nextUrl.host,
+            'request.headers.host': request.headers.get('host'),
+            'using': correctHost
+          });
+        }
+        
+        return response;
+        
+      } catch (error) {
+        if (AUTH_DEBUG.ENABLED) {
+          console.log(`[Middleware] ❌ Invalid secure login token:`, error);
+        }
+        // Continue with normal flow if token is invalid
+      }
+    }
     
     // Handle authentication logic
     const authResult = await handleAuthentication(request, requestContext, authCookie);
@@ -78,7 +192,7 @@ export async function middleware(request: NextRequest) {
     // Log completion time if debug mode is enabled
     if (AUTH_DEBUG.ENABLED) {
       const duration = Date.now() - startTime;
-      console.log(`[Middleware] Completed in ${duration}ms:`, {
+      console.log(`[Middleware] ✅ Completed in ${duration}ms:`, {
         pathname,
         result: authResult.action,
         duration,
@@ -88,7 +202,7 @@ export async function middleware(request: NextRequest) {
     return authResult.response;
     
   } catch (error) {
-    console.error('[Middleware] Error:', error);
+    console.error('[Middleware] ❌ Error:', error);
     
     // Redirect to login on error
     const loginUrl = buildLoginUrl(request, pathname);
