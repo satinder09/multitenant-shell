@@ -1,0 +1,65 @@
+---
+description: Enterprise-grade, modern, and maintainable development process for handling any request in Cursor, including file/folder structure alignment.
+alwaysApply: false
+---
+
+# cursor.enterprise_development_flow
+
+## Summary
+This rule defines how Cursor developers must handle all development requests—features, bugs, refactors, or enhancements—using a modern, modular, and maintainable approach aligned with enterprise standards and Cursor’s established codebase structure.
+
+## Rules
+
+### 1. Intake & Clarification
+- Acknowledge the request and understand the "why".
+- Identify scope, category (feature/bug/infra/tech-debt), and expected outcome.
+- Request clarification if anything is ambiguous.
+
+### 2. Analyze Current State
+- Locate and understand the existing implementation.
+- Map the relevant code paths, components, APIs, or flows involved.
+- Document current logic, limitations, and pain points.
+
+### 3. Design a Solution
+- Propose a plan with:
+  - *Approach*
+  - *Benefits*
+  - *What Will Change*
+  - *Edge Cases & Risks*
+- Validate against scalability, performance, and maintainability.
+
+### 4. Determine Correct File/Folder Placement
+- **Always follow existing project architecture**:
+  - Place new components, modules, or files in the correct folders (e.g., `components/ui`, `services/api`, `hooks/`, `lib/utils`, `features/<domain>`, etc.).
+  - Avoid duplication or inconsistent nesting.
+  - Create new folders only when conceptually justified (e.g., a new domain or isolated concern).
+- Use domain-driven or feature-first foldering if applicable.
+
+### 5. Review & Approve
+- Share your proposed approach (and file plan if structural changes are involved).
+- Review with a lead or peer.
+- Adjust based on feedback and secure approval.
+
+### 6. Implement
+- Write clean, modular, typed code with docs and comments.
+- Follow consistent naming conventions and linting rules.
+- Add appropriate tests (unit/integration/e2e).
+- Add logging, analytics, and feature flags if needed.
+
+### 7. Validate & Ship
+- Perform functional testing locally and/or in staging.
+- Ensure performance, security, and UX are not regressed.
+
+### 8. Document & Capture Knowledge
+- Update relevant documentation (README, design doc, internal wiki).
+- Capture decisions and patterns introduced.
+- Reflect for reusability and system improvement.
+
+## Principles
+- **Correct code belongs in the correct place.** No shortcuts or "temporary" hacks.
+- **All changes must be traceable, testable, and maintainable.**
+- Favor composition, low coupling, and clear naming over speed.
+- Align with the broader system’s design goals and coding standards.
+
+## Applicability
+This rule applies to **all Cursor developers** working on any repository or submodule. It is intended to scale across teams, contributors, and time.

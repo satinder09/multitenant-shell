@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ServerApiClient } from '@/shared/services/api/server-client'
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { methodId: string } }
-) {
+export async function GET(req: NextRequest) {
   try {
-    const { methodId } = params
     const serverApi = new ServerApiClient()
-    
-    const response = await serverApi.delete(`/platform/2fa/methods/${methodId}`, {}, req)
+    const response = await serverApi.get('/platform/2fa/backup-codes', {}, req)
     
     if (response.ok) {
       const data = await response.json()
@@ -19,9 +14,9 @@ export async function DELETE(
       return NextResponse.json(error, { status: response.status })
     }
   } catch (error) {
-    console.error('Error disabling 2FA method:', error)
+    console.error('Error fetching backup codes:', error)
     return NextResponse.json(
-      { error: 'Failed to disable 2FA method' },
+      { error: 'Failed to fetch backup codes' },
       { status: 500 }
     )
   }

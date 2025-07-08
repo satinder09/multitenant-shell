@@ -334,12 +334,23 @@ export class TwoFactorService {
         throw new BadRequestException('Method is already enabled');
       }
 
+      // Check if this should be the primary method
+      let shouldBePrimary = enableDto.isPrimary;
+      
+      // Check if user has any other enabled methods (before enabling this one)
+      const hasOtherEnabledMethods = await this.twoFactorDb.hasEnabledMethods(userId);
+      
+      // If not explicitly set, make it primary if it's the first one
+      if (shouldBePrimary === undefined) {
+        shouldBePrimary = !hasOtherEnabledMethods;
+        this.logger.log(`Auto-setting isPrimary=${shouldBePrimary} for user ${userId} (hasOtherEnabledMethods=${hasOtherEnabledMethods})`);
+      }
+
       // Enable the method
-      await this.twoFactorDb.enableMethod(enableDto.methodId, enableDto.isPrimary);
+      await this.twoFactorDb.enableMethod(enableDto.methodId, shouldBePrimary);
 
       // Generate backup codes when first enabling 2FA
       let backupCodes: string[] | undefined;
-      const hasOtherEnabledMethods = await this.twoFactorDb.hasEnabledMethods(userId);
       
       if (!hasOtherEnabledMethods) {
         // This is the first 2FA method being enabled, generate backup codes
@@ -348,7 +359,7 @@ export class TwoFactorService {
         backupCodes = backupCodesResponse.codes;
       }
 
-      this.logger.log(`Successfully enabled 2FA method ${enableDto.methodId} for user ${userId}`);
+      this.logger.log(`Successfully enabled 2FA method ${enableDto.methodId} for user ${userId} with isPrimary=${shouldBePrimary}`);
 
       return {
         message: 'Two-factor authentication enabled successfully',

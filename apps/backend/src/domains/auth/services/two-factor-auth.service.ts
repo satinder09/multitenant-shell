@@ -23,28 +23,25 @@ import {
 
 import { TwoFactorMethodRegistryService } from './two-factor-method-registry.service';
 import { AuthSecurityService } from './auth-security.service';
+import { TwoFactorDatabaseService } from './two-factor-database.service';
+import { TwoFactorMethodType } from '../../../../generated/master-prisma';
 
 @Injectable()
 export class TwoFactorAuthService {
   private readonly logger = new Logger(TwoFactorAuthService.name);
   private readonly config: TwoFactorConfig;
-  
-  // Static storage shared across all instances to handle DI scope issues
-  private static readonly sessionStorage = new Map<string, { secret: string; methodId: string; timestamp: number; userId: string }>();
-  
-  // Static storage for enabled 2FA methods
-  private static readonly enabledMethods = new Map<string, { methodId: string; methodType: string; enabledAt: Date; userId: string }>();
 
   constructor(
     private methodRegistry: TwoFactorMethodRegistryService,
     private authSecurityService: AuthSecurityService,
     private configService: ConfigService,
+    private twoFactorDb: TwoFactorDatabaseService,
   ) {
     this.config = this.loadConfig();
     this.logger.log('Two-Factor Authentication Service initialized', {
       serviceInstanceId: Math.random().toString(36).substring(7),
       timestamp: new Date().toISOString(),
-      sessionStorageSize: TwoFactorAuthService.sessionStorage.size
+      databaseIntegration: 'enabled'
     });
   }
 
@@ -70,36 +67,30 @@ export class TwoFactorAuthService {
       );
     }
 
-    // Check if there's already a setup in progress to prevent duplicate QR codes
-    const sessionKey = `${context.userId}-${request.methodType}`;
-    const existingSession = TwoFactorAuthService.sessionStorage.get(sessionKey);
+    // Check if there's already a disabled method in the database for this user and method type
+    const methodType = request.methodType === 'TOTP' ? TwoFactorMethodType.TOTP : 
+                      request.methodType === 'SMS' ? TwoFactorMethodType.SMS :
+                      request.methodType === 'EMAIL' ? TwoFactorMethodType.EMAIL :
+                      TwoFactorMethodType.TOTP; // Default to TOTP
+
+    const existingMethod = await this.twoFactorDb.findMethodByUserAndType(context.userId, methodType);
     
-    if (existingSession) {
-      // Check if session is still valid (not expired)
-      const maxAge = 30 * 60 * 1000; // 30 minutes
-      const isExpired = Date.now() - existingSession.timestamp > maxAge;
+    if (existingMethod && !existingMethod.isEnabled) {
+      this.logger.log(`Reusing existing disabled 2FA method for user ${context.userId}`, {
+        methodId: existingMethod.id,
+        methodType: existingMethod.methodType
+      });
       
-      if (!isExpired) {
-        this.logger.log(`Reusing existing 2FA setup for user ${context.userId}`, {
-          sessionKey,
-          methodId: existingSession.methodId,
-          age: Date.now() - existingSession.timestamp
-        });
-        
-        // Get the provider and regenerate QR code with existing secret
-        const provider = this.methodRegistry.getProvider(request.methodType);
-        const setupResponse = await provider.setup(context.userId, request, existingSession.secret);
-        
-        // Update the response with existing session data
-        return {
-          ...setupResponse,
-          methodId: existingSession.methodId,
-          secret: existingSession.secret,
-        };
-      } else {
-        this.logger.log(`Existing session expired, creating new setup for user ${context.userId}`);
-        TwoFactorAuthService.sessionStorage.delete(sessionKey);
-      }
+      // Get the provider and regenerate QR code with existing secret
+      const provider = this.methodRegistry.getProvider(request.methodType);
+      const setupResponse = await provider.setup(context.userId, request, existingMethod.secretData);
+      
+      // Return the existing method data
+      return {
+        ...setupResponse,
+        methodId: existingMethod.id,
+        secret: existingMethod.secretData,
+      };
     }
 
     // Get the appropriate provider
@@ -108,31 +99,27 @@ export class TwoFactorAuthService {
     // Setup the method using the provider (new setup)
     const setupResponse = await provider.setup(context.userId, request);
 
-    // Store setup data in session for verification (more reliable)
-    const sessionData = {
-      secret: setupResponse.secret,
-      methodId: setupResponse.methodId,
-      timestamp: Date.now(),
-      userId: context.userId
-    };
-    
-    TwoFactorAuthService.sessionStorage.set(sessionKey, sessionData);
-    this.logger.log(`Stored new 2FA setup data in session for user ${context.userId}`, {
-      sessionKey,
-      methodId: setupResponse.methodId,
-      methodType: setupResponse.methodType,
-      sessionSize: TwoFactorAuthService.sessionStorage.size,
-      allSessionKeys: Array.from(TwoFactorAuthService.sessionStorage.keys()),
-      storedData: { ...sessionData, secret: '***HIDDEN***' }
+    // Store method data in database
+    const storedMethod = await this.twoFactorDb.createMethod({
+      userId: context.userId,
+      methodType: methodType,
+      secretData: setupResponse.secret,
+      name: request.name,
+      isPrimary: false, // Will be set to true when enabled
     });
 
-    // TODO: Store method data in database
-    // await this.storeMethodData(context, { ... });
+    this.logger.log(`Stored new 2FA method in database for user ${context.userId}`, {
+      methodId: storedMethod.id,
+      methodType: storedMethod.methodType,
+      isEnabled: storedMethod.isEnabled,
+      isPrimary: storedMethod.isPrimary
+    });
 
-    // TODO: Log audit trail
-    // await this.logAuditEvent(context, setupResponse.methodId, 'SETUP', true);
-
-    return setupResponse;
+    // Return the setup response with the database method ID
+    return {
+      ...setupResponse,
+      methodId: storedMethod.id,
+    };
   }
 
   /**
@@ -148,64 +135,57 @@ export class TwoFactorAuthService {
       hasCode: !!request.code
     });
 
-    // Look for setup data in session storage
-    const sessionKey = `${context.userId}-${request.methodType || 'TOTP'}`;
-    const sessionData = TwoFactorAuthService.sessionStorage.get(sessionKey);
-    
-    this.logger.log(`Looking for session data with key: ${sessionKey}`, {
-      found: !!sessionData,
-      sessionSize: TwoFactorAuthService.sessionStorage.size,
-      allKeys: Array.from(TwoFactorAuthService.sessionStorage.keys()),
-      requestedKey: sessionKey,
-      keyExists: TwoFactorAuthService.sessionStorage.has(sessionKey),
-      serviceInstance: this.constructor.name,
-      timestamp: new Date().toISOString()
-    });
-    
+    // Look for method data in database
     let targetMethod = null;
     
-    if (sessionData) {
-      // Check if session data is not expired (30 minutes max)
-      const maxAge = 30 * 60 * 1000; // 30 minutes
-      const isExpired = Date.now() - sessionData.timestamp > maxAge;
+    if (request.methodId) {
+      // Find by specific method ID
+      targetMethod = await this.twoFactorDb.findMethodById(request.methodId);
       
-      if (!isExpired) {
-        targetMethod = {
-          id: sessionData.methodId,
-          secret: sessionData.secret,
-          methodType: request.methodType || 'TOTP',
-          userId: sessionData.userId
-        };
-        this.logger.log(`Found valid session data for user ${context.userId}`, {
-          methodId: sessionData.methodId,
-          age: Date.now() - sessionData.timestamp
-        });
-      } else {
-        this.logger.warn(`Session data expired for user ${context.userId}`, {
-          age: Date.now() - sessionData.timestamp,
-          maxAge
-        });
-        TwoFactorAuthService.sessionStorage.delete(sessionKey);
+      if (targetMethod && targetMethod.userId !== context.userId) {
+        throw new TwoFactorError(
+          'Invalid method access',
+          TwoFactorErrorCode.INVALID_SETUP_DATA,
+        );
       }
+    } else {
+      // Find by user and method type
+      const methodType = request.methodType === 'TOTP' ? TwoFactorMethodType.TOTP : 
+                        request.methodType === 'SMS' ? TwoFactorMethodType.SMS :
+                        request.methodType === 'EMAIL' ? TwoFactorMethodType.EMAIL :
+                        TwoFactorMethodType.TOTP; // Default to TOTP
+      
+      targetMethod = await this.twoFactorDb.findMethodByUserAndType(context.userId, methodType);
     }
-
+    
     if (!targetMethod) {
-      this.logger.warn(`No stored 2FA method found for user ${context.userId}. This might be due to a server restart during setup.`);
+      this.logger.warn(`No stored 2FA method found for user ${context.userId}. Please set up 2FA first.`);
       throw new TwoFactorError(
-        'No 2FA method found for verification. Please restart the setup process.',
+        'No 2FA method found for verification. Please set up 2FA first.',
         TwoFactorErrorCode.SETUP_REQUIRED,
       );
     }
+
+    this.logger.log(`Found 2FA method for user ${context.userId}`, {
+      methodId: targetMethod.id,
+      methodType: targetMethod.methodType,
+      isEnabled: targetMethod.isEnabled,
+      isPrimary: targetMethod.isPrimary
+    });
 
     // Get the provider and verify
     const provider = this.methodRegistry.getProvider(targetMethod.methodType);
     const verificationResult = await provider.verify(
       context.userId,
       request.code,
-      targetMethod.secret, // Use the stored secret
+      targetMethod.secretData, // Use the stored secret data
     );
 
-    // TODO: Log audit event and update last used time
+    // If verification was successful, update the last used time
+    if (verificationResult.success) {
+      await this.twoFactorDb.updateLastUsed(targetMethod.id);
+      this.logger.log(`Updated last used time for method ${targetMethod.id}`);
+    }
 
     return verificationResult;
   }
@@ -219,27 +199,27 @@ export class TwoFactorAuthService {
   ): Promise<void> {
     this.logger.log(`Enabling 2FA for user ${context.userId}`);
 
-    // Store the enabled method in static storage
-    const enabledMethodKey = `${context.userId}-enabled`;
-    const enabledMethod = {
-      methodId,
-      methodType: 'TOTP', // For now, assume TOTP
-      enabledAt: new Date(),
-      userId: context.userId
-    };
-    
-    TwoFactorAuthService.enabledMethods.set(enabledMethodKey, enabledMethod);
+    // Check if the method exists and belongs to the user
+    const method = await this.twoFactorDb.findMethodById(methodId);
+    if (!method || method.userId !== context.userId) {
+      throw new TwoFactorError(
+        'Method not found or access denied',
+        TwoFactorErrorCode.INVALID_SETUP_DATA,
+      );
+    }
+
+    // Enable the method in the database (set as primary if it's the first enabled method)
+    const userMethods = await this.twoFactorDb.findUserMethods(context.userId, true);
+    const isPrimary = userMethods.length === 0; // First enabled method becomes primary
+
+    await this.twoFactorDb.enableMethod(methodId, isPrimary);
     
     this.logger.log(`Successfully enabled 2FA method ${methodId} for user ${context.userId}`, {
-      enabledMethodKey,
       methodId,
-      methodType: enabledMethod.methodType,
-      enabledAt: enabledMethod.enabledAt,
-      totalEnabledMethods: TwoFactorAuthService.enabledMethods.size
+      methodType: method.methodType,
+      isPrimary,
+      enabledAt: new Date().toISOString()
     });
-
-    // TODO: Update method as enabled in database
-    // TODO: Log audit event
   }
 
   /**
@@ -259,9 +239,23 @@ export class TwoFactorAuthService {
       );
     }
 
-    // TODO: Update method as disabled
-    // TODO: Check if this was the last enabled method
-    // TODO: Log audit event
+    // Check if the method exists and belongs to the user
+    const method = await this.twoFactorDb.findMethodById(methodId);
+    if (!method || method.userId !== context.userId) {
+      throw new TwoFactorError(
+        'Method not found or access denied',
+        TwoFactorErrorCode.INVALID_SETUP_DATA,
+      );
+    }
+
+    // Disable the method in the database
+    await this.twoFactorDb.disableMethod(methodId);
+    
+    this.logger.log(`Successfully disabled 2FA method ${methodId} for user ${context.userId}`, {
+      methodId,
+      methodType: method.methodType,
+      disabledAt: new Date().toISOString()
+    });
   }
 
   /**
@@ -270,37 +264,17 @@ export class TwoFactorAuthService {
   async getUserTwoFactorStatus(context: TwoFactorContext): Promise<TwoFactorStatus> {
     this.logger.log(`Getting 2FA status for user ${context.userId}`);
 
-    // Check if user has enabled 2FA methods
-    const enabledMethodKey = `${context.userId}-enabled`;
-    const enabledMethod = TwoFactorAuthService.enabledMethods.get(enabledMethodKey);
+    // Get all enabled methods for the user from database
+    const userMethods = await this.twoFactorDb.findUserMethods(context.userId, true);
     
-    this.logger.log(`Checking 2FA status for user ${context.userId}`, {
-      enabledMethodKey,
-      hasEnabledMethod: !!enabledMethod,
-      totalEnabledMethods: TwoFactorAuthService.enabledMethods.size,
-      allEnabledKeys: Array.from(TwoFactorAuthService.enabledMethods.keys())
+    this.logger.log(`Found ${userMethods.length} enabled 2FA methods for user ${context.userId}`, {
+      methodCount: userMethods.length,
+      methodTypes: userMethods.map(m => m.methodType)
     });
 
-    const userMethods: any[] = [];
-    const enabledMethods: any[] = [];
-    let primaryMethod = null;
-
-    if (enabledMethod) {
-      const methodSummary = {
-        id: enabledMethod.methodId,
-        methodType: enabledMethod.methodType,
-        name: 'Authenticator App',
-        isEnabled: true,
-        isPrimary: true,
-        createdAt: enabledMethod.enabledAt,
-        lastUsedAt: null,
-        maskedData: '***SECRET***'
-      };
-      
-      userMethods.push(methodSummary);
-      enabledMethods.push(methodSummary);
-      primaryMethod = methodSummary;
-    }
+    // Convert to method summaries
+    const enabledMethods = userMethods.map(method => this.mapToMethodSummary(method));
+    const primaryMethod = enabledMethods.find(method => method.isPrimary);
 
     const isEnabled = enabledMethods.length > 0;
 

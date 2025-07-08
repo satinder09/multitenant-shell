@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,9 +21,9 @@ import {
   X
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner"
+import { toastNotify } from '@/shared/utils/ui/toastNotify'
+import { alert, confirm, dialog } from '@/shared/utils/ui/dialogUtils'
 
 interface TwoFactorStatus {
   isEnabled: boolean
@@ -56,6 +56,7 @@ export function TwoFactorSettings() {
   const [copiedCodes, setCopiedCodes] = useState(false)
   const [processing, setProcessing] = useState(false)
 
+
   // Load 2FA status
   useEffect(() => {
     loadTwoFactorStatus()
@@ -68,6 +69,11 @@ export function TwoFactorSettings() {
       if (response.ok) {
         const data = await response.json()
         setStatus(data)
+        
+        // If 2FA is enabled, try to load existing backup codes
+        if (data.isEnabled) {
+          await loadBackupCodes()
+        }
       } else {
         console.error('Failed to load 2FA status')
       }
@@ -75,6 +81,23 @@ export function TwoFactorSettings() {
       console.error('Error loading 2FA status:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadBackupCodes = async () => {
+    try {
+      const response = await fetch('/api/auth/2fa/backup-codes')
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Loaded backup codes:', data)
+        if (data.codes) {
+          setBackupCodes(data.codes)
+        }
+      } else {
+        console.log('No backup codes endpoint or no codes available')
+      }
+    } catch (error) {
+      console.log('Error loading backup codes:', error)
     }
   }
 
@@ -96,14 +119,22 @@ export function TwoFactorSettings() {
         const data = await response.json()
         setSetupData(data)
         setSetupStep('setup')
-        toast.success('2FA setup initiated! Scan the QR code with your authenticator app.')
+        toastNotify({ variant: 'success', title: '2FA setup initiated!', description: 'Scan the QR code with your authenticator app.' })
       } else {
         const error = await response.json()
-        toast.error(error.message || 'Failed to setup 2FA')
+        alert({
+          title: 'Failed to Setup 2FA',
+          description: `Unable to initiate 2FA setup: ${error.message}`,
+          variant: 'error',
+          buttons: [
+            { label: 'Cancel', variant: 'outline', autoClose: true },
+            { label: 'Try Again', variant: 'default', onClick: setupTwoFactor, autoClose: true }
+          ]
+        })
       }
     } catch (error) {
       console.error('Error setting up 2FA:', error)
-      toast.error('Error setting up 2FA')
+      toastNotify({ variant: 'error', title: 'Error setting up 2FA' })
     } finally {
       setProcessing(false)
     }
@@ -111,7 +142,7 @@ export function TwoFactorSettings() {
 
   const verifyTwoFactor = async () => {
     if (!verificationCode.trim()) {
-      toast.error('Please enter a verification code')
+      toastNotify({ variant: 'error', title: 'Please enter a verification code' })
       return
     }
 
@@ -132,26 +163,40 @@ export function TwoFactorSettings() {
         const data = await response.json()
         if (data.success) {
           setSetupStep('verify')
-          toast.success('Verification successful! Enabling 2FA...')
+          toastNotify({ variant: 'success', title: 'Verification successful!', description: 'Enabling 2FA...' })
           await enableTwoFactor()
         } else {
-          toast.error(data.message || 'Invalid verification code')
+          toastNotify({ variant: 'error', title: 'Invalid verification code', description: data.message })
         }
       } else {
         const error = await response.json()
         
         // If setup was lost (e.g., server restart), reset the flow
         if (error.message?.includes('restart the setup process')) {
-          toast.error('Setup session expired. Starting over...')
-          resetSetup()
+          alert({
+            title: 'Setup Session Expired',
+            description: 'Your setup session has expired. You will need to start the setup process again.',
+            variant: 'warning',
+            buttons: [
+              { label: 'Start Over', variant: 'default', onClick: resetSetup, autoClose: true }
+            ]
+          })
           return
         }
         
-        toast.error(error.message || 'Verification failed')
+        alert({
+          title: 'Verification Failed',
+          description: `Unable to verify the code: ${error.message}`,
+          variant: 'error',
+          buttons: [
+            { label: 'Cancel Setup', variant: 'outline', onClick: confirmCancelSetup, autoClose: true },
+            { label: 'Try Again', variant: 'default', autoClose: true }
+          ]
+        })
       }
     } catch (error) {
       console.error('Error verifying 2FA:', error)
-      toast.error('Error verifying 2FA')
+      toastNotify({ variant: 'error', title: 'Error verifying 2FA' })
     } finally {
       setProcessing(false)
     }
@@ -174,44 +219,180 @@ export function TwoFactorSettings() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('2FA Enable Response:', data)
         setBackupCodes(data.backupCodes || [])
+        console.log('Backup codes set:', data.backupCodes)
         setSetupStep('complete')
-        toast.success('2FA enabled successfully!')
+        toastNotify({ variant: 'success', title: '2FA enabled successfully!' })
         await loadTwoFactorStatus()
+        
+        // Show success dialog with option to view backup codes immediately
+        if (data.backupCodes && data.backupCodes.length > 0) {
+          alert({
+            title: '🎉 2FA Successfully Enabled!',
+            description: 'Your account is now protected with two-factor authentication. Make sure to save your backup codes.',
+            variant: 'success',
+            buttons: [
+              { 
+                label: 'View Backup Codes', 
+                variant: 'default', 
+                icon: <Key className="h-4 w-4" />,
+                onClick: showBackupCodesDialog,
+                autoClose: true
+              },
+              { 
+                label: 'Continue', 
+                variant: 'outline',
+                autoClose: true
+              }
+            ]
+          })
+        }
       } else {
         const error = await response.json()
-        toast.error(error.message || 'Failed to enable 2FA')
+        alert({
+          title: 'Failed to Enable 2FA',
+          description: `Unable to enable 2FA: ${error.message}`,
+          variant: 'error',
+          buttons: [
+            { label: 'Cancel Setup', variant: 'outline', onClick: confirmCancelSetup, autoClose: true },
+            { label: 'Try Again', variant: 'default', onClick: enableTwoFactor, autoClose: true }
+          ]
+        })
       }
     } catch (error) {
       console.error('Error enabling 2FA:', error)
-      toast.error('Error enabling 2FA')
+      toastNotify({ variant: 'error', title: 'Error enabling 2FA' })
     } finally {
       setProcessing(false)
     }
   }
 
   const disableTwoFactor = async () => {
-    if (!status?.primaryMethod?.id) return
+    console.log('🔐 Disable 2FA clicked')
+    console.log('Status:', status)
+    console.log('Primary method:', status?.primaryMethod)
+    
+    if (!status?.primaryMethod?.id) {
+      console.error('No primary method ID found')
+      toastNotify({ variant: 'error', title: 'No 2FA method found to disable' })
+      return
+    }
 
     try {
       setProcessing(true)
+      console.log('Making DELETE request to:', `/api/auth/2fa/method/${status.primaryMethod.id}`)
+      
       const response = await fetch(`/api/auth/2fa/method/${status.primaryMethod.id}`, {
         method: 'DELETE'
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response ok:', response.ok)
+
       if (response.ok) {
-        toast.success('2FA disabled successfully')
+        toastNotify({ variant: 'success', title: '2FA disabled successfully' })
         await loadTwoFactorStatus()
         setSetupStep('initial')
       } else {
         const error = await response.json()
-        toast.error(error.message || 'Failed to disable 2FA')
+        console.error('API Error:', error)
+        alert({
+          title: 'Failed to Disable 2FA',
+          description: `Unable to disable 2FA: ${error.message}`,
+          variant: 'error',
+          buttons: [
+            { label: 'Cancel', variant: 'outline', autoClose: true },
+            { label: 'Try Again', variant: 'default', onClick: disableTwoFactor, autoClose: true }
+          ]
+        })
       }
     } catch (error) {
       console.error('Error disabling 2FA:', error)
-      toast.error('Error disabling 2FA')
+      toastNotify({ variant: 'error', title: 'Error disabling 2FA' })
     } finally {
       setProcessing(false)
+    }
+  }
+
+  const copyToClipboard = async (text: string, successMessage: string = 'Copied to clipboard') => {
+    console.log('Attempting to copy text:', text)
+    
+    try {
+      // First try the modern clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        console.log('Using modern clipboard API')
+        await navigator.clipboard.writeText(text)
+        
+        // Verify it was actually copied by reading it back
+        try {
+          const clipboardText = await navigator.clipboard.readText()
+          if (clipboardText === text) {
+            console.log('Clipboard verified - copy successful')
+            toastNotify({ variant: 'success', title: successMessage })
+            return true
+          } else {
+            console.log('Clipboard verification failed')
+            throw new Error('Clipboard verification failed')
+          }
+        } catch (readError) {
+          console.log('Cannot verify clipboard (permission issue), assuming success')
+          toastNotify({ variant: 'success', title: successMessage })
+          return true
+        }
+      } else {
+        console.log('Using fallback clipboard method')
+        // Fallback for older browsers or insecure contexts
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        textArea.style.opacity = '0'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const result = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        console.log('execCommand result:', result)
+        if (result) {
+          toastNotify({ variant: 'success', title: successMessage })
+          return true
+        } else {
+          throw new Error('Copy command failed')
+        }
+      }
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error)
+      
+      // Show the content in a dialog for manual copying
+      dialog({
+        title: 'Copy Failed - Manual Copy Required',
+        description: 'Unable to copy to clipboard automatically. Please select and copy the text below:',
+        variant: 'warning',
+        size: 'lg',
+        content: (
+          <div className="space-y-3">
+            <div className="p-3 bg-muted rounded-lg border">
+              <div className="font-mono text-sm whitespace-pre-wrap break-all select-all">
+                {text}
+              </div>
+            </div>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Select all the text above and use Ctrl+C (or Cmd+C on Mac) to copy.
+              </AlertDescription>
+            </Alert>
+          </div>
+        ),
+        buttons: [
+          { label: 'Done', variant: 'default', autoClose: true }
+        ]
+      })
+      return false
     }
   }
 
@@ -219,10 +400,11 @@ export function TwoFactorSettings() {
     if (backupCodes.length === 0) return
     
     const codesText = backupCodes.join('\n')
-    await navigator.clipboard.writeText(codesText)
-    setCopiedCodes(true)
-    toast.success('Backup codes copied to clipboard')
-    setTimeout(() => setCopiedCodes(false), 2000)
+    const success = await copyToClipboard(codesText, 'Backup codes copied to clipboard')
+    if (success) {
+      setCopiedCodes(true)
+      setTimeout(() => setCopiedCodes(false), 2000)
+    }
   }
 
   const downloadBackupCodes = () => {
@@ -238,7 +420,7 @@ export function TwoFactorSettings() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    toast.success('Backup codes downloaded')
+    toastNotify({ variant: 'success', title: 'Backup codes downloaded' })
   }
 
   const resetSetup = () => {
@@ -247,6 +429,153 @@ export function TwoFactorSettings() {
     setVerificationCode('')
     setBackupCodes([])
     setCopiedCodes(false)
+  }
+
+  const showBackupCodesDialog = () => {
+    console.log('Backup codes for dialog:', backupCodes)
+    
+    dialog({
+      title: 'Your Backup Codes',
+      description: 'Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator device.',
+      size: 'lg',
+      variant: 'info',
+      content: (
+        <div className="space-y-4">
+          {backupCodes.length > 0 ? (
+            <div className="p-4 bg-muted rounded-lg">
+              <div className="grid grid-cols-2 gap-2 font-mono text-sm">
+                {backupCodes.map((code, index) => (
+                  <div key={index} className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                    {code}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                No backup codes available. Please try regenerating your codes or contact support.
+              </p>
+            </div>
+          )}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Store these codes securely. Each code can only be used once.
+            </AlertDescription>
+          </Alert>
+        </div>
+      ),
+             buttons: [
+         { 
+           label: 'Copy All Codes', 
+           variant: 'outline', 
+           icon: <Copy className="h-4 w-4" />,
+           onClick: copyBackupCodes,
+           autoClose: false
+         },
+         { 
+           label: 'Download as File', 
+           variant: 'outline', 
+           icon: <Download className="h-4 w-4" />,
+           onClick: downloadBackupCodes,
+           autoClose: false
+         },
+         { 
+           label: 'Close', 
+           variant: 'default',
+           autoClose: true
+         }
+       ]
+    })
+  }
+
+  const generateNewBackupCodes = async () => {
+    confirm({
+      title: 'Generate New Backup Codes',
+      description: 'This will invalidate your existing backup codes and generate new ones. Make sure you have saved your current codes before proceeding.',
+      variant: 'warning',
+      buttons: [
+        { 
+          label: 'Cancel', 
+          variant: 'outline',
+          autoClose: true
+        },
+        { 
+          label: 'Generate New Codes', 
+          variant: 'destructive',
+          onClick: async () => {
+            try {
+              setProcessing(true)
+              toastNotify({ variant: 'loading', title: 'Generating new backup codes...' })
+              
+                             const response = await fetch('/api/auth/2fa/backup-codes', {
+                 method: 'GET',
+                 headers: {
+                   'Content-Type': 'application/json',
+                 }
+               })
+
+                             if (response.ok) {
+                 const data = await response.json()
+                 console.log('New backup codes generated:', data)
+                 
+                 if (data.codes && data.codes.length > 0) {
+                   setBackupCodes(data.codes)
+                   toastNotify({ variant: 'success', title: 'New backup codes generated!' })
+                   
+                   // Show the new codes immediately
+                   setTimeout(() => {
+                     showBackupCodesDialog()
+                   }, 500)
+                 } else {
+                   throw new Error('No backup codes received')
+                 }
+               } else {
+                const error = await response.json()
+                throw new Error(error.message || 'Failed to generate new backup codes')
+              }
+                         } catch (error) {
+               console.error('Error generating backup codes:', error)
+               const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+               alert({
+                 title: 'Failed to Generate New Backup Codes',
+                 description: `Unable to generate new backup codes: ${errorMessage}`,
+                 variant: 'error',
+                 buttons: [
+                   { label: 'Try Again', variant: 'default', onClick: generateNewBackupCodes, autoClose: true },
+                   { label: 'Cancel', variant: 'outline', autoClose: true }
+                 ]
+               })
+             } finally {
+              setProcessing(false)
+            }
+          },
+          autoClose: true
+        }
+      ]
+    })
+  }
+
+  const confirmCancelSetup = () => {
+    confirm({
+      title: 'Cancel 2FA Setup',
+      description: 'Are you sure you want to cancel the setup process? You will need to start over.',
+      variant: 'warning',
+      buttons: [
+        { 
+          label: 'Continue Setup', 
+          variant: 'outline',
+          autoClose: true
+        },
+        { 
+          label: 'Yes, Cancel Setup', 
+          variant: 'destructive',
+          onClick: resetSetup,
+          icon: <X className="h-4 w-4" />
+        }
+      ]
+    })
   }
 
   if (loading) {
@@ -363,7 +692,7 @@ export function TwoFactorSettings() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => navigator.clipboard.writeText(setupData.secret!)}
+                          onClick={() => copyToClipboard(setupData.secret!, 'Manual entry key copied to clipboard')}
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -397,9 +726,9 @@ export function TwoFactorSettings() {
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={resetSetup} className="flex-1">
+                  <Button variant="outline" onClick={confirmCancelSetup} className="flex-1">
                     <X className="mr-2 h-4 w-4" />
-                    Cancel
+                    Cancel Setup
                   </Button>
                 </div>
               </div>
@@ -417,49 +746,21 @@ export function TwoFactorSettings() {
                 
                 {backupCodes.length > 0 && (
                   <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Backup Codes</h4>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator device.
-                      </p>
-                      <div className="p-4 bg-muted rounded-lg">
-                        <div className="grid grid-cols-2 gap-2 font-mono text-sm">
-                          {backupCodes.map((code, index) => (
-                            <div key={index} className="p-2 bg-background rounded border">
-                              {code}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    <Alert>
+                      <Key className="h-4 w-4" />
+                      <AlertDescription>
+                        Your backup codes have been generated successfully. Click below to view and save them.
+                      </AlertDescription>
+                    </Alert>
                     
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={copyBackupCodes}
-                        className="flex-1"
-                      >
-                        {copiedCodes ? (
-                          <>
-                            <Check className="mr-2 h-4 w-4" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Copy Codes
-                          </>
-                        )}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={downloadBackupCodes}
-                        className="flex-1"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </Button>
-                    </div>
+                    <Button 
+                      onClick={showBackupCodesDialog}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <Key className="mr-2 h-4 w-4" />
+                      View & Save Backup Codes
+                    </Button>
                   </div>
                 )}
                 
@@ -486,77 +787,59 @@ export function TwoFactorSettings() {
               </AlertDescription>
             </Alert>
             
-            <div className="flex gap-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex-1">
-                    <Key className="mr-2 h-4 w-4" />
-                    Generate New Backup Codes
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Generate New Backup Codes</DialogTitle>
-                    <DialogDescription>
-                      This will invalidate your existing backup codes and generate new ones.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        This feature is coming soon. Contact support if you need new backup codes.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                </DialogContent>
-              </Dialog>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <Button 
+                variant="outline" 
+                onClick={showBackupCodesDialog}
+              >
+                <Key className="mr-2 h-4 w-4" />
+                View Backup Codes
+              </Button>
               
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="destructive" className="flex-1">
+              <Button 
+                variant="outline" 
+                onClick={generateNewBackupCodes}
+              >
+                <Key className="mr-2 h-4 w-4" />
+                Generate New Codes
+              </Button>
+              
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  confirm({
+                    title: 'Disable Two-Factor Authentication',
+                    description: 'Are you sure you want to disable 2FA? This will make your account less secure and remove the extra layer of protection from your account.',
+                    variant: 'error',
+                    buttons: [
+                      { 
+                        label: 'Keep 2FA Active', 
+                        variant: 'outline',
+                        autoClose: true
+                      },
+                      { 
+                        label: 'Yes, Disable 2FA', 
+                        variant: 'destructive', 
+                        onClick: disableTwoFactor,
+                        icon: <X className="h-4 w-4" />
+                      }
+                    ]
+                  })
+                }}
+                disabled={processing}
+              >
+                {processing ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Disabling...
+                  </>
+                ) : (
+                  <>
                     <X className="mr-2 h-4 w-4" />
                     Disable 2FA
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to disable 2FA? This will make your account less secure.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        Disabling 2FA will remove the extra layer of security from your account. 
-                        You can re-enable it at any time.
-                      </AlertDescription>
-                    </Alert>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="destructive" 
-                        onClick={disableTwoFactor}
-                        disabled={processing}
-                        className="flex-1"
-                      >
-                        {processing ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                            Disabling...
-                          </>
-                        ) : (
-                          <>
-                            <X className="mr-2 h-4 w-4" />
-                            Yes, Disable 2FA
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         )}
