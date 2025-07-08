@@ -101,8 +101,13 @@ export class TwoFactorAuthService {
   ): Promise<TwoFactorVerificationResponse> {
     this.logger.log(`Verifying 2FA code for user ${context.userId}`);
 
-    // TODO: Get user's 2FA methods from database
-    const userMethods: any[] = []; // await this.getUserMethods(context);
+    // Get user's 2FA methods from temporary storage (demo purposes)
+    const userMethods: any[] = [];
+    for (const [key, method] of this.tempMethodStorage.entries()) {
+      if (method.userId === context.userId) {
+        userMethods.push(method);
+      }
+    }
     
     let targetMethod = userMethods.find(m => 
       request.methodId ? m.id === request.methodId : m.methodType === request.methodType
@@ -120,7 +125,7 @@ export class TwoFactorAuthService {
     const verificationResult = await provider.verify(
       context.userId,
       request.code,
-      targetMethod.secretData,
+      targetMethod.secret, // Use the stored secret
     );
 
     // TODO: Log audit event and update last used time
@@ -137,7 +142,18 @@ export class TwoFactorAuthService {
   ): Promise<void> {
     this.logger.log(`Enabling 2FA for user ${context.userId}`);
 
-    // TODO: Update method as enabled
+    // Find and enable the method in temporary storage
+    for (const [key, method] of this.tempMethodStorage.entries()) {
+      if (method.userId === context.userId && method.id === methodId) {
+        method.isEnabled = true;
+        method.isPrimary = true; // Set as primary since it's the first one
+        this.tempMethodStorage.set(key, method);
+        this.logger.log(`Enabled 2FA method ${methodId} for user ${context.userId}`);
+        break;
+      }
+    }
+
+    // TODO: Update method as enabled in database
     // TODO: Update user's overall 2FA status
     // TODO: Set as primary if it's the first method
     // TODO: Log audit event
@@ -171,12 +187,17 @@ export class TwoFactorAuthService {
   async getUserTwoFactorStatus(context: TwoFactorContext): Promise<TwoFactorStatus> {
     this.logger.log(`Getting 2FA status for user ${context.userId}`);
 
-    // TODO: Get user and methods from database
-    const user = { twoFactorEnabled: false };
+    // Get user methods from temporary storage (demo purposes)
     const userMethods: any[] = [];
+    for (const [key, method] of this.tempMethodStorage.entries()) {
+      if (method.userId === context.userId) {
+        userMethods.push(method);
+      }
+    }
 
     const enabledMethods = userMethods.filter(m => m.isEnabled);
     const primaryMethod = userMethods.find(m => m.isPrimary);
+    const user = { twoFactorEnabled: enabledMethods.length > 0 };
 
     return {
       isEnabled: user.twoFactorEnabled || false,
