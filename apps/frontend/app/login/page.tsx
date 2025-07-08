@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { ProtectedRoute } from '@/domains/auth/components/ProtectedRoute';
+import { TwoFactorVerification } from '@/components/auth/TwoFactorVerification';
 import { Eye, EyeOff } from 'lucide-react';
 import { RateLimiter, isValidEmail, sanitizeInput } from '@/shared/utils/security';
 import { cn } from '@/shared/utils/utils';
@@ -25,7 +26,7 @@ function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, verify2FA, twoFactorRequired, twoFactorSession, isLoading: authLoading } = useAuth();
   const { isPlatform, tenantSubdomain } = usePlatform();
   const loginInProgress = useRef(false);
   const [email, setEmail] = useState('');
@@ -222,6 +223,32 @@ function LoginForm({
     
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  // If 2FA is required, render the 2FA verification component
+  if (twoFactorRequired && twoFactorSession) {
+    return (
+      <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <TwoFactorVerification
+          availableMethods={twoFactorSession.availableMethods}
+          message={twoFactorSession.message}
+          onVerify={verify2FA}
+          isLoading={authLoading}
+        />
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => {
+              // Reset to login form (this will clear the 2FA state)
+              window.location.reload();
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800 underline"
+          >
+            ← Back to login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>

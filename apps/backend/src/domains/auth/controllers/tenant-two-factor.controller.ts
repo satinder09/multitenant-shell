@@ -233,11 +233,11 @@ export class TenantTwoFactorController {
       await this.twoFactorAuthService.enableTwoFactor(context, enableDto.methodId);
       
       // Generate backup codes for the user
-      const backupCodes = await this.backupCodesService.generateBackupCodes();
+      const backupCodes = await this.backupCodesService.generateBackupCodes(userId);
       
       return {
         message: '2FA enabled successfully',
-        backupCodes: backupCodes.plainCodes,
+        backupCodes: backupCodes.codes,
       };
     } catch (error) {
       this.logger.error(`Failed to enable 2FA for tenant user ${userId}`, error);
@@ -287,27 +287,22 @@ export class TenantTwoFactorController {
   }
 
   @Post('backup-codes/generate')
+  @HttpCode(HttpStatus.OK)
   async generateBackupCodes(
     @Req() req: Request,
   ): Promise<{ codes: string[]; instructions: string }> {
     const userId = req.user?.['id'];
-    const tenantId = req.headers['x-tenant-id'] as string;
-    
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
     
-    if (!tenantId) {
-      throw new BadRequestException('Tenant ID is required');
-    }
-
     try {
       this.logger.log(`Generating backup codes for tenant user ${userId}`);
-      const backupCodes = await this.backupCodesService.generateBackupCodes();
-      
+      const backupCodes = await this.backupCodesService.generateBackupCodes(userId);
+
       return {
-        codes: backupCodes.plainCodes,
-        instructions: this.backupCodesService.getInstructions(),
+        codes: backupCodes.codes,
+        instructions: backupCodes.instructions,
       };
     } catch (error) {
       this.logger.error(`Failed to generate backup codes for tenant user ${userId}`, error);
@@ -322,32 +317,19 @@ export class TenantTwoFactorController {
     @Body() { code }: { code: string },
   ): Promise<{ success: boolean; remainingCodes: number; message: string }> {
     const userId = req.user?.['id'];
-    const tenantId = req.headers['x-tenant-id'] as string;
-    
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
     
-    if (!tenantId) {
-      throw new BadRequestException('Tenant ID is required');
-    }
-
     try {
       this.logger.log(`Verifying backup code for tenant user ${userId}`);
-      
-      // TODO: Get user's backup codes from database
-      const backupCodesData = {
-        codes: [],
-        usedCodes: [],
-        generatedAt: new Date(),
-      };
-      
-      const result = await this.backupCodesService.verifyBackupCode(code, backupCodesData);
-      
+
+      const result = await this.backupCodesService.verifyBackupCode(userId, code);
+
       return {
         success: result.isValid,
+        message: result.message,
         remainingCodes: result.remainingCodes,
-        message: result.isValid ? 'Backup code verified successfully' : 'Invalid backup code',
       };
     } catch (error) {
       this.logger.error(`Failed to verify backup code for tenant user ${userId}`, error);
@@ -364,31 +346,20 @@ export class TenantTwoFactorController {
     instructions: string;
   }> {
     const userId = req.user?.['id'];
-    const tenantId = req.headers['x-tenant-id'] as string;
-    
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
-    
-    if (!tenantId) {
-      throw new BadRequestException('Tenant ID is required');
-    }
 
     try {
-      // TODO: Get user's backup codes data from database
-      const backupCodesData = {
-        codes: [],
-        usedCodes: [],
-        generatedAt: new Date(),
-      };
-      
-      const hasBackupCodes = this.backupCodesService.hasBackupCodes(backupCodesData);
-      const remainingBackupCodes = this.backupCodesService.getRemainingCodesCount(backupCodesData);
-      
+      this.logger.log(`Getting recovery info for tenant user ${userId}`);
+
+      const hasBackupCodes = await this.backupCodesService.hasBackupCodes(userId);
+      const remainingBackupCodes = await this.backupCodesService.getRemainingCodesCount(userId);
+
       return {
         hasBackupCodes,
         remainingBackupCodes,
-        instructions: this.backupCodesService.getInstructions(),
+        instructions: 'Use backup codes to recover your account if you lose access to your authenticator.',
       };
     } catch (error) {
       this.logger.error(`Failed to get recovery info for tenant user ${userId}`, error);

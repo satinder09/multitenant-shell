@@ -6,245 +6,270 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { randomBytes } from 'crypto';
-import * as bcrypt from 'bcrypt';
+import { TwoFactorDatabaseService } from './two-factor-database.service';
+import * as crypto from 'crypto';
 
-import {
-  BackupCodesData,
-  TwoFactorContext,
-  TwoFactorError,
-  TwoFactorErrorCode,
-} from '../types/two-factor-auth.types';
+export interface BackupCodesResponse {
+  codes: string[];
+  instructions: string;
+  generatedAt: Date;
+}
+
+export interface BackupCodeVerificationResult {
+  isValid: boolean;
+  remainingCodes: number;
+  message: string;
+}
 
 @Injectable()
 export class BackupCodesService {
   private readonly logger = new Logger(BackupCodesService.name);
-  
-  // Configuration
-  private readonly CODE_COUNT = 10;
-  private readonly CODE_LENGTH = 8;
-  private readonly SALT_ROUNDS = 12;
 
-  constructor() {
-    this.logger.log('Backup Codes Service initialized');
-  }
+  constructor(private readonly twoFactorDb: TwoFactorDatabaseService) {}
 
   /**
-   * Generate new backup codes for user
+   * Generate new backup codes for a user
    */
-  async generateBackupCodes(): Promise<{
-    plainCodes: string[];
-    hashedCodes: string[];
-    backupCodesData: BackupCodesData;
-  }> {
-    this.logger.log('Generating backup codes');
+  async generateBackupCodes(userId: string, count = 8): Promise<BackupCodesResponse> {
+    this.logger.log(`Generating ${count} backup codes for user ${userId}`);
 
-    try {
-      const plainCodes: string[] = [];
-      const hashedCodes: string[] = [];
+    const codes = this.generateSecureCodes(count);
+    
+    // Store encrypted backup codes in the user's twoFactorBackupCodes field
+    // Note: This assumes the User model has twoFactorBackupCodes field
+    await this.storeBackupCodes(userId, codes);
 
-      // Generate the specified number of codes
-      for (let i = 0; i < this.CODE_COUNT; i++) {
-        const code = this.generateSingleCode();
-        const hashedCode = await bcrypt.hash(code, this.SALT_ROUNDS);
-        
-        plainCodes.push(code);
-        hashedCodes.push(hashedCode);
-      }
-
-      const backupCodesData: BackupCodesData = {
-        codes: hashedCodes,
-        usedCodes: [],
-        generatedAt: new Date(),
-      };
-
-      this.logger.log(`Generated ${plainCodes.length} backup codes`);
-      
-      return {
-        plainCodes,
-        hashedCodes,
-        backupCodesData,
-      };
-
-    } catch (error) {
-      this.logger.error('Failed to generate backup codes', error);
-      throw new TwoFactorError(
-        'Failed to generate backup codes',
-        TwoFactorErrorCode.SETUP_REQUIRED,
-      );
-    }
+    return {
+      codes,
+      instructions: this.getBackupCodesInstructions(),
+      generatedAt: new Date()
+    };
   }
 
   /**
    * Verify a backup code
    */
-  async verifyBackupCode(
-    code: string,
-    backupCodesData: BackupCodesData,
-  ): Promise<{ isValid: boolean; remainingCodes: number }> {
-    this.logger.log('Verifying backup code');
+  async verifyBackupCode(userId: string, code: string): Promise<BackupCodeVerificationResult> {
+    this.logger.log(`Verifying backup code for user ${userId}`);
 
     try {
-      // Validate code format
-      if (!this.isValidCodeFormat(code)) {
-        return { isValid: false, remainingCodes: this.getRemainingCodesCount(backupCodesData) };
+      const storedCodes = await this.getStoredBackupCodes(userId);
+      
+      if (!storedCodes || storedCodes.length === 0) {
+        return {
+          isValid: false,
+          remainingCodes: 0,
+          message: 'No backup codes found. Please generate new backup codes.'
+        };
       }
 
-      // Check if code was already used
-      for (const usedCode of backupCodesData.usedCodes) {
-        if (await bcrypt.compare(code, usedCode)) {
-          this.logger.warn('Backup code already used');
-          return { isValid: false, remainingCodes: this.getRemainingCodesCount(backupCodesData) };
-        }
+      // Check if the code is valid
+      const codeIndex = storedCodes.findIndex(storedCode => 
+        this.compareCode(code.trim().toUpperCase(), storedCode)
+      );
+
+      if (codeIndex === -1) {
+        return {
+          isValid: false,
+          remainingCodes: storedCodes.length,
+          message: 'Invalid backup code'
+        };
       }
 
-      // Check if code is valid
-      let matchedCode: string | null = null;
-      for (const hashedCode of backupCodesData.codes) {
-        if (await bcrypt.compare(code, hashedCode)) {
-          matchedCode = hashedCode;
-          break;
-        }
-      }
+      // Remove the used code
+      const updatedCodes = storedCodes.filter((_, index) => index !== codeIndex);
+      await this.storeBackupCodes(userId, updatedCodes);
 
-      if (!matchedCode) {
-        this.logger.warn('Invalid backup code');
-        return { isValid: false, remainingCodes: this.getRemainingCodesCount(backupCodesData) };
-      }
+      this.logger.log(`Backup code used for user ${userId}. Remaining codes: ${updatedCodes.length}`);
 
-      // Mark code as used
-      backupCodesData.usedCodes.push(matchedCode);
-      backupCodesData.lastUsedAt = new Date();
-
-      const remainingCodes = this.getRemainingCodesCount(backupCodesData);
-      this.logger.log(`Backup code verified successfully. ${remainingCodes} codes remaining.`);
-
-      return { isValid: true, remainingCodes };
+      return {
+        isValid: true,
+        remainingCodes: updatedCodes.length,
+        message: 'Backup code verified successfully'
+      };
 
     } catch (error) {
-      this.logger.error('Failed to verify backup code', error);
-      throw new TwoFactorError(
-        'Failed to verify backup code',
-        TwoFactorErrorCode.VERIFICATION_FAILED,
-      );
+      this.logger.error(`Failed to verify backup code for user ${userId}`, error);
+      return {
+        isValid: false,
+        remainingCodes: 0,
+        message: 'Error verifying backup code'
+      };
+    }
+  }
+
+  /**
+   * Get remaining backup codes count for a user
+   */
+  async getRemainingCodesCount(userId: string): Promise<number> {
+    try {
+      const codes = await this.getStoredBackupCodes(userId);
+      return codes ? codes.length : 0;
+    } catch (error) {
+      this.logger.error(`Failed to get remaining codes count for user ${userId}`, error);
+      return 0;
     }
   }
 
   /**
    * Check if user has backup codes
    */
-  hasBackupCodes(backupCodesData: BackupCodesData | null): boolean {
-    if (!backupCodesData) return false;
-    return this.getRemainingCodesCount(backupCodesData) > 0;
+  async hasBackupCodes(userId: string): Promise<boolean> {
+    const count = await this.getRemainingCodesCount(userId);
+    return count > 0;
   }
 
   /**
-   * Get remaining codes count
+   * Generate secure backup codes
    */
-  getRemainingCodesCount(backupCodesData: BackupCodesData): number {
-    return backupCodesData.codes.length - backupCodesData.usedCodes.length;
-  }
-
-  /**
-   * Check if backup codes need regeneration
-   */
-  shouldRegenerateBackupCodes(backupCodesData: BackupCodesData): boolean {
-    const remainingCodes = this.getRemainingCodesCount(backupCodesData);
-    return remainingCodes <= 2; // Regenerate when 2 or fewer codes remain
-  }
-
-  /**
-   * Validate backup code format
-   */
-  isValidCodeFormat(code: string): boolean {
-    // Remove any spaces or dashes that users might add
-    const cleanCode = code.replace(/[\s-]/g, '');
+  private generateSecureCodes(count: number): string[] {
+    const codes: string[] = [];
     
-    // Check if it's exactly 8 characters and alphanumeric
-    return /^[A-Z0-9]{8}$/.test(cleanCode.toUpperCase());
-  }
-
-  /**
-   * Format backup code for display
-   */
-  formatCodeForDisplay(code: string): string {
-    // Format as XXXX-XXXX for better readability
-    return code.substring(0, 4) + '-' + code.substring(4);
-  }
-
-  /**
-   * Generate a single backup code
-   */
-  private generateSingleCode(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    
-    // Generate 8 random characters
-    for (let i = 0; i < this.CODE_LENGTH; i++) {
-      const randomIndex = randomBytes(1)[0] % chars.length;
-      code += chars[randomIndex];
+    for (let i = 0; i < count; i++) {
+      // Generate 8-character alphanumeric code
+      const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+      // Format as XXXX-XXXX for readability
+      const formattedCode = `${code.slice(0, 4)}-${code.slice(4, 8)}`;
+      codes.push(formattedCode);
     }
-
-    return code;
+    
+    return codes;
   }
 
   /**
-   * Clean up expired or used backup codes
+   * Store backup codes for a user (encrypted)
    */
-  async cleanupExpiredCodes(backupCodesData: BackupCodesData): Promise<BackupCodesData> {
-    // For now, we don't expire backup codes, but this method provides
-    // a hook for future implementation of expiration logic
-    return backupCodesData;
+  private async storeBackupCodes(userId: string, codes: string[]): Promise<void> {
+    try {
+      // Encrypt each code before storing
+      const encryptedCodes = codes.map(code => this.encryptCode(code));
+      
+      // Update user's backup codes in database
+      // Note: This requires access to the User model through the database service
+      await this.twoFactorDb.updateUserBackupCodes(userId, encryptedCodes);
+      
+      this.logger.log(`Stored ${codes.length} backup codes for user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to store backup codes for user ${userId}`, error);
+      throw error;
+    }
   }
 
   /**
-   * Get statistics about backup codes
+   * Get stored backup codes for a user (decrypted)
    */
-  getBackupCodesStats(backupCodesData: BackupCodesData): {
-    totalCodes: number;
-    usedCodes: number;
-    remainingCodes: number;
-    generatedAt: Date;
-    lastUsedAt?: Date;
-    percentageUsed: number;
-  } {
-    const totalCodes = backupCodesData.codes.length;
-    const usedCodes = backupCodesData.usedCodes.length;
-    const remainingCodes = totalCodes - usedCodes;
-    const percentageUsed = totalCodes > 0 ? Math.round((usedCodes / totalCodes) * 100) : 0;
+  private async getStoredBackupCodes(userId: string): Promise<string[] | null> {
+    try {
+      const encryptedCodes = await this.twoFactorDb.getUserBackupCodes(userId);
+      
+      if (!encryptedCodes || encryptedCodes.length === 0) {
+        return null;
+      }
 
-    return {
-      totalCodes,
-      usedCodes,
-      remainingCodes,
-      generatedAt: backupCodesData.generatedAt,
-      lastUsedAt: backupCodesData.lastUsedAt,
-      percentageUsed,
-    };
+      // Decrypt codes
+      return encryptedCodes.map(encryptedCode => this.decryptCode(encryptedCode));
+    } catch (error) {
+      this.logger.error(`Failed to get backup codes for user ${userId}`, error);
+      return null;
+    }
   }
 
   /**
-   * Validate backup codes data structure
+   * Encrypt a backup code using AES-256-CBC
    */
-  validateBackupCodesData(backupCodesData: any): backupCodesData is BackupCodesData {
-    return (
-      backupCodesData &&
-      Array.isArray(backupCodesData.codes) &&
-      Array.isArray(backupCodesData.usedCodes) &&
-      backupCodesData.generatedAt instanceof Date
-    );
+  private encryptCode(code: string): string {
+    // Use proper AES-256-CBC encryption (same as 2FA secrets)
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', this.getEncryptionKey(), iv);
+    
+    let encrypted = cipher.update(code, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    
+    return iv.toString('hex') + ':' + encrypted;
   }
 
   /**
-   * Get instructions for backup codes
+   * Decrypt a backup code using AES-256-CBC
    */
-  getInstructions(): string {
+  private decryptCode(encryptedCode: string): string {
+    try {
+      // Check if data is in proper encrypted format
+      if (!encryptedCode.includes(':')) {
+        // Legacy Base64 data - migrate to proper encryption
+        this.logger.warn('Found legacy Base64 backup code - migrating to proper encryption');
+        try {
+          const decoded = Buffer.from(encryptedCode, 'base64').toString('utf8');
+          return decoded;
+        } catch (error) {
+          this.logger.error('Failed to decode legacy Base64 backup code', error);
+          return encryptedCode;
+        }
+      }
+
+      const [ivHex, encrypted] = encryptedCode.split(':');
+      
+      if (!ivHex || !encrypted) {
+        this.logger.warn('Invalid encrypted backup code format');
+        return encryptedCode;
+      }
+
+      const iv = Buffer.from(ivHex, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-cbc', this.getEncryptionKey(), iv);
+      
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      return decrypted;
+
+    } catch (error) {
+      this.logger.error('Failed to decrypt backup code', error);
+      return encryptedCode; // Return as-is if decryption fails
+    }
+  }
+
+  /**
+   * Get encryption key (reuse same key as 2FA secrets)
+   */
+  private getEncryptionKey(): Buffer {
+    const key = process.env.TWO_FACTOR_ENCRYPTION_KEY || 'dev-key-12345678901234567890123456789012';
+    
+    if (key.length < 32) {
+      const paddedKey = key.padEnd(32, '0');
+      return Buffer.from(paddedKey, 'utf8');
+    } else {
+      return Buffer.from(key.slice(0, 32), 'utf8');
+    }
+  }
+
+  /**
+   * Compare codes securely
+   */
+  private compareCode(providedCode: string, storedCode: string): boolean {
+    // Use timing-safe comparison
+    const provided = Buffer.from(providedCode, 'utf8');
+    const stored = Buffer.from(storedCode, 'utf8');
+    
+    if (provided.length !== stored.length) {
+      return false;
+    }
+    
+    return crypto.timingSafeEqual(provided, stored);
+  }
+
+  /**
+   * Get backup codes instructions
+   */
+  private getBackupCodesInstructions(): string {
     return `
-      IMPORTANT: Save these backup codes in a secure location.
-      - Each code can only be used once
-      - You can use these codes if you lose access to your authentication device
-      - Generate new codes when you have 2 or fewer remaining
-      - Keep them separate from your device (e.g., in a password manager)
+These backup codes can be used to access your account if you lose your authenticator device.
+
+Important:
+• Each code can only be used once
+• Store them in a safe place (password manager, secure notes)
+• Don't share them with anyone
+• Generate new codes if you suspect they've been compromised
+
+You can use these codes instead of your authenticator app when logging in.
     `.trim();
   }
 } 

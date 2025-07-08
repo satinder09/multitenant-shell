@@ -22,6 +22,7 @@ import { MetricsService } from '../../infrastructure/monitoring/metrics.service'
 import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
 import { TwoFactorDatabaseService } from './services/two-factor-database.service';
 import { TwoFactorService } from './services/two-factor.service';
+import { TwoFactorLoginService } from './services/two-factor-login.service';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { TwoFactorService } from './services/two-factor.service';
     MetricsService,
     TwoFactorDatabaseService,
     TwoFactorService,
+    TwoFactorLoginService,
     {
       provide: 'REGISTER_2FA_PROVIDERS',
       useFactory: (registry: TwoFactorMethodRegistryService, totpProvider: TOTPProvider) => {
@@ -71,6 +73,7 @@ import { TwoFactorService } from './services/two-factor.service';
     TwoFactorMethodRegistryService,
     AuthSecurityService,
     BackupCodesService,
+    TwoFactorLoginService,
   ],
 })
 export class AuthModule {} 

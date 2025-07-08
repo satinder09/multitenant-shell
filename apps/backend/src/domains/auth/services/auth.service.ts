@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { MasterDatabaseService } from '../../database/master/master-database.service';
 import { TenantDatabaseService } from '../../database/tenant/tenant-database.service';
+import { TwoFactorLoginService } from './two-factor-login.service';
 import { LoginDto } from '../dto/login.dto';
 import { LoginResponse } from '../interfaces/login-response.interface';
 import { TenantAccessOption } from '../controllers/tenant-access.controller';
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly masterPrisma: MasterDatabaseService,
     private readonly tenantPrisma: TenantDatabaseService,
     private readonly jwt: JwtService,
+    private readonly twoFactorLoginService: TwoFactorLoginService,
   ) {}
 
   private async validateMasterUser(email: string, pass: string) {
@@ -59,7 +61,42 @@ export class AuthService {
           throw new UnauthorizedException('Invalid credentials');
         }
         
-        // Valid tenant user login
+        // Valid tenant user login - Check if 2FA is enabled
+        const twoFactorStatus = await this.twoFactorLoginService.userHas2FAEnabled(user.id);
+        
+        if (twoFactorStatus.enabled) {
+          // Create 2FA session and return requirement
+          const payload = {
+            sub: user.id,
+            email: user.email,
+            name: user.name,
+            tenantContext: tenantId,
+            accessType: 'direct_access',
+          };
+          
+          const session = this.twoFactorLoginService.createSession(
+            user.id,
+            user.email,
+            user.name,
+            payload,
+            tenantId
+          );
+          
+          this.logger.log(`2FA required for tenant user login`, {
+            userId: user.id,
+            sessionId: session.id,
+            availableMethods: twoFactorStatus.availableMethods
+          });
+          
+          return {
+            requiresTwoFactor: true,
+            twoFactorSessionId: session.id,
+            availableMethods: twoFactorStatus.availableMethods,
+            message: 'Two-factor authentication required'
+          };
+        }
+        
+        // No 2FA required, proceed with normal login
         const payload = {
           sub: user.id,
           email: user.email,
@@ -87,6 +124,42 @@ export class AuthService {
       if (!user) {
         throw new UnauthorizedException('Invalid credentials');
       }
+      
+      // Check if 2FA is enabled for platform user
+      const twoFactorStatus = await this.twoFactorLoginService.userHas2FAEnabled(user.id);
+      
+      if (twoFactorStatus.enabled) {
+        // Create 2FA session and return requirement
+        const payload = {
+          sub: user.id,
+          isSuperAdmin: user.isSuperAdmin,
+          email: user.email,
+          name: user.name,
+        };
+        
+        const session = this.twoFactorLoginService.createSession(
+          user.id,
+          user.email,
+          user.name,
+          payload
+        );
+        
+        this.logger.log(`2FA required for platform user login`, {
+          userId: user.id,
+          sessionId: session.id,
+          isSuperAdmin: user.isSuperAdmin,
+          availableMethods: twoFactorStatus.availableMethods
+        });
+        
+        return {
+          requiresTwoFactor: true,
+          twoFactorSessionId: session.id,
+          availableMethods: twoFactorStatus.availableMethods,
+          message: 'Two-factor authentication required'
+        };
+      }
+      
+      // No 2FA required, proceed with normal login
       const payload = {
         sub: user.id,
         isSuperAdmin: user.isSuperAdmin,
@@ -409,5 +482,35 @@ export class AuthService {
   // Decode a JWT token without verifying (for internal use only)
   decodeToken(token: string): { sub: string; email: string; name: string; tenantContext?: string; [key: string]: unknown } {
     return this.jwt.decode(token);
+  }
+
+  /**
+   * Complete 2FA verification during login
+   */
+  async complete2FALogin(sessionId: string, code: string, type?: 'totp' | 'backup'): Promise<{ accessToken: string; message: string }> {
+    this.logger.log(`Completing 2FA login for session ${sessionId}`);
+
+    try {
+      const verificationResult = await this.twoFactorLoginService.verifyLoginCode(sessionId, code, type);
+      
+      // Generate JWT token with the original payload
+      const accessToken = this.jwt.sign(verificationResult.payload);
+      
+      this.logger.log(`2FA login completed successfully`, {
+        sessionId,
+        type: verificationResult.type,
+        remainingBackupCodes: verificationResult.remainingBackupCodes
+      });
+
+      const message = type === 'backup' && verificationResult.remainingBackupCodes !== undefined
+        ? `Login successful. ${verificationResult.remainingBackupCodes} backup codes remaining.`
+        : 'Login successful';
+
+      return { accessToken, message };
+
+    } catch (error) {
+      this.logger.error(`Failed to complete 2FA login for session ${sessionId}`, error);
+      throw error;
+    }
   }
 }

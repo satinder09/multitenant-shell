@@ -86,13 +86,12 @@ export class PlatformTwoFactorController {
   }
 
   @Post('enable')
-  @ApiOperation({ summary: 'Enable a 2FA method after verification' })
+  @ApiOperation({ summary: 'Enable 2FA method' })
   @ApiResponse({ status: 200, description: '2FA method enabled successfully' })
-  @ApiResponse({ status: 404, description: '2FA method not found' })
   async enable(@AuthUser() user: any, @Body() enableDto: EnableTwoFactorDto) {
     this.logger.log(`Enabling 2FA method ${enableDto.methodId} for platform user ${user.id}`);
-    await this.twoFactorService.enableMethod(user.id, enableDto);
-    return { message: '2FA method enabled successfully' };
+    const result = await this.twoFactorService.enable(user.id, enableDto);
+    return result;
   }
 
   @Delete('methods/:methodId')
@@ -105,22 +104,19 @@ export class PlatformTwoFactorController {
     return { message: '2FA method disabled successfully' };
   }
 
-  @Post('backup-codes/generate')
-  async generateBackupCodes(
-    @Req() req: Request,
-  ): Promise<{ codes: string[]; instructions: string }> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
+  @Get('backup-codes')
+  @ApiOperation({ summary: 'Generate backup codes' })
+  @ApiResponse({ status: 200, description: 'Backup codes generated successfully' })
+  async generateBackupCodes(@AuthUser() user: any) {
+    const userId = user.id;
+    
     try {
       this.logger.log(`Generating backup codes for platform user ${userId}`);
-      const backupCodes = await this.backupCodesService.generateBackupCodes();
-      
+      const backupCodes = await this.backupCodesService.generateBackupCodes(userId);
+
       return {
-        codes: backupCodes.plainCodes,
-        instructions: this.backupCodesService.getInstructions(),
+        codes: backupCodes.codes,
+        instructions: backupCodes.instructions,
       };
     } catch (error) {
       this.logger.error(`Failed to generate backup codes for user ${userId}`, error);
@@ -128,33 +124,22 @@ export class PlatformTwoFactorController {
     }
   }
 
-  @Post('backup-codes/verify')
-  @HttpCode(HttpStatus.OK)
-  async verifyBackupCode(
-    @Req() req: Request,
-    @Body() { code }: { code: string },
-  ): Promise<{ success: boolean; remainingCodes: number; message: string }> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
+  @Post('verify-backup-code')
+  @ApiOperation({ summary: 'Verify backup code' })
+  @ApiResponse({ status: 200, description: 'Backup code verified successfully' })
+  async verifyBackupCode(@AuthUser() user: any, @Body() body: { code: string }) {
+    const userId = user.id;
+    const { code } = body;
+    
     try {
       this.logger.log(`Verifying backup code for platform user ${userId}`);
-      
-      // TODO: Get user's backup codes from database
-      const backupCodesData = {
-        codes: [],
-        usedCodes: [],
-        generatedAt: new Date(),
-      };
-      
-      const result = await this.backupCodesService.verifyBackupCode(code, backupCodesData);
-      
+
+      const result = await this.backupCodesService.verifyBackupCode(userId, code);
+
       return {
         success: result.isValid,
+        message: result.message,
         remainingCodes: result.remainingCodes,
-        message: result.isValid ? 'Backup code verified successfully' : 'Invalid backup code',
       };
     } catch (error) {
       this.logger.error(`Failed to verify backup code for user ${userId}`, error);
@@ -162,34 +147,22 @@ export class PlatformTwoFactorController {
     }
   }
 
-  @Get('recovery')
-  async getRecoveryInfo(
-    @Req() req: Request,
-  ): Promise<{
-    hasBackupCodes: boolean;
-    remainingBackupCodes: number;
-    instructions: string;
-  }> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
+  @Get('recovery-info')
+  @ApiOperation({ summary: 'Get recovery information' })
+  @ApiResponse({ status: 200, description: 'Recovery information retrieved successfully' })
+  async getRecoveryInfo(@AuthUser() user: any) {
+    const userId = user.id;
+    
     try {
-      // TODO: Get user's backup codes data from database
-      const backupCodesData = {
-        codes: [],
-        usedCodes: [],
-        generatedAt: new Date(),
-      };
-      
-      const hasBackupCodes = this.backupCodesService.hasBackupCodes(backupCodesData);
-      const remainingBackupCodes = this.backupCodesService.getRemainingCodesCount(backupCodesData);
-      
+      this.logger.log(`Getting recovery info for platform user ${userId}`);
+
+      const hasBackupCodes = await this.backupCodesService.hasBackupCodes(userId);
+      const remainingBackupCodes = await this.backupCodesService.getRemainingCodesCount(userId);
+
       return {
         hasBackupCodes,
         remainingBackupCodes,
-        instructions: this.backupCodesService.getInstructions(),
+        instructions: 'Use backup codes to recover your account if you lose access to your authenticator.',
       };
     } catch (error) {
       this.logger.error(`Failed to get recovery info for user ${userId}`, error);

@@ -1,6 +1,7 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { TwoFactorDatabaseService, TwoFactorMethodWithAudit } from './two-factor-database.service';
 import { TOTPProvider } from '../providers/totp.provider';
+import { BackupCodesService } from './backup-codes.service';
 import { SetupTwoFactorDto } from '../dto/setup-two-factor.dto';
 import { VerifyTwoFactorDto } from '../dto/verify-two-factor.dto';
 import { EnableTwoFactorDto } from '../dto/enable-two-factor.dto';
@@ -30,6 +31,8 @@ export interface TwoFactorStatusResponse {
   availableMethods: string[];
   enabledMethods: TwoFactorMethodSummary[];
   primaryMethod?: TwoFactorMethodSummary;
+  canDisable: boolean;
+  lastVerifiedAt?: string;
 }
 
 export interface TwoFactorMethodSummary {
@@ -43,14 +46,137 @@ export interface TwoFactorMethodSummary {
   maskedData?: string;
 }
 
+export interface TwoFactorEnableResponse {
+  message: string;
+  backupCodes?: string[];
+}
+
+interface RateLimitEntry {
+  attempts: number;
+  firstAttempt: Date;
+  lastAttempt: Date;
+  lockoutUntil?: Date;
+}
+
 @Injectable()
 export class TwoFactorService {
   private readonly logger = new Logger(TwoFactorService.name);
+  private readonly failedAttempts = new Map<string, RateLimitEntry>();
+  
+  // Rate limiting configuration
+  private readonly MAX_ATTEMPTS = 5;
+  private readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+  private readonly ATTEMPT_WINDOW = 5 * 60 * 1000; // 5 minutes
 
   constructor(
     private readonly twoFactorDb: TwoFactorDatabaseService,
-    private readonly totpProvider: TOTPProvider
-  ) {}
+    private readonly totpProvider: TOTPProvider,
+    private readonly backupCodesService: BackupCodesService
+  ) {
+    // Clean up expired rate limit entries every 5 minutes
+    setInterval(() => this.cleanupExpiredEntries(), 5 * 60 * 1000);
+  }
+
+  /**
+   * Check rate limiting for a user
+   */
+  private checkRateLimit(userId: string): { allowed: boolean; remainingAttempts: number; lockoutUntil?: Date } {
+    const now = new Date();
+    const entry = this.failedAttempts.get(userId);
+
+    if (!entry) {
+      return { allowed: true, remainingAttempts: this.MAX_ATTEMPTS };
+    }
+
+    // Check if still in lockout period
+    if (entry.lockoutUntil && entry.lockoutUntil > now) {
+      return { 
+        allowed: false, 
+        remainingAttempts: 0, 
+        lockoutUntil: entry.lockoutUntil 
+      };
+    }
+
+    // Check if attempts are within the window
+    const timeSinceFirst = now.getTime() - entry.firstAttempt.getTime();
+    if (timeSinceFirst > this.ATTEMPT_WINDOW) {
+      // Reset the window
+      this.failedAttempts.delete(userId);
+      return { allowed: true, remainingAttempts: this.MAX_ATTEMPTS };
+    }
+
+    // Check if max attempts reached
+    if (entry.attempts >= this.MAX_ATTEMPTS) {
+      const lockoutUntil = new Date(now.getTime() + this.LOCKOUT_DURATION);
+      entry.lockoutUntil = lockoutUntil;
+      this.failedAttempts.set(userId, entry);
+      
+      this.logger.warn(`User ${userId} locked out for 2FA attempts until ${lockoutUntil.toISOString()}`);
+      
+      return { 
+        allowed: false, 
+        remainingAttempts: 0, 
+        lockoutUntil 
+      };
+    }
+
+    return { 
+      allowed: true, 
+      remainingAttempts: this.MAX_ATTEMPTS - entry.attempts 
+    };
+  }
+
+  /**
+   * Record a failed verification attempt
+   */
+  private recordFailedAttempt(userId: string): void {
+    const now = new Date();
+    const entry = this.failedAttempts.get(userId);
+
+    if (!entry) {
+      this.failedAttempts.set(userId, {
+        attempts: 1,
+        firstAttempt: now,
+        lastAttempt: now
+      });
+    } else {
+      entry.attempts++;
+      entry.lastAttempt = now;
+      this.failedAttempts.set(userId, entry);
+    }
+
+    this.logger.warn(`Failed 2FA attempt for user ${userId}. Attempts: ${entry?.attempts || 1}`);
+  }
+
+  /**
+   * Clear failed attempts for a user (on successful verification)
+   */
+  private clearFailedAttempts(userId: string): void {
+    this.failedAttempts.delete(userId);
+  }
+
+  /**
+   * Clean up expired rate limit entries
+   */
+  private cleanupExpiredEntries(): void {
+    const now = new Date();
+    let cleaned = 0;
+    
+    this.failedAttempts.forEach((entry, userId) => {
+      const timeSinceFirst = now.getTime() - entry.firstAttempt.getTime();
+      const isExpired = timeSinceFirst > this.ATTEMPT_WINDOW && 
+                       (!entry.lockoutUntil || entry.lockoutUntil <= now);
+      
+      if (isExpired) {
+        this.failedAttempts.delete(userId);
+        cleaned++;
+      }
+    });
+
+    if (cleaned > 0) {
+      this.logger.debug(`Cleaned up ${cleaned} expired 2FA rate limit entries`);
+    }
+  }
 
   /**
    * Setup a new 2FA method for a user
@@ -93,6 +219,25 @@ export class TwoFactorService {
   async verifyCode(userId: string, dto: VerifyTwoFactorDto): Promise<TwoFactorVerificationResponse> {
     this.logger.log(`Verifying ${dto.methodType || 'unknown'} code for user ${userId}`);
 
+    // Check rate limiting BEFORE any verification attempts
+    const rateLimitCheck = this.checkRateLimit(userId);
+    if (!rateLimitCheck.allowed) {
+      const message = rateLimitCheck.lockoutUntil 
+        ? `Too many failed attempts. Account locked until ${rateLimitCheck.lockoutUntil.toISOString()}`
+        : 'Too many failed attempts. Please try again later.';
+      
+      throw new HttpException(
+        {
+          message,
+          error: 'Too Many Requests',
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          lockoutUntil: rateLimitCheck.lockoutUntil,
+          remainingAttempts: rateLimitCheck.remainingAttempts
+        },
+        HttpStatus.TOO_MANY_REQUESTS
+      );
+    }
+
     let method: TwoFactorMethodWithAudit | null = null;
 
     // Find the method to verify against
@@ -127,6 +272,9 @@ export class TwoFactorService {
       }
 
       if (isValid) {
+        // Clear failed attempts on successful verification
+        this.clearFailedAttempts(userId);
+        
         // Update last used timestamp
         await this.twoFactorDb.updateLastUsed(method.id);
         
@@ -138,16 +286,24 @@ export class TwoFactorService {
           message: 'Code verified successfully'
         };
       } else {
+        // Record failed attempt for rate limiting
+        this.recordFailedAttempt(userId);
+        
+        // Get updated rate limit status
+        const updatedRateLimit = this.checkRateLimit(userId);
+        
         this.logger.warn(`Failed verification attempt for user ${userId}`, {
           methodType: method.methodType,
-          methodId: method.id
+          methodId: method.id,
+          remainingAttempts: updatedRateLimit.remainingAttempts
         });
         
         return {
           success: false,
           methodType: method.methodType,
           message: 'Invalid verification code',
-          remainingAttempts: 2 // TODO: Implement proper rate limiting
+          remainingAttempts: updatedRateLimit.remainingAttempts,
+          lockoutUntil: updatedRateLimit.lockoutUntil
         };
       }
 
@@ -158,27 +314,51 @@ export class TwoFactorService {
   }
 
   /**
-   * Enable a 2FA method after successful verification
+   * Enable 2FA method for user
    */
-  async enableMethod(userId: string, dto: EnableTwoFactorDto): Promise<void> {
-    this.logger.log(`Enabling 2FA method ${dto.methodId} for user ${userId}`);
+  async enable(userId: string, enableDto: EnableTwoFactorDto): Promise<TwoFactorEnableResponse> {
+    this.logger.log(`Enabling 2FA method ${enableDto.methodId} for user ${userId}`);
 
-    const method = await this.twoFactorDb.findMethodById(dto.methodId);
-    if (!method) {
-      throw new NotFoundException('2FA method not found');
+    try {
+      // Get the method
+      const method = await this.twoFactorDb.findMethodById(enableDto.methodId);
+      if (!method) {
+        throw new NotFoundException('2FA method not found');
+      }
+
+      if (method.userId !== userId) {
+        throw new BadRequestException('Method does not belong to user');
+      }
+
+      if (method.isEnabled) {
+        throw new BadRequestException('Method is already enabled');
+      }
+
+      // Enable the method
+      await this.twoFactorDb.enableMethod(enableDto.methodId, enableDto.isPrimary);
+
+      // Generate backup codes when first enabling 2FA
+      let backupCodes: string[] | undefined;
+      const hasOtherEnabledMethods = await this.twoFactorDb.hasEnabledMethods(userId);
+      
+      if (!hasOtherEnabledMethods) {
+        // This is the first 2FA method being enabled, generate backup codes
+        this.logger.log(`Generating backup codes for user ${userId} - first 2FA method enabled`);
+        const backupCodesResponse = await this.backupCodesService.generateBackupCodes(userId);
+        backupCodes = backupCodesResponse.codes;
+      }
+
+      this.logger.log(`Successfully enabled 2FA method ${enableDto.methodId} for user ${userId}`);
+
+      return {
+        message: 'Two-factor authentication enabled successfully',
+        backupCodes
+      };
+
+    } catch (error) {
+      this.logger.error(`Failed to enable 2FA method for user ${userId}`, error);
+      throw error;
     }
-
-    if (method.userId !== userId) {
-      throw new BadRequestException('Invalid method access');
-    }
-
-    if (method.isEnabled) {
-      throw new BadRequestException('2FA method is already enabled');
-    }
-
-    await this.twoFactorDb.enableMethod(dto.methodId, dto.isPrimary);
-    
-    this.logger.log(`Successfully enabled 2FA method ${dto.methodId} for user ${userId}`);
   }
 
   /**
@@ -207,7 +387,9 @@ export class TwoFactorService {
       hasEnabledMethods: enabledMethods.length > 0,
       availableMethods: ['TOTP'], // TODO: Add other methods when implemented
       enabledMethods: methodSummaries,
-      primaryMethod: primaryMethod ? methodSummaries.find(m => m.id === primaryMethod.id) : undefined
+      primaryMethod: primaryMethod ? methodSummaries.find(m => m.id === primaryMethod.id) : undefined,
+      canDisable: enabledMethods.length > 0,
+      lastVerifiedAt: primaryMethod?.lastUsedAt?.toISOString()
     };
   }
 

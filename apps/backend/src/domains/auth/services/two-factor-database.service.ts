@@ -245,6 +245,33 @@ export class TwoFactorDatabaseService {
   }
 
   /**
+   * Update user's backup codes
+   */
+  async updateUserBackupCodes(userId: string, encryptedCodes: string[]): Promise<void> {
+    await this.masterDb.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorBackupCodes: encryptedCodes,
+        updatedAt: new Date()
+      }
+    });
+
+    this.logger.log(`Updated backup codes for user ${userId} - ${encryptedCodes.length} codes stored`);
+  }
+
+  /**
+   * Get user's backup codes
+   */
+  async getUserBackupCodes(userId: string): Promise<string[]> {
+    const user = await this.masterDb.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorBackupCodes: true }
+    });
+
+    return user?.twoFactorBackupCodes || [];
+  }
+
+  /**
    * Check if user has any enabled 2FA methods
    */
   async hasEnabledMethods(userId: string): Promise<boolean> {

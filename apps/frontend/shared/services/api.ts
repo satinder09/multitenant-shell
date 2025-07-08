@@ -26,7 +26,22 @@ export interface LoginDto {
 }
 
 export interface LoginResponse {
+  accessToken?: string;
+  requiresTwoFactor?: boolean;
+  twoFactorSessionId?: string;
+  availableMethods?: string[];
+  message?: string;
+}
+
+export interface Verify2FADto {
+  sessionId: string;
+  code: string;
+  type?: 'totp' | 'backup';
+}
+
+export interface TwoFactorLoginResponse {
   accessToken: string;
+  message: string;
 }
 
 export interface ApiError {
@@ -34,8 +49,6 @@ export interface ApiError {
   status?: number;
   code?: string;
 }
-
-
 
 export async function login(dto: LoginDto): Promise<LoginResponse> {
   // Debug logging only when explicitly enabled
@@ -83,6 +96,32 @@ export async function login(dto: LoginDto): Promise<LoginResponse> {
   if (!res.ok) {
     const error = await res.json();
     const errorMessage = sanitizeInput(error.message || 'Login failed');
+    throw new Error(errorMessage);
+  }
+  return res.json();
+}
+
+export async function verify2FA(dto: Verify2FADto): Promise<TwoFactorLoginResponse> {
+  if (process.env.DEBUG_AUTH) {
+    console.log('API verify2FA function called with sessionId:', dto.sessionId);
+  }
+  
+  const res = await securityFetch('/api/auth/verify-2fa-login', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest', // CSRF protection
+    },
+    body: JSON.stringify(dto),
+  });
+
+  if (process.env.DEBUG_AUTH) {
+    console.log('2FA verification response status:', res.status, res.statusText);
+  }
+  
+  if (!res.ok) {
+    const error = await res.json();
+    const errorMessage = sanitizeInput(error.message || '2FA verification failed');
     throw new Error(errorMessage);
   }
   return res.json();

@@ -30,7 +30,8 @@ import { TenantContext, GetTenantContext } from '../../../shared/types/tenant-co
 import { AuthService } from '../services/auth.service';
 import { TenantService } from '../../tenant/services/tenant.service';
 import { LoginDto } from '../dto/login.dto';
-import { LoginResponse } from '../interfaces/login-response.interface';
+import { Verify2FALoginDto } from '../dto/verify-2fa-login.dto';
+import { LoginResponse, TwoFactorLoginResponse } from '../interfaces/login-response.interface';
 import { JwtAuthGuard, SkipAuth } from '../../../shared/guards';
 import { AuthRateLimit, SkipRateLimit } from '../../../shared/decorators/multitenant-rate-limit.decorator';
 
@@ -45,7 +46,7 @@ export class AuthController {
   @Post('login')
   @ApiOperation({ 
     summary: 'Login to tenant',
-    description: 'Authenticates user and returns JWT token. Can be used for both platform and tenant login.'
+    description: 'Authenticates user and returns JWT token or 2FA requirement. Can be used for both platform and tenant login.'
   })
   @ApiBody({ 
     type: LoginDto,
@@ -53,11 +54,15 @@ export class AuthController {
   })
   @ApiResponse({ 
     status: 200, 
-    description: 'Login successful',
+    description: 'Login successful or 2FA required',
     schema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'JWT access token' }
+        accessToken: { type: 'string', description: 'JWT access token (if 2FA not required)' },
+        requiresTwoFactor: { type: 'boolean', description: 'Whether 2FA is required' },
+        twoFactorSessionId: { type: 'string', description: 'Temporary session ID for 2FA verification' },
+        availableMethods: { type: 'array', items: { type: 'string' }, description: 'Available 2FA methods' },
+        message: { type: 'string', description: 'Response message' }
       }
     }
   })
@@ -91,16 +96,63 @@ export class AuthController {
     }
     
     console.log(`[AUTH] Login attempt - Email: ${dto.email}, TenantID: ${tenantId || 'platform'}`);
-    const { accessToken } = await this.authService.login(dto, tenantId);
+    const result = await this.authService.login(dto, tenantId);
 
-    res.cookie('Authentication', accessToken, {
+    // Only set cookie if we have an access token (no 2FA required)
+    if (result.accessToken) {
+      res.cookie('Authentication', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 1000 * 60 * 60, // 1h in ms
+      });
+    }
+
+    return result;
+  }
+
+  @Post('verify-2fa-login')
+  @ApiOperation({ 
+    summary: 'Complete 2FA verification during login',
+    description: 'Verifies 2FA code and completes the login process.'
+  })
+  @ApiBody({ 
+    type: Verify2FALoginDto,
+    description: '2FA verification details'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Login completed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string', description: 'JWT access token' },
+        message: { type: 'string', description: 'Success message' }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Invalid session or 2FA code' })
+  @ApiResponse({ status: 401, description: 'Invalid 2FA code' })
+  @ApiResponse({ status: 429, description: 'Too many verification attempts' })
+  @AuthRateLimit()
+  @HttpCode(HttpStatus.OK)
+  async verify2FALogin(
+    @Body() dto: Verify2FALoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<TwoFactorLoginResponse> {
+    console.log(`[AUTH] 2FA verification attempt - Session: ${dto.sessionId}, Type: ${dto.type || 'totp'}`);
+    
+    const result = await this.authService.complete2FALogin(dto.sessionId, dto.code, dto.type);
+
+    // Set authentication cookie
+    res.cookie('Authentication', result.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60, // 1h in ms
     });
 
-    return { accessToken };
+    return result;
   }
 
   @Get('me')

@@ -12,7 +12,7 @@ import {
   useMemo,
 } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LoginDto, login as loginApi, ApiError } from '@/shared/services/api';
+import { LoginDto, login as loginApi, verify2FA as verify2FAApi, ApiError } from '@/shared/services/api';
 import { browserApi } from '@/shared/services/api-client';
 import { Spinner } from '@/components/ui/spinner';
 import { initializeCsrfProtection } from '@/domains/auth/services/csrfService';
@@ -36,6 +36,12 @@ interface UserProfile {
   // add other user fields here
 }
 
+interface TwoFactorSession {
+  sessionId: string;
+  availableMethods: string[];
+  message: string;
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
@@ -43,7 +49,11 @@ interface AuthContextType {
   tenantId: string | null;
   isLoading: boolean;
   isLoggingOut: boolean;
+  // 2FA state
+  twoFactorRequired: boolean;
+  twoFactorSession: TwoFactorSession | null;
   login: (dto: LoginDto, redirectTo?: string) => Promise<void>;
+  verify2FA: (code: string, type?: 'totp' | 'backup') => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: (forceRefresh?: boolean) => Promise<void>;
 }
@@ -74,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
+  const [twoFactorSession, setTwoFactorSession] = useState<TwoFactorSession | null>(null);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -186,80 +199,148 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('AuthContext.login called with:', { email: dto.email, rememberMe: dto.rememberMe });
     }
     setIsLoading(true);
+    setTwoFactorRequired(false);
+    setTwoFactorSession(null);
+    
     try {
       if (process.env.DEBUG_AUTH) {
         console.log('Calling loginApi...');
       }
-      await loginApi(dto);
-      if (process.env.DEBUG_AUTH) {
-        console.log('loginApi succeeded, refreshing user...');
-      }
-      const profile = await refreshUser(true); // Force refresh after login
+      const loginResponse = await loginApi(dto);
       
-      if (profile) {
-        // Smart redirect logic - ONLY redirect on successful login
-        const destination = redirectTo || getSmartRedirectPath(
-          window.location.hostname, 
-          profile.isSuperAdmin
-        );
+      if (process.env.DEBUG_AUTH) {
+        console.log('Login response:', loginResponse);
+      }
+      
+      // Check if 2FA is required
+      if (loginResponse.requiresTwoFactor && loginResponse.twoFactorSessionId) {
+        // Set 2FA state
+        setTwoFactorRequired(true);
+        setTwoFactorSession({
+          sessionId: loginResponse.twoFactorSessionId,
+          availableMethods: loginResponse.availableMethods || [],
+          message: loginResponse.message || 'Two-factor authentication required'
+        });
+        setPendingRedirect(redirectTo || null);
         
         if (process.env.DEBUG_AUTH) {
-          console.log('Login successful, redirecting to:', destination);
+          console.log('2FA required, showing verification UI');
         }
-        // Use router.push directly, no setTimeout needed
-        router.push(destination);
+      } else if (loginResponse.accessToken) {
+        // Traditional login success - refresh user profile
+        if (process.env.DEBUG_AUTH) {
+          console.log('Login successful, refreshing user...');
+        }
+        const profile = await refreshUser(true); // Force refresh after login
+        
+        if (profile) {
+          // Smart redirect logic - ONLY redirect on successful login
+          if (redirectTo) {
+            router.push(redirectTo);
+          } else {
+            // Smart redirect based on user type and domain
+            const hostname = window.location.hostname;
+            const smartRedirectPath = getSmartRedirectPath(hostname, profile.isSuperAdmin || false);
+            router.push(smartRedirectPath);
+          }
+        }
       }
     } catch (error) {
-      if (process.env.DEBUG_AUTH) {
-        console.log('AuthContext.login error:', error);
-        console.log('Error type:', typeof error);
-        if (error instanceof Error) {
-          console.log('Error message:', error.message);
-        }
-      }
-      // Re-throw error so login form can handle it
-      // DO NOT redirect or change state on error
+      console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   }, [refreshUser, router]);
 
+  const verify2FA = useCallback(async (code: string, type?: 'totp' | 'backup') => {
+    if (!twoFactorSession) {
+      throw new Error('No active 2FA session');
+    }
+    
+    if (process.env.DEBUG_AUTH) {
+      console.log('AuthContext.verify2FA called with code and type:', type);
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const verifyResponse = await verify2FAApi({
+        sessionId: twoFactorSession.sessionId,
+        code,
+        type
+      });
+      
+      if (process.env.DEBUG_AUTH) {
+        console.log('2FA verification successful:', verifyResponse);
+      }
+      
+      // Clear 2FA state
+      setTwoFactorRequired(false);
+      setTwoFactorSession(null);
+      
+      // Refresh user profile
+      const profile = await refreshUser(true);
+      
+      if (profile) {
+        // Use pending redirect or smart redirect
+        const redirectTo = pendingRedirect;
+        setPendingRedirect(null);
+        
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else {
+          // Smart redirect based on user type and domain
+          const hostname = window.location.hostname;
+          const smartRedirectPath = getSmartRedirectPath(hostname, profile.isSuperAdmin || false);
+          router.push(smartRedirectPath);
+        }
+      }
+    } catch (error) {
+      console.error('2FA verification error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [twoFactorSession, refreshUser, router, pendingRedirect]);
+
   const logout = useCallback(async () => {
+    if (process.env.DEBUG_AUTH) {
+      console.log('AuthContext.logout called');
+    }
     setIsLoggingOut(true);
+    
+    // Clear 2FA state
+    setTwoFactorRequired(false);
+    setTwoFactorSession(null);
+    setPendingRedirect(null);
     
     try {
       await browserApi.post('/api/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
-    }
-    
-    // Clear cache immediately but keep user state for smooth transition
-    AuthCache.clear();
-    
-    // Start navigation immediately while keeping user state
-    const redirectUrl = pathname.startsWith('/platform') ? '/login' : '/login';
-    router.push(redirectUrl);
-    
-    // Clear user state after a short delay to allow navigation to start
-    setTimeout(() => {
+    } finally {
       setUser(null);
+      AuthCache.clear();
       setIsLoggingOut(false);
-    }, 100);
-  }, [router, pathname]);
+      router.push('/login');
+    }
+  }, [router]);
 
-  // Memoized context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
+  const value = useMemo(() => ({
     user,
     isAuthenticated: !!user,
-    isSuperAdmin: !!user?.isSuperAdmin,
+    isSuperAdmin: user?.isSuperAdmin || false,
     tenantId: user?.tenantId || null,
     isLoading,
     isLoggingOut,
+    twoFactorRequired,
+    twoFactorSession,
     login,
+    verify2FA,
     logout,
     refreshUser
-  }), [user, isLoading, isLoggingOut, login, logout, refreshUser]);
+  }), [user, isLoading, isLoggingOut, twoFactorRequired, twoFactorSession, login, verify2FA, logout, refreshUser]);
 
   // Show minimal loading only for initial load
   if (!isInitialized) {
@@ -271,7 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
