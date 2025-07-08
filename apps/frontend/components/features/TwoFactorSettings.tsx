@@ -139,6 +139,14 @@ export function TwoFactorSettings() {
         }
       } else {
         const error = await response.json()
+        
+        // If setup was lost (e.g., server restart), reset the flow
+        if (error.message?.includes('restart the setup process')) {
+          toast.error('Setup session expired. Starting over...')
+          resetSetup()
+          return
+        }
+        
         toast.error(error.message || 'Verification failed')
       }
     } catch (error) {

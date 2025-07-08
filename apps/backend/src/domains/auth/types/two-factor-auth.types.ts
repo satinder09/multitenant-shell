@@ -169,7 +169,7 @@ export abstract class TwoFactorMethodProvider {
   /**
    * Setup a new 2FA method for user
    */
-  abstract setup(userId: string, setupData?: any): Promise<TwoFactorSetupResponse>;
+  abstract setup(userId: string, setupData?: any, existingSecret?: string): Promise<TwoFactorSetupResponse>;
 
   /**
    * Verify a 2FA code

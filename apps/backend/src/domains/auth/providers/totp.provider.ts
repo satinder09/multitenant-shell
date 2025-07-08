@@ -53,7 +53,7 @@ export class TOTPProvider extends TwoFactorMethodProvider {
     this.algorithm = process.env.TOTP_ALGORITHM || 'SHA1';
     this.digits = parseInt(process.env.TOTP_DIGITS || '6') === 8 ? 8 : 6;
     this.period = parseInt(process.env.TOTP_PERIOD || '30') === 60 ? 60 : 30;
-    this.window = parseInt(process.env.TOTP_WINDOW || '1');
+    this.window = parseInt(process.env.TOTP_WINDOW || '2'); // Increased tolerance for clock drift
 
     // Configure otplib
     authenticator.options = {
@@ -74,12 +74,12 @@ export class TOTPProvider extends TwoFactorMethodProvider {
   /**
    * Setup TOTP for a user
    */
-  async setup(userId: string, setupData?: { email?: string }): Promise<TwoFactorSetupResponse> {
+  async setup(userId: string, setupData?: { email?: string }, existingSecret?: string): Promise<TwoFactorSetupResponse> {
     this.logger.log(`Setting up TOTP for user ${userId}`);
 
     try {
-      // Generate secret
-      const secret = authenticator.generateSecret();
+      // Use existing secret if provided, otherwise generate new one
+      const secret = existingSecret || authenticator.generateSecret();
       
       // Create service name for the authenticator app
       const serviceName = this.issuer;
@@ -152,10 +152,21 @@ export class TOTPProvider extends TwoFactorMethodProvider {
         };
       }
 
-      // Verify TOTP code
+      // Verify TOTP code (window configured globally)
       const isValid = authenticator.verify({
         token: code,
         secret: secret,
+      });
+      
+      // Debug timing information
+      const currentTime = Math.floor(Date.now() / 1000);
+      const expectedCode = authenticator.generate(secret);
+      this.logger.log(`TOTP Verification Debug for user ${userId}`, {
+        providedCode: code,
+        expectedCode,
+        currentTime,
+        window: this.window,
+        isValid,
       });
 
       if (isValid) {
