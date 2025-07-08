@@ -4,21 +4,19 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Spinner } from '@/components/ui/spinner';
 import { AlertCircle, Shield, Key } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface TwoFactorVerificationProps {
   availableMethods: string[];
-  message: string;
   onVerify: (code: string, type?: 'totp' | 'backup') => Promise<void>;
   isLoading?: boolean;
 }
 
 export function TwoFactorVerification({ 
   availableMethods, 
-  message, 
   onVerify, 
   isLoading = false 
 }: TwoFactorVerificationProps) {
@@ -69,100 +67,108 @@ export function TwoFactorVerification({
   const hasBackup = availableMethods.includes('backup');
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="space-y-1">
-        <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full">
-          <Shield className="w-6 h-6 text-blue-600" />
-        </div>
-        <CardTitle className="text-2xl font-bold text-center">Two-Factor Authentication</CardTitle>
-        <CardDescription className="text-center">
-          {message}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-3">
-            <Label htmlFor="code">
-              {isBackupCode ? 'Backup Code' : 'Authentication Code'}
-            </Label>
-            
-            {isBackupCode ? (
-              // Regular input for backup codes
-              <div className="relative">
-                <Input
-                  id="code"
-                  type="text"
-                  placeholder="Enter backup code (e.g., XXXX-XXXX)"
-                  value={backupCode}
-                  onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
-                  className="pl-10 font-mono text-center"
-                  maxLength={9}
-                  autoComplete="one-time-code"
-                  autoFocus
-                />
-                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+    <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm overflow-hidden">
+      <CardContent className="p-6 md:p-8">
+        <form onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-4">
+                <Shield className="w-6 h-6 text-white" />
               </div>
-            ) : (
-              // OTP input for TOTP codes
-              <div className="flex justify-center">
-                <InputOTP
-                  maxLength={6}
-                  value={totpCode}
-                  onChange={(value) => setTotpCode(value)}
+              <h1 className="text-2xl font-bold">Two-Factor Authentication</h1>
+              <p className="text-muted-foreground text-balance">
+                Please complete authentication to continue
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="text-center">
+                <Label htmlFor="code" className="text-sm font-medium">
+                  {isBackupCode ? 'Recovery Code' : 'Verification Code'}
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isBackupCode ? 'Enter one of your backup codes' : 'Enter the 6-digit code from your authenticator app'}
+                </p>
+              </div>
+              
+              {isBackupCode ? (
+                <div className="relative">
+                  <Input
+                    id="code"
+                    type="text"
+                    placeholder="XXXX-XXXX"
+                    value={backupCode}
+                    onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                    className="pl-10 font-mono text-center tracking-wider"
+                    maxLength={9}
+                    autoComplete="one-time-code"
+                    autoFocus
+                    disabled={isLoading}
+                  />
+                  <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                </div>
+              ) : (
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={6}
+                    value={totpCode}
+                    onChange={(value) => setTotpCode(value)}
+                    disabled={isLoading}
+                    autoFocus
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                    </InputOTPGroup>
+                    <div className="mx-3">
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </div>
+                  </InputOTP>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex items-center justify-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading || (!isBackupCode && totpCode.length !== 6) || (isBackupCode && backupCode.length < 8)}
+            >
+              {isLoading ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify'
+              )}
+            </Button>
+
+            {hasTotp && hasBackup && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleMethodSwitch}
+                  className="text-sm underline-offset-2 hover:underline text-muted-foreground hover:text-foreground transition-colors"
                   disabled={isLoading}
-                  autoFocus
                 >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                  </InputOTPGroup>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
+                  {isBackupCode ? 'Use authenticator app instead' : 'Use recovery code instead'}
+                </button>
               </div>
             )}
           </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading || (!isBackupCode && totpCode.length !== 6) || (isBackupCode && backupCode.length < 8)}
-          >
-            {isLoading ? 'Verifying...' : 'Verify'}
-          </Button>
         </form>
-
-        {hasTotp && hasBackup && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={handleMethodSwitch}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
-              disabled={isLoading}
-            >
-              {isBackupCode ? 'Use authenticator app' : 'Use backup code'}
-            </button>
-          </div>
-        )}
-
-        <div className="text-center text-sm text-gray-600">
-          {isBackupCode ? (
-            <p>Enter one of your recovery codes (8 characters).</p>
-          ) : (
-            <p>Enter the 6-digit code from your authenticator app.</p>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

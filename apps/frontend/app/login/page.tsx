@@ -230,7 +230,6 @@ function LoginForm({
       <div className={cn("flex flex-col gap-6", className)} {...props}>
         <TwoFactorVerification
           availableMethods={twoFactorSession.availableMethods}
-          message={twoFactorSession.message}
           onVerify={verify2FA}
           isLoading={authLoading}
         />
@@ -241,9 +240,12 @@ function LoginForm({
               // Reset to login form (this will clear the 2FA state)
               window.location.reload();
             }}
-            className="text-sm text-blue-600 hover:text-blue-800 underline"
+            className="inline-flex items-center justify-center gap-2 text-sm font-medium underline-offset-4 hover:underline text-muted-foreground hover:text-foreground transition-colors"
           >
-            ← Back to login
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to login
           </button>
         </div>
       </div>
