@@ -19,16 +19,18 @@ import {
   BadRequestException,
   UnauthorizedException,
   UseGuards,
+  Put,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthUser } from '../../../shared/decorators/auth-user.decorator';
+
 
 import { TwoFactorAuthService } from'../services/two-factor-auth.service';
 import { BackupCodesService } from '../services/backup-codes.service'; 
-
-
-
+import { TwoFactorService } from '../services/two-factor.service';
 
 import {
   TwoFactorSetupRequest,
@@ -40,218 +42,67 @@ import {
   TwoFactorError,
 } from '../types/two-factor-auth.types';
 
-// DTOs for API documentation and validation
-export class SetupTwoFactorDto {
-  @IsEnum(['TOTP', 'SMS', 'EMAIL', 'WEBAUTHN'])
-  methodType: 'TOTP' | 'SMS' | 'EMAIL' | 'WEBAUTHN';
-  
-  @IsOptional()
-  @IsString()
-  name?: string;
-  
-  @IsOptional()
-  @IsString()
-  phoneNumber?: string;
-  
-  @IsOptional()
-  @IsString()
-  email?: string;
-}
+import { SetupTwoFactorDto } from '../dto/setup-two-factor.dto';
+import { VerifyTwoFactorDto } from '../dto/verify-two-factor.dto';
+import { EnableTwoFactorDto } from '../dto/enable-two-factor.dto';
 
-export class VerifyTwoFactorDto {
-  @IsOptional()
-  @IsString()
-  methodId?: string;
-  
-  @IsOptional()
-  @IsEnum(['TOTP', 'SMS', 'EMAIL', 'WEBAUTHN'])
-  methodType?: 'TOTP' | 'SMS' | 'EMAIL' | 'WEBAUTHN';
-  
-  @IsString()
-  code: string;
-  
-  @IsOptional()
-  trustDevice?: boolean;
-}
-
-export class EnableTwoFactorDto {
-  @IsString()
-  methodId: string;
-}
-
+@ApiTags('Platform 2FA')
 @Controller('platform/2fa')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class PlatformTwoFactorController {
   private readonly logger = new Logger(PlatformTwoFactorController.name);
 
   constructor(
     private readonly twoFactorAuthService: TwoFactorAuthService,
     private readonly backupCodesService: BackupCodesService,
+    private readonly twoFactorService: TwoFactorService,
   ) {}
 
   @Get('status')
-  async getTwoFactorStatus(@Req() req: Request): Promise<TwoFactorStatus> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
-    const context: TwoFactorContext = {
-      userType: 'platform',
-      userId,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    };
-
-    try {
-      return await this.twoFactorAuthService.getUserTwoFactorStatus(context);
-    } catch (error) {
-      this.logger.error(`Failed to get 2FA status for user ${userId}`, error);
-      throw error;
-    }
+  @ApiOperation({ summary: 'Get user 2FA status' })
+  @ApiResponse({ status: 200, description: 'User 2FA status retrieved successfully' })
+  async getStatus(@AuthUser() user: any) {
+    this.logger.log(`Getting 2FA status for platform user ${user.id}`);
+    return this.twoFactorService.getUserStatus(user.id);
   }
 
   @Post('setup')
-  async setupTwoFactorMethod(
-    @Req() req: Request,
-    @Body() setupDto: SetupTwoFactorDto,
-  ): Promise<TwoFactorSetupResponse> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
-    const context: TwoFactorContext = {
-      userType: 'platform',
-      userId,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    };
-
-    const request: TwoFactorSetupRequest = {
-      methodType: setupDto.methodType as any,
-      name: setupDto.name,
-      phoneNumber: setupDto.phoneNumber,
-      email: setupDto.email,
-    };
-
-    try {
-      this.logger.log(`Setting up 2FA method ${setupDto.methodType} for platform user ${userId}`);
-      return await this.twoFactorAuthService.setupTwoFactorMethod(context, request);
-    } catch (error) {
-      this.logger.error(`Failed to setup 2FA for user ${userId}`, error);
-      if (error instanceof TwoFactorError) {
-        throw new BadRequestException(error.message);
-      }
-      throw error;
-    }
+  @ApiOperation({ summary: 'Setup a new 2FA method' })
+  @ApiResponse({ status: 201, description: '2FA method setup initiated' })
+  @ApiResponse({ status: 400, description: 'Invalid setup data' })
+  async setup(@AuthUser() user: any, @Body() setupDto: SetupTwoFactorDto) {
+    this.logger.log(`Setting up 2FA method ${setupDto.methodType} for platform user ${user.id}`);
+    return this.twoFactorService.setupMethod(user.id, setupDto);
   }
 
   @Post('verify')
-  @HttpCode(HttpStatus.OK)
-  async verifyTwoFactorCode(
-    @Req() req: Request,
-    @Body() verifyDto: VerifyTwoFactorDto,
-  ): Promise<TwoFactorVerificationResponse> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
-    const context: TwoFactorContext = {
-      userType: 'platform',
-      userId,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    };
-
-    const request: TwoFactorVerificationRequest = {
-      methodId: verifyDto.methodId,
-      methodType: verifyDto.methodType as any,
-      code: verifyDto.code,
-      trustDevice: verifyDto.trustDevice,
-    };
-
-    try {
-      this.logger.log(`Verifying 2FA code for platform user ${userId}`);
-      return await this.twoFactorAuthService.verifyTwoFactorCode(context, request);
-    } catch (error) {
-      this.logger.error(`Failed to verify 2FA code for user ${userId}`, error);
-      if (error instanceof TwoFactorError) {
-        throw new BadRequestException(error.message);
-      }
-      throw error;
-    }
+  @ApiOperation({ summary: 'Verify 2FA code during setup or login' })
+  @ApiResponse({ status: 200, description: 'Code verification result' })
+  @ApiResponse({ status: 400, description: 'Invalid verification code' })
+  async verify(@AuthUser() user: any, @Body() verifyDto: VerifyTwoFactorDto) {
+    this.logger.log(`Verifying 2FA code for platform user ${user.id}`);
+    return this.twoFactorService.verifyCode(user.id, verifyDto);
   }
 
   @Post('enable')
-  @HttpCode(HttpStatus.OK)
-  async enableTwoFactorMethod(
-    @Req() req: Request,
-    @Body() enableDto: EnableTwoFactorDto,
-  ): Promise<{ message: string; backupCodes?: string[] }> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
-    const context: TwoFactorContext = {
-      userType: 'platform',
-      userId,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    };
-
-    try {
-      this.logger.log(`Enabling 2FA method ${enableDto.methodId} for platform user ${userId}`);
-      
-      await this.twoFactorAuthService.enableTwoFactor(context, enableDto.methodId);
-      
-      // Generate backup codes for the user
-      const backupCodes = await this.backupCodesService.generateBackupCodes();
-      
-      return {
-        message: '2FA enabled successfully',
-        backupCodes: backupCodes.plainCodes,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to enable 2FA for user ${userId}`, error);
-      if (error instanceof TwoFactorError) {
-        throw new BadRequestException(error.message);
-      }
-      throw error;
-    }
+  @ApiOperation({ summary: 'Enable a 2FA method after verification' })
+  @ApiResponse({ status: 200, description: '2FA method enabled successfully' })
+  @ApiResponse({ status: 404, description: '2FA method not found' })
+  async enable(@AuthUser() user: any, @Body() enableDto: EnableTwoFactorDto) {
+    this.logger.log(`Enabling 2FA method ${enableDto.methodId} for platform user ${user.id}`);
+    await this.twoFactorService.enableMethod(user.id, enableDto);
+    return { message: '2FA method enabled successfully' };
   }
 
-  @Delete('method/:methodId')
-  async disableTwoFactorMethod(
-    @Req() req: Request,
-    @Param('methodId') methodId: string,
-  ): Promise<{ message: string }> {
-    const userId = req.user?.['id'];
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
-    const context: TwoFactorContext = {
-      userType: 'platform',
-      userId,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    };
-
-    try {
-      this.logger.log(`Disabling 2FA method ${methodId} for platform user ${userId}`);
-      await this.twoFactorAuthService.disableTwoFactorMethod(context, methodId);
-      
-      return { message: '2FA method disabled successfully' };
-    } catch (error) {
-      this.logger.error(`Failed to disable 2FA method for user ${userId}`, error);
-      if (error instanceof TwoFactorError) {
-        throw new BadRequestException(error.message);
-      }
-      throw error;
-    }
+  @Delete('methods/:methodId')
+  @ApiOperation({ summary: 'Disable a 2FA method' })
+  @ApiResponse({ status: 200, description: '2FA method disabled successfully' })
+  @ApiResponse({ status: 404, description: '2FA method not found' })
+  async disable(@AuthUser() user: any, @Param('methodId') methodId: string) {
+    this.logger.log(`Disabling 2FA method ${methodId} for platform user ${user.id}`);
+    await this.twoFactorService.disableMethod(user.id, methodId);
+    return { message: '2FA method disabled successfully' };
   }
 
   @Post('backup-codes/generate')

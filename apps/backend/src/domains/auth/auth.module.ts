@@ -20,6 +20,8 @@ import { TenantModule } from '../tenant/tenant.module';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { MetricsService } from '../../infrastructure/monitoring/metrics.service';
 import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
+import { TwoFactorDatabaseService } from './services/two-factor-database.service';
+import { TwoFactorService } from './services/two-factor.service';
 
 @Module({
   imports: [
@@ -49,7 +51,8 @@ import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
     AuthorizationGuard,
     AuditService,
     MetricsService,
-    // Factory to register 2FA providers
+    TwoFactorDatabaseService,
+    TwoFactorService,
     {
       provide: 'REGISTER_2FA_PROVIDERS',
       useFactory: (registry: TwoFactorMethodRegistryService, totpProvider: TOTPProvider) => {
@@ -59,6 +62,15 @@ import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
       inject: [TwoFactorMethodRegistryService, TOTPProvider],
     },
   ],
-  exports: [AuthService],
+  exports: [
+    AuthService,
+    TwoFactorService,
+    TwoFactorDatabaseService,
+    TOTPProvider,
+    TwoFactorAuthService,
+    TwoFactorMethodRegistryService,
+    AuthSecurityService,
+    BackupCodesService,
+  ],
 })
 export class AuthModule {} 
