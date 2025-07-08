@@ -1,58 +1,72 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Spinner } from '@/components/ui/spinner';
-import { AlertCircle, Shield, Key } from 'lucide-react';
+import { Shield, Key } from 'lucide-react';
 
 interface TwoFactorVerificationProps {
   availableMethods: string[];
   onVerify: (code: string, type?: 'totp' | 'backup') => Promise<void>;
   isLoading?: boolean;
+  error?: string | null;
+  onErrorClear?: () => void;
 }
 
 export function TwoFactorVerification({ 
   availableMethods, 
   onVerify, 
-  isLoading = false 
+  isLoading = false,
+  error = null,
+  onErrorClear
 }: TwoFactorVerificationProps) {
   const [totpCode, setTotpCode] = useState('');
   const [backupCode, setBackupCode] = useState('');
   const [isBackupCode, setIsBackupCode] = useState(false);
-  const [error, setError] = useState('');
+
+  const clearError = () => {
+    if (onErrorClear) {
+      onErrorClear();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const code = isBackupCode ? backupCode.trim() : totpCode.trim();
     
+    console.log('🔍 [TwoFactorVerification] handleSubmit called with:', { code, isBackupCode });
+    
     if (!code) {
-      setError('Please enter a verification code');
+      console.log('🚨 [TwoFactorVerification] Empty code validation');
       return;
     }
 
     // Validate TOTP code length (6 digits)
     if (!isBackupCode && code.length !== 6) {
-      setError('Please enter a 6-digit code');
+      console.log('🚨 [TwoFactorVerification] Invalid TOTP length:', code.length);
       return;
     }
 
     // Validate backup code format (should be 8-9 characters with optional dash)
     if (isBackupCode && code.length < 8) {
-      setError('Please enter a valid backup code');
+      console.log('🚨 [TwoFactorVerification] Invalid backup code length:', code.length);
       return;
     }
 
-    setError('');
+    console.log('✅ [TwoFactorVerification] Validation passed, calling onVerify');
     
     try {
+      console.log('🔄 [TwoFactorVerification] About to call onVerify...');
       await onVerify(code, isBackupCode ? 'backup' : 'totp');
+      console.log('✅ [TwoFactorVerification] onVerify completed successfully');
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Verification failed');
+      console.log('🚨 [TwoFactorVerification] onVerify threw error (handled by parent):', error);
+      // Error handling is now done by parent component
     }
   };
 
@@ -60,11 +74,20 @@ export function TwoFactorVerification({
     setIsBackupCode(!isBackupCode);
     setTotpCode('');
     setBackupCode('');
-    setError('');
+    clearError();
   };
 
   const hasTotp = availableMethods.includes('totp');
   const hasBackup = availableMethods.includes('backup');
+
+  console.log('🔍 [TwoFactorVerification] Current state:', { 
+    error, 
+    hasError: !!error,
+    totpCode: totpCode.length,
+    backupCode: backupCode.length,
+    isBackupCode,
+    isLoading
+  });
 
   return (
     <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm overflow-hidden">
@@ -98,7 +121,10 @@ export function TwoFactorVerification({
                     type="text"
                     placeholder="XXXX-XXXX"
                     value={backupCode}
-                    onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      setBackupCode(e.target.value.toUpperCase());
+                      if (error) clearError();
+                    }}
                     className="pl-10 font-mono text-center tracking-wider"
                     maxLength={9}
                     autoComplete="one-time-code"
@@ -112,7 +138,10 @@ export function TwoFactorVerification({
                   <InputOTP
                     maxLength={6}
                     value={totpCode}
-                    onChange={(value) => setTotpCode(value)}
+                    onChange={(value) => {
+                      setTotpCode(value);
+                      if (error) clearError();
+                    }}
                     disabled={isLoading}
                     autoFocus
                   >
@@ -131,14 +160,13 @@ export function TwoFactorVerification({
                   </InputOTP>
                 </div>
               )}
-
-              {error && (
-                <div className="flex items-center justify-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
             </div>
+
+            {error && (
+              <div className="text-xs text-center text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 py-2 px-3 rounded-md border border-red-200/30 dark:border-red-800/30">
+                {error}
+              </div>
+            )}
 
             <Button 
               type="submit" 
