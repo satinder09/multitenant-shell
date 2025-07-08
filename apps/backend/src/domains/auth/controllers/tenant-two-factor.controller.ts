@@ -18,8 +18,11 @@ import {
   Logger,
   BadRequestException,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
 
 import { TwoFactorAuthService } from '../services/two-factor-auth.service';
 import { BackupCodesService } from '../services/backup-codes.service';
@@ -36,24 +39,45 @@ import {
 
 // DTOs for tenant 2FA operations
 export class TenantSetupTwoFactorDto {
+  @IsEnum(['TOTP', 'SMS', 'EMAIL', 'WEBAUTHN'])
   methodType: 'TOTP' | 'SMS' | 'EMAIL' | 'WEBAUTHN';
+  
+  @IsOptional()
+  @IsString()
   name?: string;
+  
+  @IsOptional()
+  @IsString()
   phoneNumber?: string;
+  
+  @IsOptional()
+  @IsString()
   email?: string;
 }
 
 export class TenantVerifyTwoFactorDto {
+  @IsOptional()
+  @IsString()
   methodId?: string;
+  
+  @IsOptional()
+  @IsEnum(['TOTP', 'SMS', 'EMAIL', 'WEBAUTHN'])
   methodType?: 'TOTP' | 'SMS' | 'EMAIL' | 'WEBAUTHN';
+  
+  @IsString()
   code: string;
+  
+  @IsOptional()
   trustDevice?: boolean;
 }
 
 export class TenantEnableTwoFactorDto {
+  @IsString()
   methodId: string;
 }
 
 @Controller('tenant/2fa')
+@UseGuards(JwtAuthGuard)
 export class TenantTwoFactorController {
   private readonly logger = new Logger(TenantTwoFactorController.name);
 

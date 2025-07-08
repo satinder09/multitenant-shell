@@ -28,6 +28,9 @@ import { AuthSecurityService } from './auth-security.service';
 export class TwoFactorAuthService {
   private readonly logger = new Logger(TwoFactorAuthService.name);
   private readonly config: TwoFactorConfig;
+  
+  // Temporary in-memory storage for demo purposes
+  private readonly tempMethodStorage = new Map<string, any>();
 
   constructor(
     private methodRegistry: TwoFactorMethodRegistryService,
@@ -65,6 +68,20 @@ export class TwoFactorAuthService {
 
     // Setup the method using the provider
     const setupResponse = await provider.setup(context.userId, request);
+
+    // Store temporarily for verification (demo purposes)
+    const methodData = {
+      id: setupResponse.methodId,
+      userId: context.userId,
+      methodType: setupResponse.methodType,
+      secret: setupResponse.secret, // Store the secret for verification
+      isEnabled: false, // Not enabled until verified
+      isPrimary: false,
+      createdAt: new Date(),
+    };
+    
+    this.tempMethodStorage.set(`${context.userId}-${setupResponse.methodType}`, methodData);
+    this.logger.log(`Temporarily stored 2FA method for user ${context.userId}`);
 
     // TODO: Store method data in database
     // await this.storeMethodData(context, { ... });

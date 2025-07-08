@@ -13,6 +13,7 @@ import { AuthSecurityService } from './services/auth-security.service';
 import { TwoFactorAuthService } from './services/two-factor-auth.service';
 import { TwoFactorMethodRegistryService } from './services/two-factor-method-registry.service';
 import { BackupCodesService } from './services/backup-codes.service';
+import { TOTPProvider } from './providers/totp.provider';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { DatabaseModule } from '../database/database.module';
 import { TenantModule } from '../tenant/tenant.module';
@@ -42,11 +43,21 @@ import { JwtAuthGuard, AuthorizationGuard } from '../../shared/guards';
     TwoFactorAuthService,
     TwoFactorMethodRegistryService,
     BackupCodesService,
+    TOTPProvider,
     JwtStrategy,
     JwtAuthGuard,
     AuthorizationGuard,
     AuditService,
     MetricsService,
+    // Factory to register 2FA providers
+    {
+      provide: 'REGISTER_2FA_PROVIDERS',
+      useFactory: (registry: TwoFactorMethodRegistryService, totpProvider: TOTPProvider) => {
+        registry.registerProvider(totpProvider);
+        return registry;
+      },
+      inject: [TwoFactorMethodRegistryService, TOTPProvider],
+    },
   ],
   exports: [AuthService],
 })

@@ -18,8 +18,11 @@ import {
   Logger,
   BadRequestException,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
 
 import { TwoFactorAuthService } from'../services/two-factor-auth.service';
 import { BackupCodesService } from '../services/backup-codes.service'; 
@@ -39,24 +42,45 @@ import {
 
 // DTOs for API documentation and validation
 export class SetupTwoFactorDto {
+  @IsEnum(['TOTP', 'SMS', 'EMAIL', 'WEBAUTHN'])
   methodType: 'TOTP' | 'SMS' | 'EMAIL' | 'WEBAUTHN';
+  
+  @IsOptional()
+  @IsString()
   name?: string;
+  
+  @IsOptional()
+  @IsString()
   phoneNumber?: string;
+  
+  @IsOptional()
+  @IsString()
   email?: string;
 }
 
 export class VerifyTwoFactorDto {
+  @IsOptional()
+  @IsString()
   methodId?: string;
+  
+  @IsOptional()
+  @IsEnum(['TOTP', 'SMS', 'EMAIL', 'WEBAUTHN'])
   methodType?: 'TOTP' | 'SMS' | 'EMAIL' | 'WEBAUTHN';
+  
+  @IsString()
   code: string;
+  
+  @IsOptional()
   trustDevice?: boolean;
 }
 
 export class EnableTwoFactorDto {
+  @IsString()
   methodId: string;
 }
 
 @Controller('platform/2fa')
+@UseGuards(JwtAuthGuard)
 export class PlatformTwoFactorController {
   private readonly logger = new Logger(PlatformTwoFactorController.name);
 
