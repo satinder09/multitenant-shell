@@ -2,74 +2,93 @@
 
 'use client';
 
-import { FormEvent, useState, useEffect, useRef } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { usePlatform } from '@/context/PlatformContext';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
-import { ProtectedRoute } from '@/domains/auth/components/ProtectedRoute';
-import { TwoFactorVerification } from '@/components/auth/TwoFactorVerification';
-import { Eye, EyeOff } from 'lucide-react';
-import { RateLimiter, isValidEmail, sanitizeInput } from '@/shared/utils/security';
 import { cn } from '@/shared/utils/utils';
+import { useAuth } from '@/context/AuthContext';
+import { TwoFactorVerification } from '@/components/auth/TwoFactorVerification';
+import { ProtectedRoute } from '@/domains/auth/components/ProtectedRoute';
+import { sanitizeInput, isValidEmail } from '@/shared/utils/security';
+import { RateLimiter } from '@/shared/utils/security';
 
 // Create rate limiter instance for login attempts
 const loginRateLimiter = new RateLimiter({ windowMs: 15 * 60 * 1000, maxRequests: 5 }); // 5 attempts per 15 minutes
+
+// Error state management using sessionStorage to persist across remounts
+const ERROR_STORAGE_KEY = 'login-error-state';
+
+function getStoredError(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return sessionStorage.getItem(ERROR_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredError(error: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (error) {
+      sessionStorage.setItem(ERROR_STORAGE_KEY, error);
+    } else {
+      sessionStorage.removeItem(ERROR_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const { user, login, verify2FA, isLoading: authLoading, twoFactorRequired, twoFactorSession } = useAuth();
   const router = useRouter();
-  const { login, verify2FA, twoFactorRequired, twoFactorSession, isLoading: authLoading } = useAuth();
-  const { isPlatform, tenantSubdomain } = usePlatform();
-  const loginInProgress = useRef(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const loginInProgress = useRef(false);
+  
+  // Error state management using sessionStorage
   const [error, setError] = useState<string | null>(null);
+  const [forceUpdate, setForceUpdate] = useState(0);
+  
+  // Load error from storage on mount
+  useEffect(() => {
+    const storedError = getStoredError();
+    if (storedError) {
+      setError(storedError);
+    }
+  }, []);
+  
+  // Robust error setter that persists across remounts
+  const setErrorRobust = useCallback((newError: string | null) => {
+    setError(newError);
+    setStoredError(newError);
+    // Force re-render to ensure UI updates
+    setForceUpdate(prev => prev + 1);
+  }, []);
+  
+  // Current error combines component state and storage
+  const currentError = error || getStoredError();
+  
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutTime, setLockoutTime] = useState<Date | null>(null);
 
-  // Debug logging for Fast Refresh issues
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
-      console.log('🔄 LoginForm mounted/re-mounted');
-    }
-    
-    // Check if we're in the middle of a login attempt (component remounted during login)
-    const loginAttemptData = sessionStorage.getItem('login-attempt-data');
-    if (loginAttemptData) {
-      try {
-        const { email: savedEmail, error: savedError } = JSON.parse(loginAttemptData);
-        if (savedEmail) setEmail(savedEmail);
-        if (savedError) setError(savedError);
-        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
-          console.log('🔄 Restored login attempt data after remount');
-        }
-      } catch (e) {
-        if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
-          console.log('🔄 Failed to restore login attempt data');
-        }
-      }
-    } else {
-      // Fresh page load - clear any stale data
-      sessionStorage.removeItem('login-form-email');
-      sessionStorage.removeItem('login-form-error');
-    }
-    return () => {
-      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_LOGIN) {
-        console.log('🔄 LoginForm unmounting');
-      }
-    };
-  }, []);
+  // Extract domain info for display
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const isPlatform = hostname === 'lvh.me' || hostname.includes('localhost');
+  const tenantSubdomain = isPlatform ? null : hostname.split('.')[0];
 
   // Check for lockout
   useEffect(() => {
@@ -104,19 +123,28 @@ function LoginForm({
     return () => clearInterval(timer);
   }, [isLocked, lockoutTime]);
 
+  // Clear error when component unmounts to prevent stale errors
+  useEffect(() => {
+    return () => {
+      // Clear error on unmount only if it's not during a login process
+      if (!loginInProgress.current) {
+        setStoredError(null);
+      }
+    };
+  }, []);
+
+  // Handle form submission with complete prevention of default behavior
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('🔔 handleSubmit called');
-    if (isLocked || loginInProgress.current) return;
+    e.stopPropagation();
+    
+    // Prevent any form submission if locked or already in progress
+    if (isLocked || loginInProgress.current) {
+      return false;
+    }
     
     loginInProgress.current = true;
-    setError(null);
-    
-    // Save current form state temporarily during login attempt
-    sessionStorage.setItem('login-attempt-data', JSON.stringify({
-      email: email,
-      error: null
-    }));
+    setErrorRobust(null);
 
     // Sanitize inputs
     const sanitizedEmail = sanitizeInput(email);
@@ -124,23 +152,17 @@ function LoginForm({
 
     // Client-side validation
     if (!isValidEmail(sanitizedEmail)) {
-      setError('Please enter a valid email address');
-      sessionStorage.setItem('login-attempt-data', JSON.stringify({
-        email: email,
-        error: 'Please enter a valid email address'
-      }));
+      setErrorRobust('Please enter a valid email address');
+      setPassword(''); // Clear only password on error
       loginInProgress.current = false;
-      return;
+      return false;
     }
 
     if (sanitizedPassword.length < 6) {
-      setError('Password must be at least 6 characters long');
-      sessionStorage.setItem('login-attempt-data', JSON.stringify({
-        email: email,
-        error: 'Password must be at least 6 characters long'
-      }));
+      setErrorRobust('Password must be at least 6 characters long');
+      setPassword(''); // Clear only password on error
       loginInProgress.current = false;
-      return;
+      return false;
     }
 
     // Rate limiting check
@@ -150,17 +172,14 @@ function LoginForm({
       setIsLocked(true);
       setLockoutTime(lockoutEnd);
       localStorage.setItem('loginLockout', lockoutEnd.toISOString());
-      setError('Too many failed attempts. Please try again in 15 minutes.');
-      sessionStorage.setItem('login-attempt-data', JSON.stringify({
-        email: email,
-        error: 'Too many failed attempts. Please try again in 15 minutes.'
-      }));
+      setErrorRobust('Too many failed attempts. Please try again in 15 minutes.');
+      setPassword(''); // Clear only password on error
       loginInProgress.current = false;
-      return;
+      return false;
     }
 
     setIsLoading(true);
-    console.log('🔔 Starting login attempt...');
+    
     try {
       // Smart redirect: remember where user was trying to go
       const urlParams = new URLSearchParams(window.location.search);
@@ -182,32 +201,32 @@ function LoginForm({
 
       await login({ email: sanitizedEmail, password: sanitizedPassword, rememberMe }, destination);
       loginRateLimiter.reset('login');
-      // Clear login attempt data on successful login
-      sessionStorage.removeItem('login-attempt-data');
-      console.log('🔔 Login successful, redirecting...');
+      
+      // Clear any stored error on successful login
+      setStoredError(null);
       
       // The login function now handles the redirect, so we don't need router.push here
     } catch (err: unknown) {
-      // Don't call checkLimit again - it was already called above
-      // Just handle the error display
-      console.log('🔔 Login failed:', err);
+      // Handle the error display without page refresh
       const errorMessage = err instanceof Error ? err.message : 'Invalid email or password';
-      setError(errorMessage);
-      // Update login attempt data with error
-      sessionStorage.setItem('login-attempt-data', JSON.stringify({
-        email: email,
-        error: errorMessage
-      }));
+      setErrorRobust(errorMessage);
+      setPassword(''); // Clear only password on error, keep email
     } finally {
       setIsLoading(false);
       loginInProgress.current = false;
-      console.log('🔔 Login attempt completed');
-      // Clean up login attempt data after a delay (in case component remounts)
-      setTimeout(() => {
-        sessionStorage.removeItem('login-attempt-data');
-        console.log('🔔 Cleaned up login attempt data');
-      }, 2000);
     }
+    
+    return false; // Prevent any form submission
+  };
+
+  // Handle button click as alternative to form submission
+  const handleLoginClick = async () => {
+    const syntheticEvent = {
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    } as FormEvent;
+    
+    await handleSubmit(syntheticEvent);
   };
 
   const formatTimeRemaining = (): string => {
@@ -224,14 +243,32 @@ function LoginForm({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Handle 2FA verification with proper error handling
+  const handle2FAVerification = async (code: string, type?: 'totp' | 'backup') => {
+    setErrorRobust(null);
+    try {
+      await verify2FA(code, type);
+      // Clear any stored error on successful verification
+      setStoredError(null);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid verification code';
+      setErrorRobust(errorMessage);
+      throw err; // Re-throw to let TwoFactorVerification handle UI state
+    }
+  };
+
   // If 2FA is required, render the 2FA verification component
   if (twoFactorRequired && twoFactorSession) {
     return (
       <div className={cn("flex flex-col gap-6", className)} {...props}>
         <TwoFactorVerification
           availableMethods={twoFactorSession.availableMethods}
-          onVerify={verify2FA}
+          onVerify={handle2FAVerification}
           isLoading={authLoading}
+          error={currentError}
+          onErrorClear={() => {
+            setErrorRobust(null);
+          }}
         />
         <div className="text-center">
           <button
@@ -256,7 +293,8 @@ function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
+          {/* Prevent form submission completely */}
+          <div className="p-6 md:p-8">
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-4">
@@ -280,6 +318,12 @@ function LoginForm({
                   placeholder="m@example.com"
                   disabled={isLoading || isLocked}
                   required
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleLoginClick();
+                    }
+                  }}
                 />
               </div>
               
@@ -304,6 +348,12 @@ function LoginForm({
                     placeholder="Enter your password"
                     disabled={isLoading || isLocked}
                     required
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleLoginClick();
+                      }
+                    }}
                   />
                   <button
                     type="button"
@@ -336,7 +386,8 @@ function LoginForm({
               </div>
 
               <Button
-                type="submit"
+                type="button"
+                onClick={handleLoginClick}
                 className="w-full"
                 disabled={isLoading || isLocked}
               >
@@ -350,12 +401,12 @@ function LoginForm({
                 )}
               </Button>
               
-              {error && (
+              {currentError && (
                 <div className="flex items-center justify-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>{error}</span>
+                  <span>{currentError}</span>
                 </div>
               )}
 
@@ -365,7 +416,7 @@ function LoginForm({
                 </div>
               )}
             </div>
-          </form>
+          </div>
           <div className="bg-muted relative hidden md:block">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-indigo-600/15 to-purple-600/10 flex items-center justify-center">
               <div className="text-center">

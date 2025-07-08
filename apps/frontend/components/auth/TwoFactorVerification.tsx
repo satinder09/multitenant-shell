@@ -27,6 +27,7 @@ export function TwoFactorVerification({
   const [totpCode, setTotpCode] = useState('');
   const [backupCode, setBackupCode] = useState('');
   const [isBackupCode, setIsBackupCode] = useState(false);
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
 
   const clearError = () => {
     if (onErrorClear) {
@@ -34,8 +35,20 @@ export function TwoFactorVerification({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Auto-submit when TOTP code is complete (6 digits)
+  useEffect(() => {
+    if (!isBackupCode && totpCode.length === 6 && !isLoading && !autoSubmitTriggered) {
+      setAutoSubmitTriggered(true);
+      console.log('🔄 Auto-submitting TOTP code:', totpCode);
+      handleSubmit();
+    }
+    if (totpCode.length < 6) {
+      setAutoSubmitTriggered(false);
+    }
+  }, [totpCode, isBackupCode, isLoading, autoSubmitTriggered]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     const code = isBackupCode ? backupCode.trim() : totpCode.trim();
     
@@ -66,6 +79,10 @@ export function TwoFactorVerification({
       console.log('✅ [TwoFactorVerification] onVerify completed successfully');
     } catch (error) {
       console.log('🚨 [TwoFactorVerification] onVerify threw error (handled by parent):', error);
+      // Clear the codes on error (password-like behavior)
+      setTotpCode('');
+      setBackupCode('');
+      setAutoSubmitTriggered(false);
       // Error handling is now done by parent component
     }
   };
@@ -74,6 +91,7 @@ export function TwoFactorVerification({
     setIsBackupCode(!isBackupCode);
     setTotpCode('');
     setBackupCode('');
+    setAutoSubmitTriggered(false);
     clearError();
   };
 
