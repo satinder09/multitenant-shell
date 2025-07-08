@@ -55,7 +55,8 @@ export class TwoFactorLoginService {
 
     this.sessions.set(sessionId, session);
 
-    this.logger.log(`Created 2FA login session for user ${userId}`, {
+    // Use debug level for session creation to reduce console noise
+    this.logger.debug(`Created 2FA login session for user ${userId}`, {
       sessionId,
       email,
       tenantId,
@@ -100,7 +101,8 @@ export class TwoFactorLoginService {
         remainingCodes = result.remainingCodes;
 
         if (isValid) {
-          this.logger.log(`Backup code verified for user ${session.userId} during login`, {
+          // Use debug level for verification success to reduce console noise
+          this.logger.debug(`Backup code verified for user ${session.userId} during login`, {
             sessionId,
             remainingCodes
           });
@@ -114,7 +116,8 @@ export class TwoFactorLoginService {
         isValid = result.success;
 
         if (isValid) {
-          this.logger.log(`TOTP code verified for user ${session.userId} during login`, {
+          // Use debug level for verification success to reduce console noise
+          this.logger.debug(`TOTP code verified for user ${session.userId} during login`, {
             sessionId
           });
         }

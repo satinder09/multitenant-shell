@@ -88,14 +88,21 @@ export class AuthController {
       try {
         const tenantInfo = await this.tenantService.findBySubdomain(dto.tenantSubdomain);
         tenantId = tenantInfo.id;
-        console.log(`[AUTH] Resolved tenant subdomain "${dto.tenantSubdomain}" to ID: ${tenantId}`);
+        // Only log in debug mode
+        if (process.env.DEBUG_AUTH) {
+          console.log(`[AUTH] Resolved tenant subdomain "${dto.tenantSubdomain}" to ID: ${tenantId}`);
+        }
       } catch (error) {
+        // This is an actual error, so we should log it
         console.error(`[AUTH] Failed to resolve tenant subdomain "${dto.tenantSubdomain}":`, error);
         throw new UnauthorizedException(`Invalid tenant: ${dto.tenantSubdomain}`);
       }
     }
     
-    console.log(`[AUTH] Login attempt - Email: ${dto.email}, TenantID: ${tenantId || 'platform'}`);
+    // Only log login attempts in debug mode
+    if (process.env.DEBUG_AUTH) {
+      console.log(`[AUTH] Login attempt - Email: ${dto.email}, TenantID: ${tenantId || 'platform'}`);
+    }
     const result = await this.authService.login(dto, tenantId);
 
     // Only set cookie if we have an access token (no 2FA required)
@@ -140,7 +147,10 @@ export class AuthController {
     @Body() dto: Verify2FALoginDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<TwoFactorLoginResponse> {
-    console.log(`[AUTH] 2FA verification attempt - Session: ${dto.sessionId}, Type: ${dto.type || 'totp'}`);
+    // Only log 2FA attempts in debug mode
+    if (process.env.DEBUG_AUTH) {
+      console.log(`[AUTH] 2FA verification attempt - Session: ${dto.sessionId}, Type: ${dto.type || 'totp'}`);
+    }
     
     const result = await this.authService.complete2FALogin(dto.sessionId, dto.code, dto.type);
 
@@ -236,8 +246,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     const baseDomain = process.env.BASE_DOMAIN || 'lvh.me';
-    // Log for debugging
-    console.log(`Clearing Authentication cookie for .${baseDomain}, ${baseDomain}, /`);
+    // Only log cookie clearing in debug mode
+    if (process.env.DEBUG_AUTH) {
+      console.log(`Clearing Authentication cookie for .${baseDomain}, ${baseDomain}, /`);
+    }
     res.clearCookie('Authentication', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

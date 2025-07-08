@@ -246,7 +246,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
+      // Only log unexpected errors, not normal login failures
+      if (process.env.DEBUG_AUTH) {
+        console.error('Login error:', error);
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -297,7 +300,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error('2FA verification error:', error);
+      // Only log unexpected errors, not normal 2FA failures
+      if (process.env.DEBUG_AUTH) {
+        console.error('2FA verification error:', error);
+      }
       throw error;
     } finally {
       setIsLoading(false);

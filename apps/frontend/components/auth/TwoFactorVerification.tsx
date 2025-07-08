@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { Shield, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Spinner } from '@/components/ui/spinner';
-import { Shield, Key } from 'lucide-react';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 interface TwoFactorVerificationProps {
   availableMethods: string[];
@@ -39,7 +39,6 @@ export function TwoFactorVerification({
   useEffect(() => {
     if (!isBackupCode && totpCode.length === 6 && !isLoading && !autoSubmitTriggered) {
       setAutoSubmitTriggered(true);
-      console.log('🔄 Auto-submitting TOTP code:', totpCode);
       handleSubmit();
     }
     if (totpCode.length < 6) {
@@ -52,33 +51,24 @@ export function TwoFactorVerification({
     
     const code = isBackupCode ? backupCode.trim() : totpCode.trim();
     
-    console.log('🔍 [TwoFactorVerification] handleSubmit called with:', { code, isBackupCode });
-    
     if (!code) {
-      console.log('🚨 [TwoFactorVerification] Empty code validation');
       return;
     }
 
     // Validate TOTP code length (6 digits)
     if (!isBackupCode && code.length !== 6) {
-      console.log('🚨 [TwoFactorVerification] Invalid TOTP length:', code.length);
       return;
     }
 
     // Validate backup code format (should be 8-9 characters with optional dash)
     if (isBackupCode && code.length < 8) {
-      console.log('🚨 [TwoFactorVerification] Invalid backup code length:', code.length);
       return;
     }
-
-    console.log('✅ [TwoFactorVerification] Validation passed, calling onVerify');
     
     try {
-      console.log('🔄 [TwoFactorVerification] About to call onVerify...');
       await onVerify(code, isBackupCode ? 'backup' : 'totp');
-      console.log('✅ [TwoFactorVerification] onVerify completed successfully');
     } catch (error) {
-      console.log('🚨 [TwoFactorVerification] onVerify threw error (handled by parent):', error);
+      console.error('2FA verification error:', error);
       // Clear the codes on error (password-like behavior)
       setTotpCode('');
       setBackupCode('');
@@ -97,15 +87,6 @@ export function TwoFactorVerification({
 
   const hasTotp = availableMethods.includes('totp');
   const hasBackup = availableMethods.includes('backup');
-
-  console.log('🔍 [TwoFactorVerification] Current state:', { 
-    error, 
-    hasError: !!error,
-    totpCode: totpCode.length,
-    backupCode: backupCode.length,
-    isBackupCode,
-    isLoading
-  });
 
   return (
     <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm overflow-hidden">

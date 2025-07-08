@@ -58,6 +58,7 @@ function LoginForm({
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const loginInProgress = useRef(false);
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
   
   // Error state management using sessionStorage
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +145,7 @@ function LoginForm({
     }
     
     loginInProgress.current = true;
+    setHasAttemptedLogin(true);
     setErrorRobust(null);
 
     // Sanitize inputs
@@ -295,6 +297,11 @@ function LoginForm({
         <CardContent className="grid p-0 md:grid-cols-2">
           {/* Prevent form submission completely */}
           <div className="p-6 md:p-8">
+            {/* Hidden dummy fields to prevent browser password detection */}
+            <div style={{ display: 'none' }}>
+              <input type="text" name="dummy_username" autoComplete="username" />
+              <input type="password" name="dummy_password" autoComplete="new-password" />
+            </div>
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mb-4">
@@ -312,12 +319,14 @@ function LoginForm({
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="userEmail"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="m@example.com"
                   disabled={isLoading || isLocked}
                   required
+                  autoComplete="username"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -341,13 +350,21 @@ function LoginForm({
                 <div className="relative">
                   <Input
                     id="password"
+                    name="userPassword"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      // Reset login attempt flag when user starts typing again
+                      if (hasAttemptedLogin && currentError) {
+                        setHasAttemptedLogin(false);
+                      }
+                    }}
                     className="pr-10"
                     placeholder="Enter your password"
                     disabled={isLoading || isLocked}
                     required
+                    autoComplete={hasAttemptedLogin && currentError ? "new-password" : "current-password"}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();

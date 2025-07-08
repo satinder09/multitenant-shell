@@ -13,32 +13,22 @@ export class CsrfService {
   }
 
   async getToken(): Promise<string> {
-    // Check if we have a valid token
     if (this.currentToken && Date.now() < this.tokenExpiry) {
-      console.log('[CsrfService] Using cached token');
       return this.currentToken;
     }
 
-    console.log('[CsrfService] Token expired or missing, refreshing...');
-    // Fetch new token from server
+    // Token expired or doesn't exist, refresh it
     return this.refreshToken();
   }
 
   async refreshToken(): Promise<string> {
     try {
-      console.log('[CsrfService] Fetching new CSRF token from /api/auth/csrf-token');
       const response = await fetch('/api/auth/csrf-token', {
         method: 'GET',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
-
-      console.log('[CsrfService] CSRF token response:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
       });
 
       if (!response.ok) {
@@ -56,7 +46,6 @@ export class CsrfService {
       // Token expires in 30 minutes
       this.tokenExpiry = Date.now() + (30 * 60 * 1000);
 
-      console.log('[CsrfService] Successfully obtained CSRF token:', token.substring(0, 10) + '...');
       return token;
     } catch (error) {
       console.error('[CsrfService] Error fetching CSRF token:', error);
@@ -88,9 +77,6 @@ export class CsrfService {
 
   // Clear cached token (useful when switching domains)
   clearToken(): void {
-    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_CSRF) {
-      console.log('[CsrfService] Clearing cached CSRF token');
-    }
     this.currentToken = null;
     this.tokenExpiry = 0;
   }
@@ -103,7 +89,6 @@ export class CsrfService {
     if (metaTag) {
       const token = metaTag.getAttribute('content');
       if (token) {
-        console.log('[CsrfService] Extracted CSRF token from meta tag');
         this.currentToken = token;
         this.tokenExpiry = Date.now() + (30 * 60 * 1000);
         return token;
@@ -134,13 +119,6 @@ export async function securityFetch(
     (options.method || 'GET').toUpperCase()
   );
 
-  console.log('[securityFetch] Making request:', {
-    url,
-    method: options.method || 'GET',
-    needsCSRF,
-    domain: typeof window !== 'undefined' ? window.location.hostname : 'unknown'
-  });
-
   if (needsCSRF) {
     options.headers = await csrfService.addTokenToHeaders(options.headers);
   }
@@ -151,23 +129,14 @@ export async function securityFetch(
   try {
     const response = await fetch(url, options);
 
-    console.log('[securityFetch] Response received:', {
-      url,
-      status: response.status,
-      statusText: response.statusText
-    });
-
     // If we get a 403 (CSRF failure), try to refresh token and retry once
     if (response.status === 403 && needsCSRF) {
-      console.warn('[securityFetch] CSRF token may be invalid, clearing cache and retrying...');
-      
       try {
         // Clear cached token and get fresh one
         csrfService.clearToken();
         await csrfService.refreshToken();
         options.headers = await csrfService.addTokenToHeaders(options.headers);
         
-        console.log('[securityFetch] Retrying request with fresh CSRF token');
         return fetch(url, options);
       } catch (error) {
         console.error('[securityFetch] Failed to refresh CSRF token:', error);
@@ -177,7 +146,10 @@ export async function securityFetch(
 
     return response;
   } catch (error) {
-    console.error('[securityFetch] Request failed:', error);
+    // Only log actual network errors, not HTTP error responses
+    if (error instanceof TypeError) {
+      console.error('[securityFetch] Network error:', error);
+    }
     throw error;
   }
 }
@@ -198,10 +170,6 @@ export function initializeCsrfProtection(): void {
       console.warn('[CsrfService] Failed to refresh CSRF token automatically:', error);
     });
   }, 25 * 60 * 1000); // Refresh every 25 minutes
-
-  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_CSRF) {
-    console.log('[CsrfService] CSRF protection initialized');
-  }
 }
 
 // Debug utility function
