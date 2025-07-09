@@ -75,10 +75,19 @@ export function TwoFactorSettings() {
           await loadBackupCodes()
         }
       } else {
-        console.error('Failed to load 2FA status')
+        toastNotify({
+          variant: 'error',
+          title: 'Failed to Load 2FA Status',
+          description: 'Unable to retrieve two-factor authentication status.'
+        })
       }
     } catch (error) {
       console.error('Error loading 2FA status:', error)
+      toastNotify({
+        variant: 'error',
+        title: 'Connection Error',
+        description: 'Unable to connect to authentication service.'
+      })
     } finally {
       setLoading(false)
     }
@@ -95,9 +104,11 @@ export function TwoFactorSettings() {
         }
       } else {
         console.log('No backup codes endpoint or no codes available')
+        setBackupCodes([])
       }
     } catch (error) {
       console.log('Error loading backup codes:', error)
+      setBackupCodes([])
     }
   }
 

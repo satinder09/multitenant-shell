@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Checkbox } from '@/components/ui/checkbox';
 import { confirm } from '@/shared/utils/ui/dialogUtils';
+import { toastNotify } from '@/shared/utils/ui/toastNotify';
 
 interface ConfigDrivenModulePageProps {
   moduleName: string;
@@ -102,7 +103,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
           const registryConfig = await getModuleConfig(propModuleName);
           setConfig(registryConfig);
         } catch (error) {
-          console.error('Failed to load config from registry:', error);
+          toastNotify({
+            variant: 'error',
+            title: 'Failed to Load Module',
+            description: `Error loading configuration for module "${propModuleName}".`
+          });
         } finally {
           setIsLoadingConfig(false);
         }
@@ -146,7 +151,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
             // Actions should handle their own refresh logic
             // No automatic refresh here to avoid duplicates
           } catch (error) {
-            console.error(`Failed to execute action ${actionKey}:`, error);
+            toastNotify({
+              variant: 'error',
+              title: 'Action Failed',
+              description: `Failed to execute action "${action.label}".`
+            });
           }
         }
       });
@@ -158,7 +167,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
       // Actions should handle their own refresh logic
       // No automatic refresh here to avoid duplicates
     } catch (error) {
-      console.error(`Failed to execute action ${actionKey}:`, error);
+      toastNotify({
+        variant: 'error',
+        title: 'Action Failed',
+        description: `Failed to execute action "${action.label}".`
+      });
     }
   };
 
@@ -182,7 +195,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
             // Actions should handle their own refresh logic
             // No automatic refresh here to avoid duplicates
           } catch (error) {
-            console.error(`Failed to execute bulk action ${actionKey}:`, error);
+            toastNotify({
+              variant: 'error',
+              title: 'Bulk Action Failed',
+              description: `Failed to execute bulk action "${action.label}".`
+            });
           }
         }
       });
@@ -194,7 +211,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
       // Actions should handle their own refresh logic
       // No automatic refresh here to avoid duplicates
     } catch (error) {
-      console.error(`Failed to execute bulk action ${actionKey}:`, error);
+      toastNotify({
+        variant: 'error',
+        title: 'Bulk Action Failed',
+        description: `Failed to execute bulk action "${action.label}".`
+      });
     }
   };
 
@@ -208,7 +229,11 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
       // Actions should handle their own refresh logic
       // No automatic refresh here to avoid duplicates
     } catch (error) {
-      console.error(`Failed to execute header action ${actionKey}:`, error);
+      toastNotify({
+        variant: 'error',
+        title: 'Action Failed',
+        description: `Failed to execute action "${action.label}".`
+      });
     }
   };
 

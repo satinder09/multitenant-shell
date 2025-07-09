@@ -362,7 +362,7 @@ export function confirmAsync(config: ConfirmConfig): Promise<boolean> {
 // Helper functions removed - use main alert() and confirm() functions with explicit variants
 // Preferred pattern: 
 // alert({ variant: 'error', title: 'Error', description: 'Something went wrong' })
-// confirm({ variant: 'critical', title: 'Confirm', description: 'Are you sure?', onConfirm: () => {} })
+// confirm({ variant: 'warning', title: 'Confirm', description: 'Are you sure?', onConfirm: () => {} })
 
 /**
  * Render dialog buttons
@@ -521,5 +521,7 @@ export function DialogOverlay(): React.JSX.Element {
  */
 export const clearAllDialogs = () => useDialogStore.getState().clearAll()
 
-// Legacy exports for backward compatibility
-export { alert as alertError, confirm as confirmCritical }
+// Legacy exports removed - use main alert() and confirm() functions with explicit variants
+// Preferred patterns:
+// alert({ variant: 'error', title: 'Error', description: 'Something went wrong' })
+// confirm({ variant: 'warning', title: 'Confirm', description: 'Are you sure?', onConfirm: () => {} })

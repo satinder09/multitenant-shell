@@ -54,6 +54,11 @@ const tenantActions = {
             window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
           } catch (error) {
             console.error('Deactivate failed:', error);
+            toastNotify({
+              variant: 'error',
+              title: 'Deactivation Failed',
+              description: 'Unable to deactivate tenant. Please try again.'
+            });
           }
         },
       });
@@ -64,6 +69,11 @@ const tenantActions = {
         window.dispatchEvent(new CustomEvent('refresh-module-data', { detail: { moduleName: 'tenants' } }));
       } catch (error) {
         console.error('Activate failed:', error);
+        toastNotify({
+          variant: 'error',
+          title: 'Activation Failed',
+          description: 'Unable to activate tenant. Please try again.'
+        });
       }
     }
   },
@@ -76,6 +86,11 @@ const tenantActions = {
       }));
     } catch (error) {
       console.error('Delete failed:', error);
+      toastNotify({
+        variant: 'error',
+        title: 'Delete Failed',
+        description: 'Unable to delete tenant. Please try again.'
+      });
     }
   },
 
@@ -166,7 +181,11 @@ const tenantActions = {
   },
 
   importTenants: () => {
-    console.log('Import tenants');
+    toastNotify({
+      variant: 'info',
+      title: 'Import Feature',
+      description: 'Tenant import functionality is not yet implemented.'
+    });
   },
 
   refreshData: () => {
