@@ -160,7 +160,7 @@ const tenantActions = {
     confirm({
       title: 'Delete Tenants',
       description: `Are you sure you want to delete ${ids.length} tenants? This action cannot be undone.`,
-      variant: 'error',
+      variant: 'critical',
       confirmLabel: 'Delete',
       cancelLabel: 'Cancel',
       onConfirm: async () => {

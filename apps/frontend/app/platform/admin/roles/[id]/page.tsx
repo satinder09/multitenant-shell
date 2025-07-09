@@ -81,7 +81,7 @@ export default function RoleDetailPage() {
     if (!role) return;
     
     confirm({
-      variant: 'error',
+      variant: 'critical',
       title: 'Delete Role',
       description: `Are you sure you want to delete role "${role.name}"? This action cannot be undone.`,
       onConfirm: deleteRole,

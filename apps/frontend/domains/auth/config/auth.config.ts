@@ -225,19 +225,65 @@ export type UserRole = typeof AUTH_ACCESS_LEVELS.ROLES[keyof typeof AUTH_ACCESS_
  * Validation utilities for configuration
  */
 export const AUTH_VALIDATORS = {
-  /** Validate if a route is public (no authentication required) */
+  /** Public routes - explicit allowlist (rarely changes) */
   isPublicRoute(pathname: string): boolean {
-    return Object.values(AUTH_ROUTES.PUBLIC).includes(pathname as any);
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
+    return publicRoutes.includes(pathname);
   },
   
-  /** Validate if a route is platform-specific */
-  isPlatformRoute(pathname: string): boolean {
-    return Object.values(AUTH_ROUTES.PLATFORM).some(route => pathname.startsWith(route));
+  /** Platform route detection - pure pattern matching */
+  isPlatformRoute(pathname: string, hostname: string): boolean {
+    const isPlatformDomain = this.isPlatformHost(hostname);
+    return isPlatformDomain && pathname.startsWith('/platform');
   },
   
-  /** Validate if a route is tenant-specific */
-  isTenantRoute(pathname: string): boolean {
-    return Object.values(AUTH_ROUTES.TENANT).some(route => pathname.startsWith(route));
+  /** Tenant route detection - everything else on tenant domains */
+  isTenantRoute(pathname: string, hostname: string): boolean {
+    const isTenantDomain = !this.isPlatformHost(hostname);
+    const isNotPublic = !this.isPublicRoute(pathname);
+    return isTenantDomain && isNotPublic;
+  },
+  
+  /** Route access validation - centralized logic */
+  validateRouteAccess(pathname: string, hostname: string, userContext: { tenantId?: string; isSuperAdmin?: boolean; role?: string; email?: string }) {
+    // Public routes always allowed
+    if (this.isPublicRoute(pathname)) {
+      return { allowed: true, reason: 'public_route' };
+    }
+    
+    const isPlatformDomain = this.isPlatformHost(hostname);
+    const hasTenantId = !!userContext.tenantId;
+    
+    if (isPlatformDomain) {
+      // Platform domain: must access /platform routes or root
+      if (!pathname.startsWith('/platform') && pathname !== '/') {
+        return { 
+          allowed: false, 
+          reason: 'invalid_platform_route',
+          redirectTo: '/platform'
+        };
+      }
+      // Root redirect for platform users
+      if (pathname === '/' && userContext.isSuperAdmin) {
+        return {
+          allowed: false,
+          reason: 'platform_root_redirect', 
+          redirectTo: '/platform'
+        };
+      }
+      
+      return { allowed: true, reason: 'valid_platform_access' };
+    } else {
+      // Tenant domain: tenant users only, platform users need special handling
+      if (!hasTenantId && !userContext.isSuperAdmin) {
+        return {
+          allowed: false,
+          reason: 'platform_user_on_tenant_domain',
+          redirectTo: `http://lvh.me:3000/login`
+        };
+      }
+      return { allowed: true, reason: 'valid_tenant_access' };
+    }
   },
   
   /** Validate if a hostname is a platform host */
@@ -253,7 +299,7 @@ export const AUTH_VALIDATORS = {
     // Remove port for comparison
     const cleanHostname = hostname.split(':')[0];
     
-    if (cleanHostname.endsWith(`.${baseDomain}`) && !AUTH_VALIDATORS.isPlatformHost(hostname)) {
+    if (cleanHostname.endsWith(`.${baseDomain}`) && !this.isPlatformHost(hostname)) {
       return cleanHostname.replace(`.${baseDomain}`, '');
     }
     return null;

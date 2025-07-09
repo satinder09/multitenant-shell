@@ -88,8 +88,8 @@ export class RouteManagerService {
       pathname: currentPathname,
       hostname: currentHostname,
       isPublic: AUTH_VALIDATORS.isPublicRoute(currentPathname),
-      isPlatformRoute: AUTH_VALIDATORS.isPlatformRoute(currentPathname),
-      isTenantRoute: AUTH_VALIDATORS.isTenantRoute(currentPathname),
+      isPlatformRoute: AUTH_VALIDATORS.isPlatformRoute(currentPathname, currentHostname),
+      isTenantRoute: AUTH_VALIDATORS.isTenantRoute(currentPathname, currentHostname),
       requiredAccessLevel: this.getRequiredAccessLevel(currentPathname),
     };
     

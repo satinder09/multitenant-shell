@@ -79,9 +79,9 @@ export async function middleware(request: NextRequest) {
         pathname: requestContext.pathname,
         isPlatform: requestContext.isPlatform,
         tenantSubdomain: requestContext.tenantSubdomain,
-        isPublicRoute: requestContext.isPublicRoute,
-        isPlatformRoute: requestContext.isPlatformRoute,
-        isTenantRoute: requestContext.isTenantRoute,
+        isPublicRoute: AUTH_VALIDATORS.isPublicRoute(requestContext.pathname),
+        isPlatformRoute: AUTH_VALIDATORS.isPlatformRoute(requestContext.pathname, requestContext.hostname),
+        isTenantRoute: AUTH_VALIDATORS.isTenantRoute(requestContext.pathname, requestContext.hostname),
         hasSecureLoginToken: !!requestContext.secureLoginToken,
         secureLoginTokenLength: requestContext.secureLoginToken?.length || 0,
       });
@@ -253,18 +253,12 @@ function shouldSkipMiddleware(pathname: string): boolean {
 function analyzeRequest(request: NextRequest, hostname: string, pathname: string) {
   const isPlatform = AUTH_VALIDATORS.isPlatformHost(hostname);
   const tenantSubdomain = AUTH_VALIDATORS.getTenantSubdomain(hostname);
-  const isPublicRoute = AUTH_VALIDATORS.isPublicRoute(pathname);
-  const isPlatformRoute = AUTH_VALIDATORS.isPlatformRoute(pathname);
-  const isTenantRoute = AUTH_VALIDATORS.isTenantRoute(pathname);
   
   return {
     hostname,
     pathname,
     isPlatform,
     tenantSubdomain,
-    isPublicRoute,
-    isPlatformRoute,
-    isTenantRoute,
     secureLoginToken: request.nextUrl.searchParams.get('secureLoginToken'),
   };
 }
@@ -277,17 +271,17 @@ async function handleAuthentication(
   context: ReturnType<typeof analyzeRequest>,
   authCookie?: any
 ): Promise<{ action: string; response: NextResponse }> {
-  const { pathname, isPlatform, tenantSubdomain, isPublicRoute, isPlatformRoute, isTenantRoute, secureLoginToken } = context;
+  const { pathname, hostname, secureLoginToken } = context;
   
-  // Allow public routes without authentication
-  if (isPublicRoute) {
+  // Step 1: Allow public routes immediately
+  if (AUTH_VALIDATORS.isPublicRoute(pathname)) {
     if (AUTH_DEBUG.ENABLED) {
       console.log('[Middleware] Public route allowed:', pathname);
     }
     return { action: 'allow_public', response: NextResponse.next() };
   }
   
-  // If no authentication cookie, redirect to login
+  // Step 2: Require authentication for all other routes
   if (!authCookie) {
     if (AUTH_DEBUG.ENABLED) {
       console.log('[Middleware] No auth cookie, redirecting to login');
@@ -297,7 +291,7 @@ async function handleAuthentication(
     return { action: 'redirect_no_auth', response: NextResponse.redirect(loginUrl) };
   }
   
-  // Decode and validate JWT token
+  // Step 3: Decode and validate JWT token (preserve existing logic)
   let payload: JwtPayload;
   try {
     payload = decodeJwt<JwtPayload>(authCookie.value);
@@ -312,7 +306,7 @@ async function handleAuthentication(
     return { action: 'redirect_invalid_token', response };
   }
   
-  // Check token expiration
+  // Step 4: Check token expiration (preserve existing logic)
   if (payload.exp && Date.now() >= payload.exp * 1000) {
     if (AUTH_DEBUG.ENABLED) {
       console.log('[Middleware] Token expired, redirecting to login');
@@ -324,7 +318,7 @@ async function handleAuthentication(
     return { action: 'redirect_expired_token', response };
   }
   
-  // Analyze user context
+  // Step 5: Analyze user context (preserve existing structure)
   const userContext = {
     tenantId: payload.tenantContext || payload.tenantId,
     isSuperAdmin: payload.isSuperAdmin || false,
@@ -336,90 +330,46 @@ async function handleAuthentication(
     console.log('[Middleware] User context:', userContext);
   }
   
-  // Apply access control rules
-  const accessControl = checkAccessControl(context, userContext);
+  // Step 6: Use new simplified route access validation
+  const accessCheck = AUTH_VALIDATORS.validateRouteAccess(pathname, hostname, userContext);
   
-  if (accessControl.allowed) {
+  // Special debug for platform/settings to see if middleware is interfering
+  if (pathname === '/platform/settings') {
+    console.log('🔍 MIDDLEWARE: /platform/settings request:', {
+      pathname,
+      hostname,
+      'user-email': userContext.email,
+      'access-allowed': accessCheck.allowed,
+      'access-reason': accessCheck.reason,
+      'redirect-to': accessCheck.redirectTo
+    });
+  }
+  
+  if (accessCheck.allowed) {
+    if (AUTH_DEBUG.ENABLED) {
+      console.log('[Middleware] Route access allowed:', accessCheck.reason);
+    }
     return { action: 'allow_authenticated', response: NextResponse.next() };
   } else {
-    return { action: 'redirect_access_denied', response: accessControl.response || NextResponse.next() };
-  }
-}
-
-/**
- * Check access control rules
- */
-function checkAccessControl(
-  context: ReturnType<typeof analyzeRequest>,
-  userContext: { tenantId?: string; isSuperAdmin: boolean; role?: string; email?: string }
-): { allowed: boolean; response?: NextResponse } {
-  const { pathname, isPlatform, tenantSubdomain, isPlatformRoute, isTenantRoute } = context;
-  const { tenantId, isSuperAdmin, role } = userContext;
-  
-  // SCENARIO 1: User has tenant session
-  if (tenantId) {
-    // Tenant user trying to access platform domain
-    if (isPlatform) {
-      if (AUTH_DEBUG.ENABLED) {
-        console.log('[Middleware] Tenant user on platform domain - clearing session');
-      }
-      
-      const loginUrl = buildLoginUrl(context.hostname, pathname);
-      const response = NextResponse.redirect(loginUrl);
-      response.cookies.delete(AUTH_STORAGE.COOKIES.AUTHENTICATION);
-      return { allowed: false, response };
+    if (AUTH_DEBUG.ENABLED) {
+      console.log('[Middleware] Route access denied:', accessCheck.reason, '- redirecting to:', accessCheck.redirectTo);
     }
     
-    // Tenant user trying to access platform routes on tenant domain
-    if (isPlatformRoute) {
-      if (AUTH_DEBUG.ENABLED) {
-        console.log('[Middleware] Blocking platform route access from tenant subdomain');
-      }
-      
-      const redirectUrl = new URL(AUTH_ROUTES.TENANT.HOME, `${context.hostname.includes('https') ? 'https' : 'http'}://${context.hostname}`);
-      return { allowed: false, response: NextResponse.redirect(redirectUrl) };
+    // Enhanced redirect URL construction
+    let redirectUrl: URL;
+    if (accessCheck.redirectTo?.startsWith('http')) {
+      // Absolute URL
+      redirectUrl = new URL(accessCheck.redirectTo);
+    } else {
+      // Relative URL - construct with current request context
+      const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+      redirectUrl = new URL(accessCheck.redirectTo || '/platform', baseUrl);
     }
     
-    // Allow tenant user on tenant domain
-    return { allowed: true };
-  }
-  
-  // SCENARIO 2: User has platform session (no tenant ID)
-  else {
-    // Platform user on tenant domain
-    if (!isPlatform && !isSuperAdmin) {
-      if (AUTH_DEBUG.ENABLED) {
-        console.log('[Middleware] Non-superadmin platform user on tenant domain - clearing session');
-      }
-      
-      const loginUrl = buildLoginUrl(context.hostname, pathname);
-      const response = NextResponse.redirect(loginUrl);
-      response.cookies.delete(AUTH_STORAGE.COOKIES.AUTHENTICATION);
-      return { allowed: false, response };
-    }
-    
-    // Platform user on platform domain accessing root - redirect to platform dashboard
-    if (isPlatform && isSuperAdmin && pathname === '/') {
-      if (AUTH_DEBUG.ENABLED) {
-        console.log('[Middleware] Platform admin on root - redirecting to platform dashboard');
-      }
-      
-      const platformUrl = new URL(AUTH_ROUTES.PLATFORM.HOME, `${context.hostname.includes('https') ? 'https' : 'http'}://${context.hostname}`);
-      return { allowed: false, response: NextResponse.redirect(platformUrl) };
-    }
-    
-    // Check platform route access
-    if (isPlatformRoute && !isSuperAdmin && role !== 'platform_admin') {
-      if (AUTH_DEBUG.ENABLED) {
-        console.log('[Middleware] Insufficient permissions for platform route');
-      }
-      
-      const homeUrl = new URL(AUTH_ROUTES.TENANT.HOME, `${context.hostname.includes('https') ? 'https' : 'http'}://${context.hostname}`);
-      return { allowed: false, response: NextResponse.redirect(homeUrl) };
-    }
-    
-    // Allow platform user
-    return { allowed: true };
+    return { 
+      action: `redirect_${accessCheck.reason}`, 
+      response: NextResponse.redirect(redirectUrl) 
+    };
   }
 }
 

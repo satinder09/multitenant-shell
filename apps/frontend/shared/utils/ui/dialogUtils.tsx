@@ -70,6 +70,7 @@ import {
   Trash2,
   Save,
   X,
+  Check,
 } from 'lucide-react'
 import React, { ReactNode } from 'react'
 import { cn } from '@/shared/utils/utils'
@@ -118,7 +119,7 @@ export interface AlertConfig extends BaseDialogConfig {
 /**
  * Confirm dialog configuration  
  */
-export interface ConfirmConfig extends BaseDialogConfig {
+export interface ConfirmConfig extends Omit<BaseDialogConfig, 'variant'> {
   // Confirm defaults to Confirm/Cancel, but can be fully customized
   onConfirm?: () => void
   onCancel?: () => void
@@ -126,6 +127,7 @@ export interface ConfirmConfig extends BaseDialogConfig {
   cancelLabel?: string
   showCancel?: boolean
   buttons?: DialogButton[]  // If provided, overrides default confirm/cancel
+  variant?: ConfirmVariant
 }
 
 /**
@@ -215,21 +217,35 @@ export const useDialogStore = create<DialogStore>((set, get) => ({
 
 // Icons and styling remain the same
 const variantIconMap: Record<DialogVariant, ReactNode> = {
-  info: <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
-  success: <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />,
-  warning: <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />,
-  error: <ShieldAlert className="h-5 w-5 text-red-600 dark:text-red-400" />,
-  question: <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
-  default: <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
+  info: <Info className="h-5 w-5 text-blue-600" />,
+  success: <Check className="h-5 w-5 text-green-600" />,
+  error: <X className="h-5 w-5 text-red-600" />,
+  warning: <AlertTriangle className="h-5 w-5 text-yellow-600" />,
+  question: <HelpCircle className="h-5 w-5 text-blue-600" />,
+  default: <Info className="h-5 w-5 text-blue-600" />,
+}
+
+const confirmVariantIconMap: Record<ConfirmVariant, ReactNode> = {
+  default: <HelpCircle className="h-5 w-5 text-blue-600" />,
+  critical: <AlertTriangle className="h-5 w-5 text-red-600" />,
+  warning: <AlertTriangle className="h-5 w-5 text-yellow-600" />,
+  success: <Check className="h-5 w-5 text-green-600" />,
 }
 
 const variantStyles: Record<DialogVariant, string> = {
   info: 'border-l-blue-500',
   success: 'border-l-green-500',
-  warning: 'border-l-yellow-500',
   error: 'border-l-red-500',
+  warning: 'border-l-yellow-500',
   question: 'border-l-blue-500',
   default: 'border-l-gray-500',
+}
+
+const confirmVariantStyles: Record<ConfirmVariant, string> = {
+  default: 'border-l-blue-500',
+  critical: 'border-l-red-500',
+  warning: 'border-l-yellow-500',
+  success: 'border-l-green-500',
 }
 
 const sizeStyles: Record<DialogSize, string> = {
@@ -275,7 +291,7 @@ export function confirm(config: ConfirmConfig): void {
   // If custom buttons provided, use them; otherwise use default confirm/cancel
   if (!config.buttons) {
     const finalConfig = {
-      variant: 'question' as DialogVariant,
+      variant: 'default' as ConfirmVariant,
       buttons: [
         ...(config.showCancel !== false ? [{
           label: config.cancelLabel || 'Cancel',
@@ -295,7 +311,7 @@ export function confirm(config: ConfirmConfig): void {
     show(finalConfig)
   } else {
     show({
-      variant: 'question' as DialogVariant,
+      variant: 'default' as ConfirmVariant,
       ...config
     })
   }
@@ -447,13 +463,13 @@ export function DialogOverlay(): React.JSX.Element {
         <AlertDialog open onOpenChange={closeConfirm}>
           <AlertDialogContent className={cn(
             'max-w-md border-l-4 !bg-white dark:!bg-gray-800 !rounded-lg shadow-xl border border-gray-200 dark:border-gray-700',
-            variantStyles[confirm.variant || 'question'],
+            confirmVariantStyles[confirm.variant || 'default'],
             confirm.className
           )}>
             <AlertDialogHeader>
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
-                  {confirm.icon || variantIconMap[confirm.variant || 'question']}
+                  {confirm.icon || confirmVariantIconMap[confirm.variant || 'default']}
                 </div>
                 <div className="flex-1 min-w-0">
                   <AlertDialogTitle className="text-base font-semibold leading-6">

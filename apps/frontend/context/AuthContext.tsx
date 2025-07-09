@@ -198,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (process.env.DEBUG_AUTH) {
       console.log('AuthContext.login called with:', { email: dto.email, rememberMe: dto.rememberMe });
     }
+    
     setIsLoading(true);
     setTwoFactorRequired(false);
     setTwoFactorSession(null);
@@ -236,7 +237,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile) {
           // Smart redirect logic - ONLY redirect on successful login
           if (redirectTo) {
-            router.push(redirectTo);
+            // Additional validation to ensure redirect is valid
+            if (redirectTo.startsWith('/platform')) {
+              router.push(redirectTo);
+            } else {
+              // Fallback to smart redirect for invalid redirects
+              const hostname = window.location.hostname;
+              const smartRedirectPath = getSmartRedirectPath(hostname, profile.isSuperAdmin || false);
+              router.push(smartRedirectPath);
+            }
           } else {
             // Smart redirect based on user type and domain
             const hostname = window.location.hostname;
@@ -278,7 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('2FA verification successful:', verifyResponse);
       }
       
-      // Clear 2FA state
+      // Clear 2FA state first
       setTwoFactorRequired(false);
       setTwoFactorSession(null);
       
@@ -291,12 +300,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPendingRedirect(null);
         
         if (redirectTo) {
-          router.push(redirectTo);
+          // Additional validation to ensure redirect is valid
+          if (redirectTo.startsWith('/platform')) {
+            // Small delay to ensure 2FA component is unmounted
+            setTimeout(() => {
+              router.push(redirectTo);
+            }, 50);
+          } else {
+            // Fallback to smart redirect for invalid redirects
+            const hostname = window.location.hostname;
+            const smartRedirectPath = getSmartRedirectPath(hostname, profile.isSuperAdmin || false);
+            setTimeout(() => {
+              router.push(smartRedirectPath);
+            }, 50);
+          }
         } else {
           // Smart redirect based on user type and domain
           const hostname = window.location.hostname;
           const smartRedirectPath = getSmartRedirectPath(hostname, profile.isSuperAdmin || false);
-          router.push(smartRedirectPath);
+          setTimeout(() => {
+            router.push(smartRedirectPath);
+          }, 50);
         }
       }
     } catch (error) {

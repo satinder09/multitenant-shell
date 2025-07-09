@@ -827,7 +827,7 @@ export function TwoFactorSettings() {
                   confirm({
                     title: 'Disable Two-Factor Authentication',
                     description: 'Are you sure you want to disable 2FA? This will make your account less secure and remove the extra layer of protection from your account.',
-                    variant: 'error',
+                    variant: 'critical',
                     buttons: [
                       { 
                         label: 'Keep 2FA Active', 

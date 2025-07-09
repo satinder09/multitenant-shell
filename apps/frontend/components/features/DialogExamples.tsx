@@ -46,7 +46,7 @@ export function DialogExamples() {
     confirm({
       title: 'Delete Item',
       description: 'Are you sure you want to delete this item? This action cannot be undone.',
-      variant: 'error',
+      variant: 'critical',
       onConfirm: () => console.log('Item deleted!'),
       onCancel: () => console.log('Deletion cancelled')
     })
@@ -102,7 +102,7 @@ export function DialogExamples() {
     confirm({
       title: 'Send Notification',
       description: 'How would you like to send the notification?',
-      variant: 'question',
+      variant: 'default',
       buttons
     })
   }
