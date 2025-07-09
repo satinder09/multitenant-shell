@@ -2,7 +2,7 @@ import React from 'react';
 import { ModuleConfig } from '@/shared/modules/types';
 import { 
   Building2, Users, Eye, Edit, Trash, CheckCircle, XCircle, 
-  Shield, Plus, Upload, RefreshCw, Download 
+  Shield, Plus, Upload, RefreshCw, Download
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { confirm } from '@/shared/utils/ui/dialogUtils';
@@ -14,6 +14,14 @@ const tenantActions = {
   // Row Actions
   viewTenant: async (tenant: any) => {
     window.location.href = `/platform/tenants/${tenant.id}`;
+  },
+
+
+
+  editTenant: async (tenant: any) => {
+    window.dispatchEvent(new CustomEvent('open-edit-tenant-dialog', {
+      detail: { tenant }
+    }));
   },
 
   secureLogin: async (tenant: any) => {
@@ -30,17 +38,13 @@ const tenantActions = {
     }));
   },
 
-  editTenant: async (tenant: any) => {
-    console.log('Edit tenant:', tenant.id);
-  },
-
   toggleStatus: async (tenant: any) => {
     if (tenant.isActive) {
       // Confirm before deactivating
       confirm({
         title: 'Deactivate Tenant',
         description: `Are you sure you want to deactivate tenant "${tenant.name}"?`,
-        variant: 'critical',
+        variant: 'warning',
         confirmLabel: 'Deactivate',
         cancelLabel: 'Cancel',
         onConfirm: async () => {
@@ -93,7 +97,7 @@ const tenantActions = {
     confirm({
       title: 'Deactivate Tenants',
       description: `Are you sure you want to deactivate ${ids.length} tenant${ids.length > 1 ? 's' : ''}? This will disable access for these tenants.`,
-      variant: 'critical',
+      variant: 'warning',
       confirmLabel: 'Deactivate',
       cancelLabel: 'Cancel',
       onConfirm: async () => {
@@ -141,7 +145,7 @@ const tenantActions = {
     confirm({
       title: 'Delete Tenants',
       description: `Are you sure you want to delete ${ids.length} tenants? This action cannot be undone.`,
-      variant: 'critical',
+      variant: 'error',
       confirmLabel: 'Delete',
       cancelLabel: 'Cancel',
       onConfirm: async () => {
@@ -399,21 +403,21 @@ export const TenantsConfig: ModuleConfig = {
         priority: 2
       },
       {
+        key: 'edit',
+        label: 'Edit',
+        icon: Edit,
+        onClick: tenantActions.editTenant,
+        variant: 'outline',
+        displayMode: 'menu',
+        priority: 3
+      },
+      {
         key: 'impersonate',
         label: 'Impersonate',
         icon: Users,
         onClick: tenantActions.impersonate,
         variant: 'outline',
         condition: (tenant) => tenant.isActive,
-        displayMode: 'menu',
-        priority: 3
-      },
-      {
-        key: 'edit',
-        label: 'Edit',
-        icon: Edit,
-        onClick: tenantActions.editTenant,
-        variant: 'ghost',
         displayMode: 'menu',
         priority: 4
       },

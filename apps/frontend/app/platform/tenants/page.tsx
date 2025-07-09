@@ -7,6 +7,7 @@ import { TenantsConfig } from './tenants.config';
 import CreateTenantDialog from '@/components/features/tenant-management/CreateTenantDialog';
 import { SecureLoginModal } from '@/components/features/tenant-management/SecureLoginModal';
 import { ImpersonationModal } from '@/components/features/tenant-management/ImpersonationModal';
+import EditTenantDialog from '@/components/features/tenant-management/EditTenantDialog';
 import type { PlatformTenantAccessOption } from '@/shared/types/platform.types';
 
 // 🚀 EARLY REGISTRATION: Register BEFORE component definition to ensure it's available immediately
@@ -20,9 +21,11 @@ registerModule({
 export default function TenantsPage() {
   // Modal states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [secureLoginModalOpen, setSecureLoginModalOpen] = useState(false);
   const [impersonationModalOpen, setImpersonationModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantAccessOption | null>(null);
+  const [tenantToEdit, setTenantToEdit] = useState<any>(null);
 
   // Helper function to convert tenant data to access option format
   const tenantToAccessOption = (tenant: any): PlatformTenantAccessOption => ({
@@ -41,6 +44,12 @@ export default function TenantsPage() {
       setCreateDialogOpen(true);
     };
 
+    const handleEditTenantDialog = (event: CustomEvent) => {
+      const tenant = event.detail.tenant;
+      setTenantToEdit(tenant);
+      setEditDialogOpen(true);
+    };
+
     const handleSecureLoginModal = (event: CustomEvent) => {
       const tenant = event.detail.tenant;
       setSelectedTenant(tenantToAccessOption(tenant));
@@ -54,11 +63,13 @@ export default function TenantsPage() {
     };
 
     window.addEventListener('open-create-tenant-modal', handleCreateTenantModal);
+    window.addEventListener('open-edit-tenant-dialog', handleEditTenantDialog as EventListener);
     window.addEventListener('open-secure-login-modal', handleSecureLoginModal as EventListener);
     window.addEventListener('open-impersonation-modal', handleImpersonationModal as EventListener);
 
     return () => {
       window.removeEventListener('open-create-tenant-modal', handleCreateTenantModal);
+      window.removeEventListener('open-edit-tenant-dialog', handleEditTenantDialog as EventListener);
       window.removeEventListener('open-secure-login-modal', handleSecureLoginModal as EventListener);
       window.removeEventListener('open-impersonation-modal', handleImpersonationModal as EventListener);
     };
@@ -79,6 +90,20 @@ export default function TenantsPage() {
         onTenantCreated={() => {
           setCreateDialogOpen(false);
           // Trigger refresh after tenant creation
+          window.dispatchEvent(new CustomEvent('refresh-module-data', {
+            detail: { moduleName: 'tenants' }
+          }));
+        }}
+      />
+
+      <EditTenantDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        tenant={tenantToEdit}
+        onTenantUpdated={() => {
+          setEditDialogOpen(false);
+          setTenantToEdit(null);
+          // Trigger refresh after tenant update
           window.dispatchEvent(new CustomEvent('refresh-module-data', {
             detail: { moduleName: 'tenants' }
           }));

@@ -287,35 +287,11 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(style)
 }
 
-/**
- * Quick success toast with progress bar
- */
-export const toastSuccess = (title: string, description?: string) =>
-  toastNotify({ variant: 'success', title, description, showProgress: true })
-
-/**
- * Quick error toast with progress bar
- */
-export const toastError = (title: string, description?: string) =>
-  toastNotify({ variant: 'error', title, description, showProgress: true })
-
-/**
- * Quick info toast with progress bar
- */
-export const toastInfo = (title: string, description?: string) =>
-  toastNotify({ variant: 'info', title, description, showProgress: true })
-
-/**
- * Quick warning toast with progress bar
- */
-export const toastWarning = (title: string, description?: string) =>
-  toastNotify({ variant: 'warning', title, description, showProgress: true })
-
-/**
- * Loading toast that can be updated (no progress bar for loading)
- */
-export const toastLoading = (title: string) =>
-  toastNotify({ variant: 'loading', title, sticky: true })
+// Helper functions removed - use main toastNotify() function with explicit variants
+// Preferred pattern: 
+// toastNotify({ variant: 'success', title: 'Success!', description: 'Operation completed', showProgress: true })
+// toastNotify({ variant: 'error', title: 'Error', description: 'Something went wrong', showProgress: true })
+// toastNotify({ variant: 'loading', title: 'Processing...', sticky: true })
 
 /**
  * Promise-based toast for async operations
@@ -332,19 +308,19 @@ export const toastPromise = <T,>(
     error?: string | ((error: any) => string)
   } = {}
 ): Promise<T> => {
-  const loadingToast = toastLoading(loading)
+  const loadingToast = toastNotify({ variant: 'loading', title: loading, sticky: true })
   
   return promise
     .then((data) => {
       toast.dismiss(loadingToast)
       const successMessage = typeof success === 'function' ? success(data) : success
-      toastSuccess(successMessage)
+      toastNotify({ variant: 'success', title: successMessage, showProgress: true })
       return data
     })
     .catch((err) => {
       toast.dismiss(loadingToast)
       const errorMessage = typeof error === 'function' ? error(err) : error
-      toastError(errorMessage)
+      toastNotify({ variant: 'error', title: errorMessage, showProgress: true })
       throw err
     })
 }

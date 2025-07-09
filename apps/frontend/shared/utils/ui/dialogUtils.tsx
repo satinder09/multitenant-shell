@@ -429,8 +429,8 @@ export function DialogOverlay(): React.JSX.Element {
                   </AlertDialogTitle>
                   {alert.description && (
                     <AlertDialogDescription className="mt-2 text-sm leading-5">
-                      {alert.description}
-                    </AlertDialogDescription>
+                    {alert.description}
+                  </AlertDialogDescription>
                   )}
                 </div>
               </div>
@@ -457,8 +457,8 @@ export function DialogOverlay(): React.JSX.Element {
                 </div>
                 <div className="flex-1 min-w-0">
                   <AlertDialogTitle className="text-base font-semibold leading-6">
-                    {confirm.title}
-                  </AlertDialogTitle>
+                {confirm.title}
+              </AlertDialogTitle>
                   {confirm.description && (
                     <AlertDialogDescription className="mt-2 text-sm leading-5">
                       {confirm.description}

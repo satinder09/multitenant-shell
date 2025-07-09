@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Shield, Key, Users, Edit, Trash, Settings } from 'lucide-react';
 import { toastNotify } from '@/shared/utils/ui/toastNotify';
+import { confirm } from '@/shared/utils/ui/dialogUtils';
 import { RoleModalManager } from '@/components/features/role-management/RoleModalManager';
 import { browserApi } from '@/shared/services/api-client';
 
@@ -79,9 +80,14 @@ export default function RoleDetailPage() {
   const handleDelete = () => {
     if (!role) return;
     
-    if (confirm(`Are you sure you want to delete role "${role.name}"? This action cannot be undone.`)) {
-      deleteRole();
-    }
+    confirm({
+      variant: 'error',
+      title: 'Delete Role',
+      description: `Are you sure you want to delete role "${role.name}"? This action cannot be undone.`,
+      onConfirm: deleteRole,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel'
+    });
   };
 
   const deleteRole = async () => {

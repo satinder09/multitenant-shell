@@ -15,6 +15,7 @@ import { Filter, Save, X, AlertCircle, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Checkbox } from '@/components/ui/checkbox';
+import { confirm } from '@/shared/utils/ui/dialogUtils';
 
 interface ConfigDrivenModulePageProps {
   moduleName: string;
@@ -135,7 +136,21 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
 
     // Show confirmation if required
     if (action.confirmMessage) {
-      if (!confirm(action.confirmMessage)) return;
+      confirm({
+        variant: 'warning',
+        title: 'Confirm Action',
+        description: action.confirmMessage,
+        onConfirm: async () => {
+          try {
+            await action.onClick(record);
+            // Actions should handle their own refresh logic
+            // No automatic refresh here to avoid duplicates
+          } catch (error) {
+            console.error(`Failed to execute action ${actionKey}:`, error);
+          }
+        }
+      });
+      return;
     }
 
     try {
@@ -157,7 +172,21 @@ export const ConfigDrivenModulePage: React.FC<ConfigDrivenModulePageProps> = ({
 
     // Show confirmation if required
     if (action.confirmMessage) {
-      if (!confirm(action.confirmMessage)) return;
+      confirm({
+        variant: 'warning',
+        title: 'Confirm Bulk Action',
+        description: action.confirmMessage,
+        onConfirm: async () => {
+          try {
+            await action.onClick(records);
+            // Actions should handle their own refresh logic
+            // No automatic refresh here to avoid duplicates
+          } catch (error) {
+            console.error(`Failed to execute bulk action ${actionKey}:`, error);
+          }
+        }
+      });
+      return;
     }
 
     try {

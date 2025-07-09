@@ -11,6 +11,7 @@ import {
   createFocusHandler,
   keyboardShortcutRegistry
 } from './keyboard-shortcuts';
+import { alert } from '@/shared/utils/ui/dialogUtils';
 
 export const KeyboardShortcutsDemo: React.FC = () => {
   const [count, setCount] = useState(0);
@@ -71,7 +72,11 @@ export const KeyboardShortcutsDemo: React.FC = () => {
   // Example 5: Dialog shortcuts
   useDialogShortcuts({
     onSubmit: () => {
-      alert('Dialog submitted!');
+      alert({ 
+        variant: 'success', 
+        title: 'Success', 
+        description: 'Dialog submitted!' 
+      });
       setIsDialogOpen(false);
     },
     onCancel: () => setIsDialogOpen(false),
@@ -81,7 +86,11 @@ export const KeyboardShortcutsDemo: React.FC = () => {
   // Example 6: Form shortcuts
   useFormShortcuts({
     onSave: () => {
-      alert(`Form saved: ${JSON.stringify(formData)}`);
+      alert({ 
+        variant: 'success', 
+        title: 'Form Saved', 
+        description: `Form saved: ${JSON.stringify(formData)}` 
+      });
     },
     onReset: () => {
       setFormData({ name: '', email: '' });
@@ -175,7 +184,11 @@ export const KeyboardShortcutsDemo: React.FC = () => {
                       Cancel
                     </Button>
                     <Button onClick={() => {
-                      alert('Dialog submitted!');
+                      alert({ 
+                        variant: 'success', 
+                        title: 'Success', 
+                        description: 'Dialog submitted!' 
+                      });
                       setIsDialogOpen(false);
                     }}>
                       Submit
