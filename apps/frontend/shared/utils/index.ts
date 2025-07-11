@@ -5,6 +5,7 @@
 export * from './utils';
 export * from './validation';
 export * from './security';
+export * from './cookies';
 
 // Note: './date' is not exported here to avoid formatDate conflict with utils.ts
 // If you need date utilities, import them directly from './date'

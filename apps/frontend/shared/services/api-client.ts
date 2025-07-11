@@ -315,7 +315,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   // Add default response interceptor for logging
   client.addResponseInterceptor((response) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[API] ${response.status} - ${JSON.stringify(response.data).substring(0, 100)}...`);
+     // console.log(`[API] ${response.status} - ${JSON.stringify(response.data).substring(0, 100)}...`);
     }
     return response;
   });

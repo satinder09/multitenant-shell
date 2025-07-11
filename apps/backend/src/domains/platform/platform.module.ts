@@ -5,10 +5,12 @@ import { RbacController } from './rbac/controllers/rbac.controller';
 import { PlatformRbacController } from './rbac/controllers/platform-rbac.controller';
 import { RbacService } from './rbac/services/rbac.service';
 import { RolesGuard } from './rbac/roles.guard';
+
 import { DatabaseModule } from '../database/database.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, AuthModule],
   controllers: [
     PlatformUsersController,
     RbacController,

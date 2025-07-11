@@ -33,6 +33,9 @@ import { DatabaseOptimizationService } from './infrastructure/performance/databa
 import { IntelligentCacheService } from './infrastructure/cache/intelligent-cache.service';
 import { PerformanceOptimizationController } from './infrastructure/performance/performance-optimization.controller';
 
+// WebSocket infrastructure
+import { WebSocketModule } from './infrastructure/websocket/websocket.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -52,6 +55,7 @@ import { PerformanceOptimizationController } from './infrastructure/performance/
     PlatformModule,
     TenantModule,
     SearchModule,
+    WebSocketModule,
   ],
   controllers: [
     HealthController,

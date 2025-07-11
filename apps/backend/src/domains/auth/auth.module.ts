@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 
 import { AuthController } from './controllers/auth.controller';
 import { TenantAccessController } from './controllers/tenant-access.controller';
@@ -35,6 +35,7 @@ import { TwoFactorLoginService } from './services/two-factor-login.service';
         signOptions: { expiresIn: cs.get<string>('JWT_EXPIRES_IN') || '1h' },
       }),
       inject: [ConfigService],
+      global: true,
     }),
     DatabaseModule,
     TenantModule,
@@ -74,6 +75,8 @@ import { TwoFactorLoginService } from './services/two-factor-login.service';
     AuthSecurityService,
     BackupCodesService,
     TwoFactorLoginService,
+    JwtAuthGuard,
+    AuthorizationGuard,
   ],
 })
 export class AuthModule {} 

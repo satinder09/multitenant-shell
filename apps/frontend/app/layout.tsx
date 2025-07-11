@@ -6,6 +6,7 @@ import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { ThemeProvider } from '@/context/theme-provider';
 import { AuthProvider } from '@/context/AuthContext';
+// WebSocketProvider removed - now using individual hooks
 import { Toaster } from '@/components/ui/sonner';
 import { DialogOverlay } from '@/shared/utils/ui/dialogUtils';
 import { AppSheetOverlay } from '@/shared/utils/ui/sheetUtils';

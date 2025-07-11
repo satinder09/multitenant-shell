@@ -29,7 +29,12 @@ class KeyboardShortcutRegistry {
     if (shortcut.altKey) parts.push('alt');
     if (shortcut.shiftKey) parts.push('shift');
     if (shortcut.metaKey) parts.push('meta');
-    parts.push(shortcut.key.toLowerCase());
+    
+    // Safety check for undefined key
+    if (shortcut.key && typeof shortcut.key === 'string') {
+      parts.push(shortcut.key.toLowerCase());
+    }
+    
     return parts.join('+');
   }
 

@@ -570,7 +570,7 @@ export class AuthSecurityService {
   /**
    * Generate a cryptographically secure random secret
    */
-  generateSecret(length: number = 32): string {
+  generateSecret(length = 32): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
     const bytes = crypto.randomBytes(length);

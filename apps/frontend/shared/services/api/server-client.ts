@@ -16,7 +16,7 @@ class ServerApiClient {
     this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_BACKEND_URL || defaultBackendUrl;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('[ServerApiClient] Using backend URL:', this.baseUrl);
+      // console.log('[ServerApiClient] Using backend URL:', this.baseUrl);
     }
   }
 

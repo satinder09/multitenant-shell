@@ -83,13 +83,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`🔍 Dynamic Search: Processing request for module "${moduleName}"`);
+    // console.log(`🔍 Dynamic Search: Processing request for module "${moduleName}"`);
 
     // Get module configuration - prefer passed config, fallback to registry
     let moduleConfig: any;
     if (passedConfig) {
       moduleConfig = passedConfig;
-      console.log(`✅ Using passed config for module: ${moduleName}`);
+      // console.log(`✅ Using passed config for module: ${moduleName}`);
     } else {
       moduleConfig = await getModuleConfig(moduleName);
       if (!moduleConfig) {
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       computedFields: moduleConfig.computedFields
     };
 
-    console.log(`🎯 Dynamic Search: Sending payload to backend for table "${moduleConfig.sourceTable}"`);
+    // console.log(`🎯 Dynamic Search: Sending payload to backend for table "${moduleConfig.sourceTable}"`);
 
     // Send to universal backend search endpoint
     const serverApi = new ServerApiClient();
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('✅ Dynamic search successful, returning data');
+    // console.log('✅ Dynamic search successful, returning data');
     return NextResponse.json(data);
 
   } catch (error) {

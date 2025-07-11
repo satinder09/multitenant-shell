@@ -12,8 +12,9 @@ import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { GetTenantsQueryDto } from '../dto/get-tenants-query.dto';
 import { execSync } from 'child_process';
-import { PrismaClient as MasterPrismaClient } from '../../../../generated/master-prisma';
+// Removed unused import: PrismaClient as MasterPrismaClient
 import { QueryBuilderUtils, FieldMapping } from '../../../shared/utils/query-builder.utils';
+import { WebSocketService } from '../../../infrastructure/websocket/websocket.service';
 
 @Injectable()
 export class TenantService {
@@ -22,41 +23,73 @@ export class TenantService {
   constructor(
     private readonly masterPrisma: MasterDatabaseService,
     private readonly config: ConfigService,
+    private readonly webSocketService: WebSocketService,
   ) {}
 
   async create(createTenantDto: CreateTenantDto, creatorId: string) {
-    const randomSuffix = crypto.randomBytes(4).toString('hex');
-    const dbName = `db_xl_${createTenantDto.name.toLowerCase().replace(/\s/g, '')}_${randomSuffix}`;
+    const operationId = `tenant-creation-${Date.now()}`;
+    
+    try {
+      this.logger.log(`Starting tenant creation for user ${creatorId}`);
+      
+      // Send initial progress
+      await this.sendProgress(operationId, creatorId, 'initializing', 10, 'Starting tenant creation...');
+      
+      const randomSuffix = crypto.randomBytes(4).toString('hex');
+      const dbName = `db_xl_${createTenantDto.name.toLowerCase().replace(/\s/g, '')}_${randomSuffix}`;
 
-    // 1. Create the tenant record in the master database
-    const tenant = await this.masterPrisma.tenant.create({
-      data: {
-        name: createTenantDto.name,
-        subdomain: createTenantDto.name.toLowerCase().replace(/\s/g, ''),
-        dbName: dbName,
-        encryptedDbUrl: this.encryptUrl(
-          this.getDbUrlForTenant(dbName),
-        ),
-        // Grant permission to the user who created the tenant
-        permissions: {
-          create: {
-            userId: creatorId,
+      await this.sendProgress(operationId, creatorId, 'creating-record', 25, 'Creating tenant record...');
+
+      // 1. Create the tenant record in the master database
+      const tenant = await this.masterPrisma.tenant.create({
+        data: {
+          name: createTenantDto.name,
+          subdomain: createTenantDto.name.toLowerCase().replace(/\s/g, ''),
+          dbName: dbName,
+          encryptedDbUrl: this.encryptUrl(
+            this.getDbUrlForTenant(dbName),
+          ),
+          // Grant permission to the user who created the tenant
+          permissions: {
+            create: {
+              userId: creatorId,
+            },
           },
         },
-      },
-    });
+      });
 
-    // 2. Provision the new database and run migrations
-    try {
-      await this.provisionTenantDatabase(dbName);
+      await this.sendProgress(operationId, creatorId, 'provisioning-database', 50, 'Provisioning tenant database...');
+
+      // 2. Provision the new database and run migrations
+      try {
+        await this.provisionTenantDatabase(dbName, operationId, creatorId);
+      } catch (error) {
+        this.logger.error(`Failed to provision database for tenant ${tenant.id}. Rolling back...`, error);
+        
+        await this.sendProgress(operationId, creatorId, 'rolling-back', 95, 'Rolling back changes...');
+        
+        // Rollback: delete the tenant record if provisioning fails
+        await this.masterPrisma.tenant.delete({ where: { id: tenant.id } });
+        
+        await this.sendError(operationId, creatorId, 'Failed to create tenant database');
+        throw new InternalServerErrorException('Failed to create tenant database.');
+      }
+
+      await this.sendCompletion(operationId, creatorId, tenant);
+      
+      this.logger.log(`Tenant creation completed for user ${creatorId}`);
+      return { operationId, tenant };
+      
     } catch (error) {
-      this.logger.error(`Failed to provision database for tenant ${tenant.id}. Rolling back...`, error);
-      // Rollback: delete the tenant record if provisioning fails
-      await this.masterPrisma.tenant.delete({ where: { id: tenant.id } });
-      throw new InternalServerErrorException('Failed to create tenant database.');
+      if (error instanceof InternalServerErrorException) {
+        // Error already handled with WebSocket
+        throw error;
+      }
+      
+      this.logger.error(`Tenant creation failed for user ${creatorId}:`, error);
+      await this.sendError(operationId, creatorId, error instanceof Error ? error.message : 'Unknown error occurred');
+      throw error;
     }
-
-    return tenant;
   }
 
   private getDbUrlForTenant(dbName: string): string {
@@ -69,24 +102,24 @@ export class TenantService {
     return url.toString();
   }
 
-  private async provisionTenantDatabase(dbName: string) {
+  private async provisionTenantDatabase(dbName: string, operationId?: string, userId?: string) {
     this.logger.log(`Provisioning new database: ${dbName}`);
     
-    // Create a temporary client to connect to the default 'postgres' database
-    const defaultDbUrl = this.getDbUrlForTenant('postgres');
-    const prisma = new MasterPrismaClient({
-      datasources: { db: { url: defaultDbUrl } },
-    });
-
+    if (operationId && userId) {
+      await this.sendProgress(operationId, userId, 'creating-database', 60, 'Creating tenant database...');
+    }
+    
     try {
-      // 1. Create the new database
-      await prisma.$executeRawUnsafe(`CREATE DATABASE "${dbName}";`);
+      // 1. Create the new database using the master database connection
+      await this.masterPrisma.$executeRawUnsafe(`CREATE DATABASE "${dbName}";`);
       this.logger.log(`Database "${dbName}" created.`);
+      
+      if (operationId && userId) {
+        await this.sendProgress(operationId, userId, 'running-migrations', 80, 'Running database migrations...');
+      }
     } catch (error) {
       this.logger.error(`Failed to create database "${dbName}"`, error);
       throw error; // Propagate error to be caught by the caller
-    } finally {
-      await prisma.$disconnect();
     }
     
     // 2. Run migrations on the new database
@@ -100,6 +133,10 @@ export class TenantService {
         stdio: 'inherit',
       });
       this.logger.log(`Migrations applied successfully to "${dbName}".`);
+      
+      if (operationId && userId) {
+        await this.sendProgress(operationId, userId, 'finalizing', 95, 'Finalizing tenant setup...');
+      }
     } catch (error) {
       this.logger.error(`Failed to apply migrations to "${dbName}"`, error);
       // Optional: Add logic to drop the created database on migration failure
@@ -339,5 +376,48 @@ export class TenantService {
     encrypted += cipher.final('hex');
 
     return iv.toString('hex') + encrypted;
+  }
+
+  // WebSocket helper methods for real-time progress updates
+  private async sendProgress(operationId: string, userId: string, stage: string, percentage: number, message: string) {
+    await this.webSocketService.sendToUser(userId, {
+      type: 'operation:progress',
+      data: {
+        operationId,
+        operationType: 'tenant-creation',
+        stage,
+        percentage,
+        message,
+      },
+    });
+  }
+
+  private async sendCompletion(operationId: string, userId: string, result: any) {
+    await this.webSocketService.sendToUser(userId, {
+      type: 'operation:complete',
+      data: {
+        operationId,
+        operationType: 'tenant-creation',
+        result,
+      },
+      metadata: {
+        tablesToRefresh: ['tenants'],
+        message: 'Tenant created successfully!',
+      },
+    });
+  }
+
+  private async sendError(operationId: string, userId: string, error: string) {
+    await this.webSocketService.sendToUser(userId, {
+      type: 'operation:error',
+      data: {
+        operationId,
+        operationType: 'tenant-creation',
+        error,
+      },
+      metadata: {
+        message: 'Failed to create tenant',
+      },
+    });
   }
 }

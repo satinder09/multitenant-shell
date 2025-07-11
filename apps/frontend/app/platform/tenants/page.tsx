@@ -4,11 +4,15 @@ import React, { useState } from 'react';
 import { ConfigDrivenModulePage } from '@/shared/modules/ConfigDrivenModulePage';
 import { registerModule } from '@/shared/modules/module-registry';
 import { TenantsConfig } from './tenants.config';
-import CreateTenantDialog from '@/components/features/tenant-management/CreateTenantDialog';
+import { TenantCreationForm } from '@/components/features/tenant-management/TenantCreationForm';
 import { SecureLoginModal } from '@/components/features/tenant-management/SecureLoginModal';
 import { ImpersonationModal } from '@/components/features/tenant-management/ImpersonationModal';
 import EditTenantDialog from '@/components/features/tenant-management/EditTenantDialog';
 import type { PlatformTenantAccessOption } from '@/shared/types/platform.types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useOperationToasts } from '@/hooks/useOperationToasts';
+import { useTableRefresh } from '@/hooks/useTableRefresh';
+import { useAuth } from '@/context/AuthContext';
 
 // 🚀 EARLY REGISTRATION: Register BEFORE component definition to ensure it's available immediately
 registerModule({
@@ -19,6 +23,20 @@ registerModule({
 });
 
 export default function TenantsPage() {
+  const { user } = useAuth();
+
+  // WebSocket integration for real-time updates
+  const { isConnected } = useOperationToasts(user?.id || '');
+  
+
+  
+  // Auto-refresh table when tenant operations complete
+  useTableRefresh(user?.id || '', 'tenants', () => {
+    window.dispatchEvent(new CustomEvent('refresh-module-data', {
+      detail: { moduleName: 'tenants' }
+    }));
+  });
+
   // Modal states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -62,21 +80,38 @@ export default function TenantsPage() {
       setImpersonationModalOpen(true);
     };
 
+    // Table refresh handler for live operations
+    const handleTableRefresh = (event: CustomEvent) => {
+      console.log('Table refresh triggered:', event.detail);
+      // Trigger refresh for the ConfigDrivenModulePage
+      window.dispatchEvent(new CustomEvent('refresh-module-data', {
+        detail: { moduleName: 'tenants' }
+      }));
+    };
+
     window.addEventListener('open-create-tenant-modal', handleCreateTenantModal);
     window.addEventListener('open-edit-tenant-dialog', handleEditTenantDialog as EventListener);
     window.addEventListener('open-secure-login-modal', handleSecureLoginModal as EventListener);
     window.addEventListener('open-impersonation-modal', handleImpersonationModal as EventListener);
+    window.addEventListener('table-refresh:tenants', handleTableRefresh as EventListener);
 
     return () => {
       window.removeEventListener('open-create-tenant-modal', handleCreateTenantModal);
       window.removeEventListener('open-edit-tenant-dialog', handleEditTenantDialog as EventListener);
       window.removeEventListener('open-secure-login-modal', handleSecureLoginModal as EventListener);
       window.removeEventListener('open-impersonation-modal', handleImpersonationModal as EventListener);
+      window.removeEventListener('table-refresh:tenants', handleTableRefresh as EventListener);
     };
   }, []);
 
   return (
     <div>
+      {/* WebSocket Connection Status */}
+      <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+        Real-time updates: {isConnected ? 'Connected' : 'Disconnected'}
+      </div>
+
       {/* Main Config-Driven Module Page */}
       <ConfigDrivenModulePage 
         moduleName="tenants"
@@ -84,17 +119,21 @@ export default function TenantsPage() {
       />
 
       {/* Modal Components */}
-      <CreateTenantDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onTenantCreated={() => {
-          setCreateDialogOpen(false);
-          // Trigger refresh after tenant creation
-          window.dispatchEvent(new CustomEvent('refresh-module-data', {
-            detail: { moduleName: 'tenants' }
-          }));
-        }}
-      />
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Tenant</DialogTitle>
+          </DialogHeader>
+          <TenantCreationForm 
+            onSuccess={() => {
+              // Close dialog after successful tenant creation
+              setTimeout(() => {
+                setCreateDialogOpen(false);
+              }, 3000); // Wait 3 seconds for user to see success message
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <EditTenantDialog
         open={editDialogOpen}

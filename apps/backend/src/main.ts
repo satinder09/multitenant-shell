@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import helmet from 'helmet';
@@ -13,6 +14,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
+
+  // Configure WebSocket adapter
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   // Security middleware
   app.use(helmet({
@@ -171,9 +175,10 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'x-forwarded-host'],
   });
 
-  const port = parseInt(config.get<string>('PORT') || '4000', 10);
+  const port = parseInt(config.get<string>('PORT') || '3000', 10);
   await app.listen(port);
   logger.log(`🚀 Backend listening on http://${baseDomain}:${port}`);
+  logger.log(`🔌 WebSocket server ready on ws://${baseDomain}:${port}`);
   logger.log(`📚 Swagger UI available at http://${baseDomain}:${port}/api-docs`);
   logger.log(`🔒 Security middleware enabled`);
   logger.log(`🌐 CORS configured for ${baseDomain}`);

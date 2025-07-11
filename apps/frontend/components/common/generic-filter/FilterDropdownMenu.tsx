@@ -98,7 +98,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
   // Generate popular filters from config
   const filterPresets: FilterPreset[] = React.useMemo(() => {
     if (!config?.columns) {
-      console.log('FilterDropdownMenu: No config or columns found');
+      // console.log('FilterDropdownMenu: No config or columns found');
       return [];
     }
     
@@ -140,7 +140,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
         };
       });
     
-    console.log('FilterDropdownMenu: Generated filter presets:', presets);
+    // console.log('FilterDropdownMenu: Generated filter presets:', presets);
     return presets;
   }, [config]);
 
@@ -245,7 +245,7 @@ export const FilterDropdownMenu: React.FC<FilterDropdownMenuProps> = ({
 
   const handleGroupByClick = (option: GroupByOption) => {
     // Handle group by functionality
-    console.log('Group by:', option);
+    // console.log('Group by:', option);
     setIsOpen(false);
   };
 

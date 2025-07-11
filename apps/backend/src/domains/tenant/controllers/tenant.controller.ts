@@ -26,8 +26,14 @@ export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 
   @Post()
-  create(@Body() createTenantDto: CreateTenantDto, @AuthUser() user: User) {
-    return this.tenantService.create(createTenantDto, user.id);
+  async create(@Body() createTenantDto: CreateTenantDto, @AuthUser() user: User) {
+    const result = await this.tenantService.create(createTenantDto, user.id);
+    
+    return {
+      success: true,
+      message: 'Tenant creation started',
+      data: result,
+    };
   }
 
   @Get()

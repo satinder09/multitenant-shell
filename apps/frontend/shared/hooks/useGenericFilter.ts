@@ -110,7 +110,7 @@ export function useGenericFilter<
       return cached;
     }
 
-    console.log(`🔧 Generating field discovery from config for ${moduleName}`);
+    // console.log(`🔧 Generating field discovery from config for ${moduleName}`);
 
     // Convert operators from config format to lib/types format
     const convertOperators = (operators: any[]): FilterOperator[] => {

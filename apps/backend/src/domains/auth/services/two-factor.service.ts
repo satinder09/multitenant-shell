@@ -429,7 +429,7 @@ export class TwoFactorService {
    */
   private async setupTOTP(userId: string, dto: SetupTwoFactorDto): Promise<TwoFactorSetupResponse> {
     // Check if TOTP method already exists for this user
-    let existingMethod = await this.twoFactorDb.findMethodByUserAndType(userId, TwoFactorMethodType.TOTP);
+    const existingMethod = await this.twoFactorDb.findMethodByUserAndType(userId, TwoFactorMethodType.TOTP);
     
     if (existingMethod) {
       if (existingMethod.isEnabled) {
