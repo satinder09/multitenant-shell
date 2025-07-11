@@ -219,11 +219,13 @@ export class WebSocketService implements OnGatewayConnection, OnGatewayDisconnec
         return null;
       }
       
+      this.logger.log(`🔑 Validating token: ${token.substring(0, 20)}...`);
       const user = await this.jwtService.verifyAsync(token);
-      this.logger.debug(`Token validation successful for user: ${user?.sub || user?.id}`);
+      this.logger.log(`✅ Token validation successful:`, JSON.stringify(user, null, 2));
       return user;
     } catch (error) {
-      this.logger.warn(`Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.warn(`❌ Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.warn(`🔑 Failed token: ${token?.substring(0, 20)}...`);
       return null;
     }
   }

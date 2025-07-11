@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
 } from '@nestjs/common';
 import { TenantService } from '../services/tenant.service';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
@@ -19,6 +20,7 @@ import { AuthUser } from '../../../shared/decorators/auth-user.decorator';
 import { BulkUpdateTenantsDto } from '../dto/bulk-update-tenants.dto';
 import { BulkDeleteTenantsDto } from '../dto/bulk-delete-tenants.dto';
 import { Public } from '../../../shared/decorators/public.decorator';
+import { Request } from 'express';
 
 @UseGuards(JwtAuthGuard)
 @Controller('tenants')
@@ -26,8 +28,12 @@ export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 
   @Post()
-  async create(@Body() createTenantDto: CreateTenantDto, @AuthUser() user: User) {
-    const result = await this.tenantService.create(createTenantDto, user.id);
+  async create(
+    @Body() createTenantDto: CreateTenantDto, 
+    @AuthUser() user: User,
+    @Req() request: Request
+  ) {
+    const result = await this.tenantService.create(createTenantDto, user.id, request);
     
     return {
       success: true,

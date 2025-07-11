@@ -1,6 +1,7 @@
 'use client';
-import { useCallback, useEffect } from 'react';
-import { useWebSocket, WebSocketEvent } from './useWebSocket';
+import { useAuth } from '@/context/AuthContext';
+import { useWebSocket } from './useWebSocket';
+import { useEffect } from 'react';
 
 export interface OperationEvent {
   type: 'operation:progress' | 'operation:complete' | 'operation:error';
@@ -20,52 +21,40 @@ export interface OperationEvent {
   };
 }
 
-interface OperationCallbacks {
-  onProgress?: (event: OperationEvent) => void;
-  onComplete?: (event: OperationEvent) => void;
-  onError?: (event: OperationEvent) => void;
-}
-
-export function useOperationProgress(userId: string, callbacks?: OperationCallbacks) {
+export function useOperationProgress() {
+  const { user } = useAuth();
+  const userId = user?.id || '';
+  
   const { isConnected, subscribe } = useWebSocket(userId);
   
-  const handleOperationEvent = useCallback((event: OperationEvent) => {
-    switch (event.type) {
-      case 'operation:progress':
-        callbacks?.onProgress?.(event);
-        break;
-      case 'operation:complete':
-        callbacks?.onComplete?.(event);
-        break;
-      case 'operation:error':
-        callbacks?.onError?.(event);
-        break;
-    }
-  }, [callbacks]);
-  
+  // Bridge WebSocket events → DOM CustomEvents (used by BackgroundApiClient for toasts)
   useEffect(() => {
-    // Create wrapper function to convert WebSocketEvent to OperationEvent
-    const createEventHandler = (eventType: OperationEvent['type']) => (event: WebSocketEvent) => {
-      if (event.type === eventType) {
-        const operationEvent: OperationEvent = {
-          type: eventType,
-          data: event.data || {},
-          metadata: event.metadata,
-        };
-        handleOperationEvent(operationEvent);
-      }
-    };
-    
-    const unsubscribeProgress = subscribe('operation:progress', createEventHandler('operation:progress'));
-    const unsubscribeComplete = subscribe('operation:complete', createEventHandler('operation:complete'));
-    const unsubscribeError = subscribe('operation:error', createEventHandler('operation:error'));
-    
+    if (!userId) return;
+
+    const progressUnsub = subscribe('operation:progress', (evt) => {
+      const id = evt.data?.operationId;
+      if (!id) return;
+      window.dispatchEvent(new CustomEvent(`operation:${id}:progress`, { detail: evt.data }));
+    });
+
+    const completeUnsub = subscribe('operation:complete', (evt) => {
+      const id = evt.data?.operationId;
+      if (!id) return;
+      window.dispatchEvent(new CustomEvent(`operation:${id}:complete`, { detail: evt.data }));
+    });
+
+    const errorUnsub = subscribe('operation:error', (evt) => {
+      const id = evt.data?.operationId;
+      if (!id) return;
+      window.dispatchEvent(new CustomEvent(`operation:${id}:error`, { detail: evt.data }));
+    });
+
     return () => {
-      unsubscribeProgress();
-      unsubscribeComplete();
-      unsubscribeError();
+      progressUnsub();
+      completeUnsub();
+      errorUnsub();
     };
-  }, [subscribe, handleOperationEvent]);
+  }, [userId, subscribe]);
   
   return { isConnected };
 } 

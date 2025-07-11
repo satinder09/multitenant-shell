@@ -337,6 +337,69 @@ export const createLoadingToast = (loadingTitle: string) => {
   })
   
   return {
+    progress: (percentage: number, message: string) => {
+      // Update the existing toast with progress state
+      toast.custom((t) => {
+        const config = variantConfig['loading']
+        return (
+          <div
+            className={cn(
+              'group relative flex items-center gap-3 w-full max-w-sm p-3 rounded-lg shadow-md transition-all duration-300',
+              'border border-transparent',
+              config.bgColor,
+              'shadow-lg hover:shadow-xl',
+              'hover:scale-[1.01] active:scale-[0.99]',
+              'dark:shadow-xl',
+              'animate-in slide-in-from-right-1 fade-in-0 duration-300',
+            )}
+            role="alert"
+            aria-live="polite"
+          >
+            <div className="flex-shrink-0 transition-all duration-200">
+              {config.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {loadingTitle} - {percentage}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {message}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => toast.dismiss(t)}
+              className={cn(
+                'flex-shrink-0 flex items-center justify-center h-5 w-5 rounded',
+                'text-muted-foreground hover:text-foreground',
+                'hover:bg-black/10 dark:hover:bg-white/10',
+                'transition-colors duration-150',
+                'focus:outline-none',
+                'ml-2'
+              )}
+              aria-label="Dismiss notification"
+            >
+              <X className="h-3 w-3" />
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/10 rounded-b-xl overflow-hidden">
+              <div
+                className="h-full rounded-b-xl transition-all ease-linear bg-blue-500"
+                style={{
+                  width: `${percentage}%`,
+                  transition: 'width 0.3s ease-in-out',
+                }}
+              />
+            </div>
+          </div>
+        )
+      }, {
+        id: toastId,
+        duration: Infinity,
+      })
+    },
     success: (title: string, description?: string) => {
       // Update the existing toast with success state
       toast.custom((t) => {

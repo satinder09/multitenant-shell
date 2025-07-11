@@ -1,338 +1,151 @@
 'use client';
 
 /**
- * 🏢 SIMPLE TENANT CREATION FORM - WebSocket Testing
+ * 🏢 TENANT CREATION FORM
  * 
- * Basic form with just tenant name and subdomain for testing WebSocket functionality
+ * Uses the default background API system for automatic progress toasts.
+ * Modal closes immediately when form is submitted.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Building2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2, Info } from 'lucide-react';
 
-// Import our new simplified WebSocket hooks
-import { useOperationToasts } from '@/hooks/useOperationToasts';
-import { useAuth } from '@/context/AuthContext';
-
-// Simple form validation schema
-const tenantCreationSchema = z.object({
-  tenantName: z.string().min(2, 'Tenant name must be at least 2 characters'),
-  subdomain: z.string()
-    .min(2, 'Subdomain must be at least 2 characters')
-    .max(50, 'Subdomain must be less than 50 characters')
-    .regex(/^[a-z0-9-]+$/, 'Subdomain can only contain lowercase letters, numbers, and hyphens'),
-});
-
-type TenantCreationData = z.infer<typeof tenantCreationSchema>;
-
-// Full API request type that matches the backend
-interface TenantCreationRequest {
-  companyName: string;
-  adminEmail: string;
-  adminName: string;
-  plan: 'basic' | 'standard' | 'premium';
-  features: string[];
-  initialUsers: number;
-  customDomain: string;
-  metadata: {
-    simplified: boolean;
-    originalInput: TenantCreationData;
-  };
-}
-
-interface TenantCreationResponse {
-  operationId: string;
-  estimatedDuration: number;
-  trackingUrl: string;
-}
-
-interface TenantCreationResult {
-  tenantId: string;
-  tenantName: string;
-  subdomain: string;
-  databaseName: string;
-  apiEndpoint: string;
-  dashboardUrl: string;
-  status: string;
-}
-
-// Progress stages are now handled by the single toast system
+// Use the simplified API hook
+import { useBrowserApi } from '@/hooks/useBrowserApi';
 
 interface TenantCreationFormProps {
   onSuccess?: () => void;
 }
 
-export const TenantCreationForm: React.FC<TenantCreationFormProps> = ({ onSuccess }) => {
-  const { user } = useAuth();
-  const [createdTenant, setCreatedTenant] = useState<TenantCreationResult | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // WebSocket integration - automatic toast notifications and table refresh
-  const { isConnected } = useOperationToasts(user?.id || '');
-  
-  // Listen for WebSocket completion events to trigger success callback
-  useEffect(() => {
-    if (!user?.id) return;
-    
-    const handleOperationComplete = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      if (customEvent.detail?.operationType === 'tenant-creation') {
-        console.log('WebSocket tenant creation completed:', customEvent.detail);
-        // Trigger success callback after a short delay to let user see the result
-        setTimeout(() => {
-          onSuccess?.();
-        }, 2000);
-      }
-    };
-    
-    window.addEventListener('websocket:operation:complete', handleOperationComplete);
-    
-    return () => {
-      window.removeEventListener('websocket:operation:complete', handleOperationComplete);
-    };
-  }, [user?.id, onSuccess]);
-  
-  // Form setup
-  const form = useForm<TenantCreationData>({
-    resolver: zodResolver(tenantCreationSchema),
-    defaultValues: {
-      tenantName: '',
-      subdomain: '',
-    },
+export function TenantCreationForm({ onSuccess }: TenantCreationFormProps = {}) {
+  const [formData, setFormData] = useState({
+    name: '',
+    planType: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Watch form values for stable references
-  const formValues = form.watch();
+  // Initialize the browser API hook
+  const { api } = useBrowserApi();
 
-  // Handle form submission with data transformation
-  const onSubmit = useCallback(async (data: TenantCreationData) => {
-    if (!user?.id) {
-      setError('User not authenticated');
-      return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Close modal immediately
+    if (onSuccess) {
+      onSuccess();
     }
 
-    setIsSubmitting(true);
-    setError(null);
-
     try {
-      // Transform simple form data to backend format
-      const requestData = {
-        name: data.tenantName,
-        // Note: subdomain is auto-generated by backend from name
+      // Prepare data for API call - only send non-empty fields
+      const apiData: any = {
+        name: formData.name,
       };
-
-      console.log('Creating tenant:', requestData);
-
-      const response = await fetch('/api/tenants', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create tenant');
+      
+      // Only include planType if it's provided
+      if (formData.planType) {
+        apiData.planType = formData.planType;
       }
-
-      const result = await response.json();
-      console.log('Tenant creation response:', result);
-
-      // Set the created tenant result
-      if (result.data?.tenant) {
-        setCreatedTenant({
-          tenantId: result.data.tenant.id,
-          tenantName: result.data.tenant.name,
-          subdomain: result.data.tenant.subdomain,
-          databaseName: result.data.tenant.dbName,
-          apiEndpoint: `/api/tenant/${result.data.tenant.id}`,
-          dashboardUrl: `https://${result.data.tenant.subdomain}.${process.env.NEXT_PUBLIC_BASE_DOMAIN || 'localhost:3000'}`,
-          status: 'active',
-        });
-      }
-
-      // WebSocket will handle progress updates and table refresh automatically
-      // Success callback will be called when WebSocket receives completion event
+      
+      // Use background API with default toast system
+      // Generate and use explicit operation ID to wire up toasts immediately
+      const operationId = `tenant-creation-${Date.now()}`;
+      await api.background.post('/api/tenants', apiData, { operationId });
+      
+      // Clear form
+      setFormData({ name: '', planType: '' });
       
     } catch (error) {
-      console.error('Tenant creation failed:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create tenant');
+      console.error('Error creating tenant:', error);
+      // Default error toast will be shown by the background API
     } finally {
       setIsSubmitting(false);
     }
-  }, [user?.id]);
-
-  // Handle reset
-  const handleReset = useCallback(() => {
-    setCreatedTenant(null);
-    setError(null);
-    form.reset();
-  }, [form]);
-
-  // Generate subdomain from tenant name
-  const handleTenantNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    form.setValue('tenantName', value);
-    
-    // Auto-generate subdomain if it's empty - use stable formValues reference
-    if (!formValues.subdomain) {
-      const subdomain = value
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/--+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      form.setValue('subdomain', subdomain);
-    }
-  }, [form, formValues.subdomain]);
+  };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Create New Tenant</h1>
-          <p className="text-muted-foreground">
-            Simple tenant creation with live progress tracking
-          </p>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5" />
+          Create New Tenant
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Tenant Name *</Label>
+            <Input
+              id="name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Enter tenant name (e.g., 'Acme Corp')"
+              required
+              minLength={3}
+            />
+            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+              <Info className="h-3 w-3" />
+              <span>The subdomain will be auto-generated from the name</span>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="planType">Plan Type</Label>
+            <Select 
+              value={formData.planType} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, planType: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a plan (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="basic">Basic</SelectItem>
+                <SelectItem value="pro">Professional</SelectItem>
+                <SelectItem value="enterprise">Enterprise</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+              <Info className="h-3 w-3" />
+              <span>Optional: Select a plan type for the tenant</span>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              {isSubmitting ? 'Creating...' : 'Create Tenant'}
+            </Button>
+            
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFormData({ name: '', planType: '' })}
+            >
+              Clear
+            </Button>
+          </div>
+        </form>
         
-        {/* WebSocket Status */}
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-sm text-muted-foreground">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
+        {/* Information panel */}
+        <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+          <h4 className="text-sm font-medium mb-2">Auto-generated Fields</h4>
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <div>• <strong>Subdomain:</strong> Generated from tenant name (lowercase, no spaces)</div>
+            <div>• <strong>Database Name:</strong> Auto-generated with unique suffix</div>
+            <div>• <strong>Database URL:</strong> Encrypted and stored securely</div>
+            <div>• <strong>Status:</strong> Active by default</div>
+          </div>
         </div>
-      </div>
-
-      {/* Progress is now handled by the single toast system */}
-
-      {/* Success Result */}
-      {createdTenant && (
-        <Alert className="border-green-200 bg-green-50">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription>
-            <div className="space-y-2">
-              <div className="font-semibold text-green-800">
-                Tenant "{createdTenant.tenantName}" created successfully!
-              </div>
-              <div className="space-y-1 text-sm">
-                <div><strong>Tenant ID:</strong> {createdTenant.tenantId}</div>
-                <div><strong>Subdomain:</strong> {createdTenant.subdomain}</div>
-                <div><strong>Database:</strong> {createdTenant.databaseName}</div>
-                <div><strong>API Endpoint:</strong> {createdTenant.apiEndpoint}</div>
-                <div><strong>Dashboard URL:</strong> {createdTenant.dashboardUrl}</div>
-              </div>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Error Display */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-2">
-              <div className="font-semibold">Failed to create tenant</div>
-              <div className="text-sm">{error}</div>
-              <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={handleReset}
-                  disabled={isSubmitting}
-                >
-                  Reset Form
-                </Button>
-              </div>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Simple Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
-            Basic Tenant Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Tenant Name */}
-            <div className="space-y-2">
-              <Label htmlFor="tenantName">Tenant Name</Label>
-              <Input
-                id="tenantName"
-                value={formValues.tenantName}
-                placeholder="e.g., Acme Corporation"
-                disabled={isSubmitting}
-                onChange={handleTenantNameChange}
-              />
-              {form.formState.errors.tenantName && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.tenantName.message}
-                </p>
-              )}
-            </div>
-
-            {/* Subdomain */}
-            <div className="space-y-2">
-              <Label htmlFor="subdomain">Subdomain</Label>
-              <div className="flex">
-                <Input
-                  id="subdomain"
-                  {...form.register('subdomain')}
-                  placeholder="e.g., acme-corp"
-                  disabled={isSubmitting}
-                  className="rounded-r-none"
-                />
-                <span className="px-3 py-2 bg-muted border border-l-0 rounded-r-md text-sm text-muted-foreground">
-                  .yourdomain.com
-                </span>
-              </div>
-              {form.formState.errors.subdomain && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.subdomain.message}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                This will be your tenant's unique URL
-              </p>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                disabled={isSubmitting}
-              >
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting || !form.formState.isValid}
-              >
-                {isSubmitting ? 'Creating...' : 'Create Tenant'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+      </CardContent>
+    </Card>
   );
-}; 
+}

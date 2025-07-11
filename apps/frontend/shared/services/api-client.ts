@@ -376,11 +376,254 @@ export function resetDefaultApiClient(): void {
   defaultClient = null;
 }
 
+// Background API options
+export interface BackgroundOptions {
+  // Optional callbacks (run in addition to defaults)
+  onProgress?: (data: ProgressData) => void;
+  onComplete?: (result: any) => void;
+  onError?: (error: Error) => void;
+  
+  // Control default behavior
+  disableDefaultToasts?: boolean;
+  
+  // Operation metadata
+  operationName?: string; // For custom toast titles
+  timeout?: number; // Max operation time
+  manual?: boolean; // Return operation ID for manual tracking
+  operationId?: string; // Allow pre-generated operation ID
+}
+
+export interface ProgressData {
+  operationId: string;
+  percentage: number;
+  stage: string;
+  message: string;
+  timestamp: string;
+  data?: any; // Custom data from backend
+}
+
+export interface BackgroundOperation {
+  operationId: string;
+  trackProgress: (callback: (data: ProgressData) => void) => void;
+  onComplete: (callback: (result: any) => void) => void;
+  onError: (callback: (error: Error) => void) => void;
+}
+
+// Background API client (separate from main ApiClient)
+export class BackgroundApiClient {
+  private operations: Map<string, any> = new Map();
+  private baseClient: ApiClient;
+  private eventListeners: Map<string, { progress: (event: Event) => void; complete: (event: Event) => void; error: (event: Event) => void }> = new Map();
+  
+  constructor(baseClient: ApiClient) {
+    this.baseClient = baseClient;
+  }
+  
+  async get<T = unknown>(url: string, params?: Record<string, RecordValue>, options?: BackgroundOptions): Promise<string> {
+    return this.backgroundRequest<T>({ url, method: 'GET', params, ...options });
+  }
+
+  async post<T = unknown>(url: string, data?: JsonData | FormData, options?: BackgroundOptions): Promise<string> {
+    return this.backgroundRequest<T>({ url, method: 'POST', data, ...options });
+  }
+
+  async put<T = unknown>(url: string, data?: JsonData | FormData, options?: BackgroundOptions): Promise<string> {
+    return this.backgroundRequest<T>({ url, method: 'PUT', data, ...options });
+  }
+
+  async patch<T = unknown>(url: string, data?: JsonData | FormData, options?: BackgroundOptions): Promise<string> {
+    return this.backgroundRequest<T>({ url, method: 'PATCH', data, ...options });
+  }
+
+  async delete<T = unknown>(url: string, options?: BackgroundOptions): Promise<string> {
+    return this.backgroundRequest<T>({ url, method: 'DELETE', ...options });
+  }
+
+  private async backgroundRequest<T>(config: RequestConfig & BackgroundOptions): Promise<string> {
+    // Import createLoadingToast dynamically to avoid circular dependency
+    const { createLoadingToast } = await import('@/shared/utils/ui/toastNotify');
+    
+    const operationName = config.operationName || this.extractOperationName(config.url, config.method);
+    
+    // Create single loading toast unless disabled
+    let loadingToast: any = null;
+    if (!config.disableDefaultToasts) {
+      loadingToast = createLoadingToast(operationName);
+    }
+    
+    // Generate operationId (use pre-generated or create new)
+    const operationId = config.operationId || `${config.url.replace(/\W+/g, '-')}-${Date.now()}`;
+    
+    // Store operation info
+    this.operations.set(operationId, {
+      operationName,
+      loadingToast,
+      disableDefaultToasts: config.disableDefaultToasts,
+      onProgress: config.onProgress,
+      onComplete: config.onComplete,
+      onError: config.onError
+    });
+
+    // Set up WebSocket listeners BEFORE making the request
+    this.setupWebSocketListeners(operationId);
+
+    try {
+      // Add headers to indicate background operation
+      const headers: Record<string, string> = {
+        ...config.headers,
+        'X-Operation-Id': operationId
+      };
+      
+      // Make the actual HTTP request
+      const response = await this.baseClient.request<T>({
+        ...config,
+        headers
+      });
+
+      return operationId;
+      
+    } catch (error) {
+      // Handle immediate errors
+      if (loadingToast) {
+        loadingToast.error('Operation Failed', error instanceof Error ? error.message : 'An error occurred');
+      }
+      
+      config.onError?.(error instanceof Error ? error : new Error('Unknown error'));
+      
+      // Clean up on error
+      this.operations.delete(operationId);
+      this.removeWebSocketListeners(operationId);
+      
+      throw error;
+    }
+  }
+  
+  private setupWebSocketListeners(operationId: string) {
+    const handleProgress = (event: Event) => {
+      const data = (event as CustomEvent).detail;
+      const operation = this.operations.get(operationId);
+      
+      if (operation && data.operationId === operationId) {
+        // Update default toast if enabled
+        if (!operation.disableDefaultToasts && operation.loadingToast) {
+          operation.loadingToast.progress(data.percentage || 0, data.message || '');
+        }
+        
+        // Call custom progress handler
+        if (operation.onProgress) {
+          operation.onProgress(data);
+        }
+      }
+    };
+
+    const handleComplete = (event: Event) => {
+      const data = (event as CustomEvent).detail;
+      const operation = this.operations.get(operationId);
+      
+      if (operation && data.operationId === operationId) {
+        // Update default toast if enabled
+        if (!operation.disableDefaultToasts && operation.loadingToast) {
+          operation.loadingToast.success(data.message || 'Operation completed successfully');
+        }
+        
+        // Call custom complete handler
+        if (operation.onComplete) {
+          operation.onComplete(data);
+        }
+        
+        // Clean up
+        this.operations.delete(operationId);
+        this.removeWebSocketListeners(operationId);
+      }
+    };
+
+    const handleError = (event: Event) => {
+      const data = (event as CustomEvent).detail;
+      const operation = this.operations.get(operationId);
+      
+      if (operation && data.operationId === operationId) {
+        // Update default toast if enabled
+        if (!operation.disableDefaultToasts && operation.loadingToast) {
+          operation.loadingToast.error(data.error || 'Operation failed');
+        }
+        
+        // Call custom error handler
+        if (operation.onError) {
+          operation.onError(data);
+        }
+        
+        // Clean up
+        this.operations.delete(operationId);
+        this.removeWebSocketListeners(operationId);
+      }
+    };
+
+    // Set up DOM event listeners
+    window.addEventListener(`operation:${operationId}:progress`, handleProgress as EventListener);
+    window.addEventListener(`operation:${operationId}:complete`, handleComplete as EventListener);
+    window.addEventListener(`operation:${operationId}:error`, handleError as EventListener);
+
+    // Store references for cleanup
+    this.eventListeners.set(operationId, {
+      progress: handleProgress,
+      complete: handleComplete,
+      error: handleError
+    });
+  }
+  
+  private removeWebSocketListeners(operationId: string) {
+    const listeners = this.eventListeners.get(operationId);
+    if (listeners) {
+      window.removeEventListener(`operation:${operationId}:progress`, listeners.progress as EventListener);
+      window.removeEventListener(`operation:${operationId}:complete`, listeners.complete as EventListener);
+      window.removeEventListener(`operation:${operationId}:error`, listeners.error as EventListener);
+      this.eventListeners.delete(operationId);
+    }
+  }
+  
+  private cleanupOperation(operationId: string) {
+    const operation = this.operations.get(operationId);
+    if (operation) {
+      operation.cleanup?.();
+      this.operations.delete(operationId);
+      this.removeWebSocketListeners(operationId);
+    }
+  }
+  
+  private extractOperationName(url: string, method: string = 'POST'): string {
+    const parts = url.split('/').filter(Boolean);
+    const resource = parts[parts.length - 1] || 'operation';
+    
+    const actionMap: Record<string, string> = {
+      'POST': 'Creating',
+      'PUT': 'Updating',
+      'PATCH': 'Updating',
+      'DELETE': 'Deleting',
+      'GET': 'Loading'
+    };
+    
+    const action = actionMap[method] || 'Processing';
+    const resourceName = resource.charAt(0).toUpperCase() + resource.slice(1);
+    
+    return `${action} ${resourceName}`;
+  }
+}
+
+// Enhanced API client with both sync and background methods
+export class EnhancedApiClient extends ApiClient {
+  background: BackgroundApiClient;
+  
+  constructor(config: ApiClientConfig) {
+    super(config);
+    this.background = new BackgroundApiClient(this);
+  }
+}
+
 // Preconfigured API clients for convenience
 /**
- * Browser API client for client-side code.
+ * Browser API client for client-side code with both sync and background support.
  */
-export const browserApi: ApiClient = getDefaultApiClient();
+export const browserApi: EnhancedApiClient = new EnhancedApiClient(getDefaultApiClient()['config']);
 
 /**
  * Server API client for server-side code (e.g. Next.js routes).
@@ -401,12 +644,24 @@ export function createServerApiClient(req: NextRequest): ApiClient {
   // Determine backend base URL - use the correct environment variables
   const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000');
   const client = createApiClient({ baseURL, credentials: 'include' });
+  
   client.addRequestInterceptor((config) => {
     const cookie = req.headers.get('cookie') || '';
     // Forward cookie header for session
     config.headers = { ...(config.headers || {}), Cookie: cookie };
+    
+    // Forward important headers from the original request
+    const headersToForward = ['x-forwarded-host', 'x-forwarded-for', 'user-agent', 'x-operation-id'];
+    headersToForward.forEach(headerName => {
+      const headerValue = req.headers.get(headerName);
+      if (headerValue) {
+        config.headers = { ...(config.headers || {}), [headerName]: headerValue };
+      }
+    });
+    
     return config;
   });
+  
   // CSRF token fetch for state-changing requests
   client.addRequestInterceptor(async (config) => {
     const method = config.method?.toUpperCase();
@@ -430,5 +685,6 @@ export function createServerApiClient(req: NextRequest): ApiClient {
     }
     return config;
   });
+  
   return client;
 } 

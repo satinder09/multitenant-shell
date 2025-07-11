@@ -25,7 +25,7 @@ import { WebSocketService } from './websocket.service';
   providers: [WebSocketService],
   exports: [WebSocketService],
 })
-export class WebSocketModule {}
+export class WebSocketModule {} 
 
 // Export the service directly for easier importing
 export { WebSocketService }; 

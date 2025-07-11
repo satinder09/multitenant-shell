@@ -122,7 +122,7 @@ class ServerApiClient {
 
     // Forward important headers from the original request
     if (request) {
-      const headersToForward = ['x-forwarded-host', 'x-forwarded-for', 'user-agent'];
+      const headersToForward = ['x-forwarded-host', 'x-forwarded-for', 'user-agent', 'x-operation-id'];
       headersToForward.forEach(headerName => {
         const headerValue = request.headers.get(headerName);
         if (headerValue) {
